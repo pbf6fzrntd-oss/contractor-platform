@@ -76,6 +76,8 @@ export type DispatchOptions = {
   fastForwardOrgId?: string;
   /** With fastForwardOrgId: only texts whose time has already come. */
   dueOnly?: boolean;
+  /** Send this bulk send's due texts right now (used right after the owner taps Send). */
+  broadcastId?: string;
 };
 
 export async function runDispatch(db: AdminClient, options: DispatchOptions = {}): Promise<DispatchSummary> {
@@ -94,7 +96,17 @@ export async function runDispatch(db: AdminClient, options: DispatchOptions = {}
   }
 
   let items: ScheduledRow[];
-  if (options.fastForwardOrgId) {
+  if (options.broadcastId) {
+    // Claim this send's due texts; anything another run already took is skipped.
+    const { data } = await db
+      .from("scheduled_messages")
+      .update({ status: "processing", processed_at: now.toISOString() })
+      .eq("broadcast_id", options.broadcastId)
+      .eq("status", "pending")
+      .lte("send_at", now.toISOString())
+      .select("*");
+    items = data ?? [];
+  } else if (options.fastForwardOrgId) {
     let q = db
       .from("scheduled_messages")
       .select("*")
@@ -261,10 +273,12 @@ async function processItem(
   return failed ? "failed" : "skipped";
 }
 
-/** Bulk sends (Milestone 7+) keep their text on the broadcast. */
+/** Bulk sends keep their text on the broadcast. */
 async function loadBroadcast(
-  _db: AdminClient,
-  _broadcastId: string | null,
+  db: AdminClient,
+  broadcastId: string | null,
 ): Promise<{ status: string; body_en: string; body_es: string | null } | null> {
-  return null;
+  if (!broadcastId) return null;
+  const { data } = await db.from("broadcasts").select("status, body_en, body_es").eq("id", broadcastId).maybeSingle();
+  return data ?? null;
 }

@@ -74,6 +74,69 @@ export type Database = {
         };
         Relationships: [];
       };
+      broadcasts: {
+        Row: {
+          id: string;
+          org_id: string;
+          kind: string;
+          name: string;
+          template_key: string | null;
+          body_en: string;
+          body_es: string | null;
+          category: string;
+          service_date: string | null;
+          new_date: string | null;
+          audience: Json;
+          scheduled_at: string;
+          status: string;
+          recipient_count: number;
+          excluded: Json;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          kind: string;
+          name: string;
+          template_key?: string | null;
+          body_en: string;
+          body_es?: string | null;
+          category: string;
+          service_date?: string | null;
+          new_date?: string | null;
+          audience?: Json;
+          scheduled_at?: string;
+          status?: string;
+          recipient_count?: number;
+          excluded?: Json;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          kind?: string;
+          name?: string;
+          template_key?: string | null;
+          body_en?: string;
+          body_es?: string | null;
+          category?: string;
+          service_date?: string | null;
+          new_date?: string | null;
+          audience?: Json;
+          scheduled_at?: string;
+          status?: string;
+          recipient_count?: number;
+          excluded?: Json;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       calls: {
         Row: {
           id: string;
