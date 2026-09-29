@@ -71,7 +71,7 @@ export type SendInput = {
   category: MessageCategory;
   leadId?: string | null;
   broadcastId?: string | null;
-  senderType: "user" | "automation";
+  senderType: "user" | "automation" | "assistant";
   userId?: string | null;
   purpose?: SendPurpose;
   now?: Date;

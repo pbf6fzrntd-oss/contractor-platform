@@ -1,21 +1,14 @@
 import { StatTile } from "@/components/stat-tile";
-import { computeRecurringMetrics, formatPercent } from "@/lib/automation/metrics";
+import { formatPercent } from "@/lib/automation/metrics";
 import type { Org } from "@/lib/org";
 import { money } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import { addDays, localDateString } from "@/lib/time";
+import { loadRecurringMetrics } from "@/lib/services/metrics";
 
 /** Active customers, new vs canceled, churn and monthly revenue for lawn businesses. */
 export async function RecurringMetricsSection({ org }: { org: Org }) {
   if (org.business_type !== "recurring") return null;
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("recurring_services")
-    .select("status, paused_until, start_date, canceled_on, cancel_reason, frequency, price_cents")
-    .eq("org_id", org.id)
-    .limit(5000);
-  const today = localDateString(new Date(), org.timezone);
-  const m = computeRecurringMetrics(data ?? [], today, `${today.slice(0, 8)}01`, addDays(today, -30));
+  const m = await loadRecurringMetrics(await createClient(), org);
 
   return (
     <>

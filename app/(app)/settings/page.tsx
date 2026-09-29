@@ -21,7 +21,10 @@ export default async function SettingsPage() {
     { href: "/settings/automations", label: "Automations", detail: "Follow-ups, review requests, business hours" },
     { href: "/settings/billing", label: "Billing", detail: `${plan.id === "pilot" ? "Pilot" : plan.id} plan and text usage` },
     ...(role === "owner"
-      ? [{ href: "/settings/registration", label: "Carrier registration", detail: "Required before texting real customers" }]
+      ? [
+          { href: "/settings/registration", label: "Carrier registration", detail: "Required before texting real customers" },
+          { href: "/settings/assistants", label: "AI assistants", detail: "Let Claude, ChatGPT and others help run your inbox" },
+        ]
       : []),
     ...((await isPlatformAdmin()) ? [{ href: "/admin", label: "Platform admin", detail: "All businesses, registrations, plans" }] : []),
   ];

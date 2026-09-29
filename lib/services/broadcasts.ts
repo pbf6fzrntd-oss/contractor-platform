@@ -65,7 +65,7 @@ export async function createServiceNotice(
     bodyEs: string | null;
     date: string;
     newDate: string | null;
-    userId: string;
+    userId: string | null;
     now?: Date;
   },
 ): Promise<{ broadcastId: string; recipients: number; excluded: Selection["excluded"] }> {
@@ -131,7 +131,7 @@ export async function markDayComplete(
   db: AdminClient,
   orgId: string,
   date: string,
-  userId: string,
+  userId: string | null,
 ): Promise<{ visits: number; reviewsScheduled: number }> {
   const data = await loadRecipientData(db, orgId);
   const scheduled = selectNoticeRecipients(
@@ -179,7 +179,7 @@ export async function createCampaign(
     audience: CampaignAudience;
     sendAt: Date;
     today: string;
-    userId: string;
+    userId: string | null;
   },
 ): Promise<{ broadcastId: string; recipients: number; excluded: Selection["excluded"] }> {
   const selection = await previewCampaign(db, orgId, input.audience, input.today);

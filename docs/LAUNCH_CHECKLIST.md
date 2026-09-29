@@ -58,6 +58,7 @@ Legend: ☐ = to do · ✅ = already verified in development
 ✅ Stripe webhook: signed event switches plan; cancellation stops texting; forged event rejected
 ✅ Carrier registration form → admin approves → owner sees "texting is on"; non-admins get "not found" at /admin
 ✅ Twilio webhooks: forged request rejected (403), duplicate delivery ignored, spoken greeting + missed-call handling, delivery status updates
+✅ AI assistant (MCP), tested with the official MCP client: keys created in Settings; overview, leads, conversations, schedule, customers; reply marked "via AI assistant" and New→Contacted; stage change schedules follow-ups; job done schedules review; rain delay preview → confirm → texts sent and visits moved; read-only keys can't see action tools; missing/fake keys rejected (401); every call logged
 
 ## Part 4: What needs a live test (real phones, money, people)
 
@@ -86,6 +87,11 @@ Do these with 2 phones (yours + a friend's) once Twilio is connected.
 **Money**
 - ☐ Stripe test mode: buy a plan → plan changes; failed card → "past due" but texting continues; cancel in the portal → texting stops.
 - ☐ Switch to live keys only after a full test-mode run.
+
+**AI assistant (MCP)**
+- ☐ Connect a real assistant app to the deployed `/api/mcp` with a key (Claude Code or another MCP-capable app) and try: "any new leads?", "reply to …", "rain delay today to tomorrow". Confirm it asks before sending.
+- ☐ Decide whether AI access is included in every plan or only higher plans (it's on for all plans now).
+- ☐ One-click "Connect" buttons inside Claude/ChatGPT apps require an OAuth sign-in flow instead of pasted keys. That's the next step for this feature if owners find keys confusing.
 
 **People**
 - ☐ Native Spanish speaker reviews every Spanish template (Settings → Message templates → Spanish).

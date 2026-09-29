@@ -74,6 +74,75 @@ export type Database = {
         };
         Relationships: [];
       };
+      agent_activity: {
+        Row: {
+          id: string;
+          org_id: string;
+          api_key_id: string | null;
+          tool: string;
+          summary: string;
+          ok: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          api_key_id?: string | null;
+          tool: string;
+          summary: string;
+          ok?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          api_key_id?: string | null;
+          tool?: string;
+          summary?: string;
+          ok?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      api_keys: {
+        Row: {
+          id: string;
+          org_id: string;
+          name: string;
+          key_prefix: string;
+          key_hash: string;
+          access: string;
+          created_by: string | null;
+          created_at: string;
+          last_used_at: string | null;
+          revoked_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          name: string;
+          key_prefix: string;
+          key_hash: string;
+          access?: string;
+          created_by?: string | null;
+          created_at?: string;
+          last_used_at?: string | null;
+          revoked_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          name?: string;
+          key_prefix?: string;
+          key_hash?: string;
+          access?: string;
+          created_by?: string | null;
+          created_at?: string;
+          last_used_at?: string | null;
+          revoked_at?: string | null;
+        };
+        Relationships: [];
+      };
       broadcasts: {
         Row: {
           id: string;

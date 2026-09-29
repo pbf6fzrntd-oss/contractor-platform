@@ -8,11 +8,9 @@ import { isLanguage } from "@/lib/business-types";
 import { parseDollars } from "@/lib/format";
 import { LEAD_STAGES, type LeadStage } from "@/lib/leads/stages";
 import { BLOCK_REASON_TEXT } from "@/lib/messaging/gate";
-import { loadSendingContext, sendToContact } from "@/lib/messaging/send";
-import { onLeadStageChanged } from "@/lib/services/automations";
 import { loadLeadForUser } from "@/lib/services/leads";
 import { cancelPending } from "@/lib/services/outbox";
-import { recordJobCompleted } from "@/lib/services/jobs";
+import { changeLeadStage, completeJobForLead, replyToLead } from "@/lib/services/lead-actions";
 import { REVIEW_REASON_TEXT } from "@/lib/automation/reviews";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -29,22 +27,8 @@ export async function sendReply(leadId: string, _prev: FormState, formData: Form
   if (!body) return { error: "Type a message first." };
   if (body.length > 1000) return { error: "That's too long for a text. Keep it under 1,000 characters." };
 
-  const db = createAdminClient();
-  const sending = await loadSendingContext(db, ctx.org.id);
-  const result = await sendToContact(db, sending, {
-    contact: loaded.contact,
-    body,
-    category: "conversational",
-    leadId,
-    senderType: "user",
-    userId: ctx.userId,
-  });
-
-  // First human reply: record response time and move "New" leads to "Contacted".
-  const updates: { first_response_at?: string; stage?: string } = {};
-  if (result.status === "sent" && !loaded.lead.first_response_at) updates.first_response_at = new Date().toISOString();
-  if (result.status === "sent" && loaded.lead.stage === "new") updates.stage = "contacted";
-  if (Object.keys(updates).length) await db.from("leads").update(updates).eq("id", leadId);
+  const result = await replyToLead(createAdminClient(), ctx.org.id, leadId, body, { type: "user", userId: ctx.userId });
+  if (result.status === "not_found") return { error: "Lead not found." };
 
   refresh(leadId);
   if (result.status !== "sent") return { error: BLOCK_REASON_TEXT[result.reason] };
@@ -61,18 +45,14 @@ export async function setStage(leadId: string, _prev: FormState, formData: FormD
   const amount = parseDollars(formData.get("estimate_amount")?.toString());
   if (amount === undefined) return { error: "Enter the estimate as a dollar amount, like 4500." };
 
-  const update: { stage: string; estimate_amount_cents?: number | null } = { stage };
-  if (formData.has("estimate_amount")) update.estimate_amount_cents = amount;
-
-  const { error } = await loaded.supabase.from("leads").update(update).eq("id", leadId);
-  if (error) return { error: "Couldn't update the stage." };
-
-  if (stage !== loaded.lead.stage || stage === "estimate_sent") {
-    await onLeadStageChanged(createAdminClient(), ctx.org.id, leadId, {
-      from: loaded.lead.stage as LeadStage,
-      to: stage as LeadStage,
-    });
-  }
+  const ok = await changeLeadStage(
+    createAdminClient(),
+    ctx.org.id,
+    leadId,
+    stage as LeadStage,
+    formData.has("estimate_amount") ? amount : undefined,
+  );
+  if (!ok) return { error: "Couldn't update the stage." };
   refresh(leadId);
   return { success: "Updated." };
 }
@@ -153,19 +133,12 @@ export async function markJobComplete(leadId: string, _prev: FormState, formData
   if (amount === undefined) return { error: "Enter the job amount in dollars, like 4500." };
   const description = String(formData.get("description") ?? "").trim().slice(0, 500) || null;
 
-  const db = createAdminClient();
-  const { review } = await recordJobCompleted(db, ctx.org.id, {
-    contactId: loaded.contact.id,
-    leadId,
+  const review = await completeJobForLead(createAdminClient(), ctx.org.id, leadId, {
+    amountCents: amount,
     description,
-    amountCents: amount ?? loaded.lead.estimate_amount_cents,
     userId: ctx.userId,
   });
-
-  if (loaded.lead.stage !== "won") {
-    await db.from("leads").update({ stage: "won" }).eq("id", leadId);
-    await onLeadStageChanged(db, ctx.org.id, leadId, { from: loaded.lead.stage as LeadStage, to: "won" });
-  }
+  if (!review) return { error: "Lead not found." };
   refresh(leadId);
   return review.schedule
     ? { success: "Job marked complete. A Google review request is scheduled." }

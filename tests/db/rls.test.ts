@@ -295,6 +295,43 @@ describe.skipIf(!url)("row-level security", () => {
     });
   });
 
+  describe("AI assistant keys and activity (Milestone 12)", () => {
+    beforeAll(async () => {
+      await db.query("reset role"); // keys are created by the server
+      await db.query(
+        "insert into public.api_keys (org_id, name, key_prefix, key_hash, access) values ($1, 'Claude', 'llk_aaaaaa', 'hash-a', 'read_write'), ($2, 'Other', 'llk_bbbbbb', 'hash-b', 'read')",
+        [orgA, orgB],
+      );
+      await db.query("insert into public.agent_activity (org_id, tool, summary) values ($1, 'list_leads', 'Listed 3 leads')", [orgA]);
+    });
+
+    it("shows keys only to the owner of that business", async () => {
+      await actAs(ownerA);
+      expect((await db.query("select name from public.api_keys")).rows).toEqual([{ name: "Claude" }]);
+      await actAs(managerA);
+      expect((await db.query("select * from public.api_keys")).rowCount).toBe(0);
+      await actAs(ownerB);
+      expect((await db.query("select name from public.api_keys")).rows).toEqual([{ name: "Other" }]);
+    });
+
+    it("never lets anyone create, change or read key hashes of another business directly", async () => {
+      await actAs(ownerA);
+      const ins = await attempt("insert into public.api_keys (org_id, name, key_prefix, key_hash) values ($1, 'x', 'x', 'x')", [orgA]);
+      expect(ins.error).not.toBeNull();
+      const upd = await attempt("update public.api_keys set access = 'read_write' where org_id = $1", [orgB]);
+      expect(upd.rowCount).toBe(0);
+    });
+
+    it("keeps the assistant activity log private and tamper-proof", async () => {
+      await actAs(managerA);
+      expect((await db.query("select summary from public.agent_activity")).rows).toEqual([{ summary: "Listed 3 leads" }]);
+      await actAs(ownerB);
+      expect((await db.query("select * from public.agent_activity")).rowCount).toBe(0);
+      await actAs(ownerA);
+      expect((await attempt("delete from public.agent_activity where org_id = $1", [orgA])).rowCount).toBe(0);
+    });
+  });
+
   it("gives logged-out visitors nothing", async () => {
     await actAsAnonymous();
     for (const table of ["organizations", "message_templates", "memberships", "profiles", "plans", "contacts", "leads", "messages"]) {

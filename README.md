@@ -91,6 +91,21 @@ Locally, the Simulator's buttons do the scheduler's job.
 3. Turn on the **Customer portal** in Stripe settings (for card updates and cancellations).
 4. Until `STRIPE_SECRET_KEY` is set, billing shows "billed by invoice" and pilots keep working.
 
+## 7b. AI assistants (MCP)
+
+Owners can let an AI assistant (Claude, ChatGPT, or any app that supports **MCP servers**) work their inbox:
+
+1. Owner: **Settings → AI assistants → Create key** (read-only, or read-and-act).
+2. In the AI app, add an MCP server with address `{SITE}/api/mcp` and header `Authorization: Bearer <key>`.
+   Claude Code example: `claude mcp add --transport http lowcountry-leads https://YOUR-DOMAIN/api/mcp --header "Authorization: Bearer llk_..."`.
+3. Ask things like "any new leads?", "reply to the Cane Bay lead with a price range", "it's raining, move today's route to tomorrow".
+
+**Tools** (`lib/agent/server.ts`): `get_business_overview`, `list_leads`, `get_conversation`, `find_contact`, plus for lawn care `get_schedule` and `list_customers`. Read-and-act keys add `send_text`, `update_lead_stage`, `add_lead`, `mark_job_done`, and for lawn care `send_rain_delay` (preview first; sends only with `confirm: true`) and `mark_day_complete`. Campaigns are intentionally not available to assistants.
+
+**Safety:** keys are stored only as a hash and can be revoked; each business's tools only see that business; every call is logged (Settings → AI assistants); 60 calls per minute per key; texts go through the same send pipeline (opt-outs, consent, hours, plan limits) and are labeled "via AI assistant".
+
+**Demo data:** `npm run demo:seed` loads two realistic demo businesses into a **dev** database (`dana@lawn.test` and `rick@roof.test`, password `password123`).
+
 ## 8. Deploy (Vercel)
 
 1. Import the repo in Vercel. Add every variable from `.env.example` (prod Supabase for Production, dev for Preview).
@@ -121,6 +136,7 @@ app/
   api/twilio/*     call and text webhooks
   api/cron/        the every-minute scheduler
   api/stripe/      Stripe webhook
+  api/mcp/         AI assistant access (MCP)
 lib/
   automation/      PURE business rules (tested): keywords, compliance, follow-ups,
                    outbox checks, reviews, schedules, recipients, metrics, campaigns
@@ -128,6 +144,7 @@ lib/
   services/        database work: inbound calls/texts, outbox, jobs, broadcasts, customers
   templates/       default EN/ES templates + placeholder filling
   billing/         Stripe
+  agent/           AI assistant (MCP) tools, keys and date parsing
 supabase/migrations/  tables, security rules and database functions, in order
 tests/unit/        business-rule tests          tests/db/  data-isolation tests
 ```

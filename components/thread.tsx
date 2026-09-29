@@ -78,6 +78,7 @@ export function Thread({
             <p className="mt-0.5 px-1 text-xs text-slate-500">
               {time(item.created_at, timeZone)}
               {fromBusiness && item.sender_type === "automation" ? " · automatic" : ""}
+              {fromBusiness && item.sender_type === "assistant" ? " · via AI assistant" : ""}
               {item.status === "delivered" && fromBusiness ? " · delivered" : ""}
             </p>
             {notSent && (
