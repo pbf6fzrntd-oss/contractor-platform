@@ -18,7 +18,10 @@ export default async function SettingsPage() {
     { href: "/settings/phone", label: "Phone number", detail: "Your business number and call forwarding" },
     { href: "/simulator", label: "Simulator", detail: "Fake calls and texts to test everything" },
     { href: "/settings/automations", label: "Automations", detail: "Follow-ups, review requests, business hours" },
-    { label: "Billing", detail: `${plan.id === "pilot" ? "Pilot" : plan.id} plan` },
+    { href: "/settings/billing", label: "Billing", detail: `${plan.id === "pilot" ? "Pilot" : plan.id} plan and text usage` },
+    ...(role === "owner"
+      ? [{ href: "/settings/registration", label: "Carrier registration", detail: "Required before texting real customers" }]
+      : []),
   ];
 
   return (

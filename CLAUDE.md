@@ -29,7 +29,8 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, ro
 - [x] M7 Today + rain delay + mark day complete
 - [x] M8 Seasonal campaigns
 - [x] M9 Recurring metrics on the dashboard
-- [ ] M10 Stripe · M11 Self-serve A2P registration
+- [x] M10 Stripe subscriptions (off until STRIPE_SECRET_KEY is set)
+- [ ] M11 Carrier registration workflow + platform admin
 
 Founder decisions (2026-09-29): default phone setup is "keep your number" (conditional forwarding); pilots are billed by hand until M10; LLC/EIN/domain come later, so build and demo without real carrier registration; team roles are owner + office manager only.
 
