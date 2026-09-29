@@ -1,6 +1,6 @@
 # Industry Modules Plan (Editions & Add-ons)
 
-Status: **Draft for founder review.** No application code written for this yet.
+Status: **Approved 2026-09-29; M14–M22 in progress.** Progress log: `docs/MODULES_PROGRESS.md`.
 Date: 2026-09-29 · Builds on milestones M0–M13 (see CLAUDE.md).
 
 ---
@@ -72,7 +72,7 @@ lib/modules/                   ← core-side contracts (types) + hook runners
 ```
 
 Each module exports one **manifest** (a typed object):
-- `id`, `name`, `industries` (industry configs, §6)
+- `id`, `name`, `industries` (keys of the industries it serves; the industry configs themselves are core data in `lib/industries/`, so the audit tool and onboarding work before a module exists)
 - `subjectTypes` (property / pet / vehicle, with field definitions and which fields are private)
 - `bookingModes` it uses (§4)
 - `templates` (EN + ES), `campaignPresets`, `voiceScripts` (data), `auditChecks`
@@ -214,24 +214,33 @@ Before touching the core, snapshot today's behavior for both business types: nav
 
 ## 9. Build order
 
-| # | Milestone | Why here |
-|---|---|---|
-| M14 | **Golden tests** for today's home services behavior | Safety net; "no breaking changes" becomes checkable |
-| M15 | **Module framework** + Home Services wrapped as a module + `org_modules` / `industry` (additive migration) | Everything else plugs into this |
-| M16 | **Industry configs for all 20 industries** (catalogs, stage wording, EN/ES templates, campaign presets, voice scripts as data, schema.org types, credentials, audit checks) | Data only; unlocks selling |
-| M17 | **Agent-readiness audit tool** (industry-aware, shareable report) | Sell-before-build engine for every industry |
-| M18 | **Subjects + private fields + private file storage + credentials** | Shared by all modules |
-| M19 | **Booking engine** (all modes, capacity, double-booking protection) | Shared by all modules |
-| M20 | **Approval rules engine + booking/lead source tracking** | Needed by bookings, voice, agents |
-| M21 | **Editions & add-ons billing** (Stripe multi-item, `hasModule`) | Lets you charge per module |
-| M22 | **Agent Ready core**: hosted profile (schema.org, credentials), public booking page, outside-agent booking API + public MCP | Brief assumes it exists; modules extend it |
-| M23–25 | **Module A: Recurring Home Services** | First module (see below) |
-| M26–28 | **Module B: Project & Quote Services** (photo quotes, quote builder, deposits, day capacity) | Reuses quote/lead flow + Stripe |
-| M29–31 | **Module D: Automotive** (vehicles, size-class pricing, bays, line-item approvals, status texts) | Moderate new work |
-| M32–34 | **Module C: Pet Care** (pets, vaccines, boarding, packages, mobile-vet guardrails) | Most new work and most sensitive data |
-| M35 | **AI voice line** + module voice scripts | Biggest vendor, cost and compliance decision; scripts are ready as data from M16 |
+Founder decisions (2026-09-29, second round), which shaped this order:
+- The Agent Ready features and the audit tool don't exist anywhere else, so we build them here.
+- **Managers can plug their own AI tools in** (not just owners), capped below the owner's level.
+- **The audit tool is for sales calls only**: it lives in /admin and is never public.
+- **Each business picks its specific industry**, and the app tailors itself to it.
+- **Pricing:** there's an Executive tier with every AI feature, and Enterprise is by quote. Details are in `docs/PRICING.md`.
 
-Milestones M14–M22 are shared foundations; each ends with tests and a "how to test" checklist like before.
+Industry configs are **core data** (`lib/industries/`), not module code. The audit tool and onboarding need every industry before its module is built. Modules add *behavior* (tables, screens, booking rules, AI tools).
+
+| # | Milestone | What it delivers |
+|---|---|---|
+| M14 | **Safety net + team AI access** | Snapshot ("golden") tests of today's menus, stage words, templates, settings and AI tool lists. Office managers connect their own AI tools (capped at "Read and act"); owners see and can disconnect every connection; a connection stops working the moment its person leaves the team. Plan switch `feature_team_ai`. |
+| M15 | **Module framework + industry picker** | `organizations.industry` (optional). Onboarding and Settings let owners pick their industry. `lib/industries/` for configs, `modules/registry.ts` (the only place that lists modules), and a lint rule so `lib/` never imports `modules/`. Tailoring: stage words, missed-call wording, service quick-picks, "questions to ask" on each lead, AI instructions. |
+| M16 | **Industry configs for every industry** | All ~27 industries: service catalogs with price ranges, stage words, EN/ES templates, campaign presets, voice script + qualifying questions, verified schema.org type, suggested licenses/insurance, subject type, booking modes, audit checks, approval defaults. Tests check every one. |
+| M17 | **Sales audit tool (admin only)** | /admin/audit: pick industry, enter the prospect's website and answer a few questions on the call. The app checks the website (structured data, phone, hours, booking link, mobile, https) and scores "AI-agent readiness" with plain-language fixes. Printable report (save as PDF). Saved in a server-only table. |
+| M18 | **Customer records, private data, files, licenses** | `subjects` (property / pet / vehicle) + `subject_private` (gate codes, VINs, access notes) + `files` (private bucket, signed links, size/type limits) + `business_credentials`. Property card with private access notes and photos on each lead. Settings → Licenses & insurance. |
+| M19 | **Booking engine** | Pure rules for all 7 modes (arrival windows, fixed appointments, day capacity, multi-night stays, recurring, mobile with travel buffers, session packages) + document requirements (e.g. vaccines). Tables: services, resources, capacity, bookings, packages. `book_slot()` locks capacity inside the database. Schedule screen and "Book estimate visit" from a lead, off until the booking switch is on. |
+| M20 | **Approval rules + source reporting** | Pure approval rules (outside-agent bookings, price over $X, outside service area, short notice, new customer, plus module rule types). Approvals list with approve/decline + customer texts. "Where leads and bookings came from" report. |
+| M21 | **Editions, add-ons, Executive & Enterprise** | `org_modules` (edition + add-ons), new plan rows (Executive, Enterprise) and switches (`feature_agent_ready`, `feature_booking`, `feature_approvals`, `feature_ai_voice`). Stripe checkout with several items; the webhook keeps modules in sync. Admin can switch modules on per business. |
+| M22 | **Agent Ready** | Hosted business profile `/b/[slug]` with schema.org JSON-LD and licenses; public booking page with SMS consent capture; public agent booking MCP for outside AI agents (read services, check availability, request a booking that goes to approval). Serves only an allow-listed public view through database functions. Isolation tests for every public endpoint and tool. |
+| M23–25 | **Module A: Recurring Home Services** | First module (see below) |
+| M26–28 | **Module B: Project & Quote Services** | Photo quotes, quote builder, deposits, day capacity |
+| M29–31 | **Module D: Automotive** | Vehicles, size-class pricing, bays, line-item approvals, status texts |
+| M32–34 | **Module C: Pet Care** | Pets, vaccines, boarding, packages, mobile-vet guardrails |
+| M35 | **AI voice line** + module voice scripts | Scripts are ready as data from M16 |
+
+Every milestone ends with `npm run check`, database tests, a commit/push, and a "how to test" list in `docs/MODULES_PROGRESS.md`. Progress notes are written so any future session can resume mid-program.
 
 ---
 
@@ -254,10 +263,11 @@ Milestones M14–M22 are shared foundations; each ends with tests and a "how to 
 
 ---
 
-## 11. Decisions needed from you
+## 11. Decisions
 
-1. **Agent Ready features:** are they somewhere I can't see? If yes, share access before M14. If not, confirm M22 builds them (and M17 the audit tool).
-2. **Audit tool scope:** a founder-only sales tool first (you run audits from /admin and share a report link)? Or public self-serve lead-gen from day one?
-3. **Existing customers' industry:** should current trades and lawn businesses be asked to pick a specific industry (roofing, HVAC, …) the next time they log in, or stay generic until they choose?
-4. **Voice line vendor and budget** (M35): this affects cost per business and recording-consent wording. SC is generally treated as one-party consent for recording, but your attorney should confirm.
-5. **Pricing shape:** one edition + add-ons (e.g. Home Services edition + "Pest & Mosquito" add-on + "Agent Ready" add-on). Set price points before M21.
+Answered 2026-09-29: build Agent Ready + audit here (audit is admin-only), managers get their own AI connections, every business picks an industry, and there's an Executive/Enterprise AI tier (see `docs/PRICING.md`).
+
+Still open (not blocking M14–M22):
+1. **Voice line vendor and budget** (M35): affects cost per business and recording-consent wording. Have your attorney confirm SC recording consent.
+2. **Existing pilots' industry:** they stay generic until the owner picks one in Settings. Nothing changes for them otherwise.
+3. **Final price points** before turning on Stripe (M21 ships with the suggested prices; you can edit them in /admin → Plans).
