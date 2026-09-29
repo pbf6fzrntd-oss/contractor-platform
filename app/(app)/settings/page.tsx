@@ -17,7 +17,7 @@ export default async function SettingsPage() {
     { href: "/settings/templates", label: "Message templates", detail: "English and Spanish" },
     { href: "/settings/phone", label: "Phone number", detail: "Your business number and call forwarding" },
     { href: "/simulator", label: "Simulator", detail: "Fake calls and texts to test everything" },
-    { label: "Automations", detail: "Coming in Milestone 3" },
+    { href: "/settings/automations", label: "Automations", detail: "Follow-ups, review requests, business hours" },
     { label: "Billing", detail: `${plan.id === "pilot" ? "Pilot" : plan.id} plan` },
   ];
 

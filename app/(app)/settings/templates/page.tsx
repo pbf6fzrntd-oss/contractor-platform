@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { requireAppContext } from "@/lib/auth/context";
 import { LANGUAGE_LABELS, type Language } from "@/lib/business-types";
@@ -51,7 +52,7 @@ export default async function TemplatesPage({ searchParams }: PageProps<"/settin
     <>
       <PageHeader
         title="Message templates"
-        subtitle="Previews use your business name and a sample customer. Editing comes in Milestone 3."
+        subtitle="Tap a message to edit it. Previews use your business name and a sample customer."
         backHref="/settings"
       />
 
@@ -80,11 +81,16 @@ export default async function TemplatesPage({ searchParams }: PageProps<"/settin
             <p className="mb-2 text-sm text-slate-600">{CATEGORY_INFO[category].description}</p>
             <ul className="flex flex-col gap-3">
               {rows.map((t) => (
-                <li key={t.id} className="card">
-                  <p className="mb-2 text-sm font-semibold text-slate-700">{templateTitle(t.key, org.business_type)}</p>
-                  <p className="rounded-2xl rounded-bl-sm bg-slate-100 px-3 py-2 text-[15px] leading-snug">
-                    {renderTemplate(t.body, sample)}
-                  </p>
+                <li key={t.id}>
+                  <Link href={`/settings/templates/${t.key}`} className="card block">
+                    <p className="mb-2 flex justify-between text-sm font-semibold text-slate-700">
+                      {templateTitle(t.key, org.business_type)}
+                      <span className="font-medium text-brand-700">Edit</span>
+                    </p>
+                    <p className="rounded-2xl rounded-bl-sm bg-slate-100 px-3 py-2 text-[15px] leading-snug">
+                      {renderTemplate(t.body, sample)}
+                    </p>
+                  </Link>
                 </li>
               ))}
             </ul>

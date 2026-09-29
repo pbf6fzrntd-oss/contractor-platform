@@ -223,7 +223,7 @@ describe.skipIf(!url)("row-level security", () => {
 
     it("keeps each business's customers and conversations private", async () => {
       await actAs(ownerA);
-      for (const table of ["contacts", "leads", "messages", "consent_events", "phone_numbers", "notifications"]) {
+      for (const table of ["contacts", "leads", "messages", "consent_events", "phone_numbers", "notifications", "scheduled_messages"]) {
         const res = await db.query(`select * from public.${table} where org_id = $1`, [orgB]);
         expect(res.rowCount, table).toBe(0);
       }

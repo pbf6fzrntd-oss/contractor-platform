@@ -6,6 +6,8 @@ import { requireAppContext } from "@/lib/auth/context";
 import { formatUSPhone, normalizeUSPhone } from "@/lib/phone";
 import { loadThread } from "@/lib/services/thread";
 import { createClient } from "@/lib/supabase/server";
+import { ScheduledList } from "@/components/scheduled-list";
+import { SchedulerControls } from "./scheduler-controls";
 import { SimulatorControls } from "./simulator-controls";
 
 export const metadata: Metadata = { title: "Simulator" };
@@ -30,6 +32,13 @@ export default async function SimulatorPage({ searchParams }: PageProps<"/simula
     ? await supabase.from("contacts").select("id, opted_out_at").eq("org_id", org.id).eq("phone", caller).maybeSingle()
     : { data: null };
   const thread = contact ? await loadThread(supabase, org.id, contact.id) : [];
+  const { data: upcoming } = await supabase
+    .from("scheduled_messages")
+    .select("id, kind, template_key, send_at, status, skip_reason")
+    .eq("org_id", org.id)
+    .eq("status", "pending")
+    .order("send_at")
+    .limit(10);
   const { data: alerts } = await supabase
     .from("notifications")
     .select("id, body, link, created_at")
@@ -72,6 +81,16 @@ export default async function SimulatorPage({ searchParams }: PageProps<"/simula
             <div className="rounded-3xl bg-slate-100 p-3">
               <Thread items={thread} timeZone={org.timezone} perspective="customer" />
             </div>
+          </section>
+
+          <section className="card flex flex-col gap-3">
+            <h2 className="text-lg font-semibold">Scheduled texts</h2>
+            {(upcoming ?? []).length ? (
+              <ScheduledList items={upcoming ?? []} timeZone={org.timezone} />
+            ) : (
+              <p className="text-sm text-slate-500">Nothing scheduled. Mark a lead &quot;estimate sent&quot; to schedule follow-ups.</p>
+            )}
+            <SchedulerControls />
           </section>
 
           <section>

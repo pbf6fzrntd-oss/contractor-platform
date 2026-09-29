@@ -11,6 +11,7 @@ import { BLOCK_REASON_TEXT } from "@/lib/messaging/gate";
 import { loadSendingContext, sendToContact } from "@/lib/messaging/send";
 import { onLeadStageChanged } from "@/lib/services/automations";
 import { loadLeadForUser } from "@/lib/services/leads";
+import { cancelPending } from "@/lib/services/outbox";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 function refresh(leadId: string) {
@@ -131,5 +132,13 @@ export async function dismissFlag(leadId: string): Promise<void> {
   const loaded = await loadLeadForUser(ctx, leadId);
   if (!loaded) return;
   await loaded.supabase.from("leads").update({ flag: null }).eq("id", leadId);
+  refresh(leadId);
+}
+
+export async function cancelFollowUps(leadId: string): Promise<void> {
+  const ctx = await requireAppContext();
+  const loaded = await loadLeadForUser(ctx, leadId);
+  if (!loaded) return;
+  await cancelPending(createAdminClient(), { orgId: ctx.org.id, leadId, kind: "estimate_followup" }, "canceled");
   refresh(leadId);
 }

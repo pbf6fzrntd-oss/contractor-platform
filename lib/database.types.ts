@@ -578,6 +578,66 @@ export type Database = {
         };
         Relationships: [];
       };
+      scheduled_messages: {
+        Row: {
+          id: string;
+          org_id: string;
+          contact_id: string;
+          lead_id: string | null;
+          job_id: string | null;
+          broadcast_id: string | null;
+          kind: string;
+          template_key: string | null;
+          category: string;
+          send_at: string;
+          status: string;
+          skip_reason: string | null;
+          context: Json;
+          message_id: string | null;
+          attempts: number;
+          created_at: string;
+          processed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          contact_id: string;
+          lead_id?: string | null;
+          job_id?: string | null;
+          broadcast_id?: string | null;
+          kind: string;
+          template_key?: string | null;
+          category: string;
+          send_at: string;
+          status?: string;
+          skip_reason?: string | null;
+          context?: Json;
+          message_id?: string | null;
+          attempts?: number;
+          created_at?: string;
+          processed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          contact_id?: string;
+          lead_id?: string | null;
+          job_id?: string | null;
+          broadcast_id?: string | null;
+          kind?: string;
+          template_key?: string | null;
+          category?: string;
+          send_at?: string;
+          status?: string;
+          skip_reason?: string | null;
+          context?: Json;
+          message_id?: string | null;
+          attempts?: number;
+          created_at?: string;
+          processed_at?: string | null;
+        };
+        Relationships: [];
+      };
       subscriptions: {
         Row: {
           org_id: string;
@@ -627,6 +687,7 @@ export type Database = {
     Views: { [_ in never]: never };
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
+      claim_due_scheduled_messages: { Args: { p_now: string; p_limit?: number }; Returns: unknown[] };
       create_organization: { Args: { p_name: string; p_business_type: string; p_default_language: string; p_templates: Json; p_alert_phone?: string; p_google_review_url?: string }; Returns: string };
       get_invitation: { Args: { p_token: string }; Returns: { org_name: string; role: string; is_valid: boolean }[] };
       has_org_role: { Args: { p_org_id: string; p_role: string }; Returns: boolean };
