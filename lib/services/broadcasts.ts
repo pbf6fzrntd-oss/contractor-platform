@@ -166,3 +166,55 @@ export async function markDayComplete(
   }
   return { visits, reviewsScheduled };
 }
+
+/** Schedules a seasonal campaign to everyone in the audience who gave written consent. */
+export async function createCampaign(
+  db: AdminClient,
+  orgId: string,
+  input: {
+    name: string;
+    templateKey: string | null;
+    bodyEn: string;
+    bodyEs: string | null;
+    audience: CampaignAudience;
+    sendAt: Date;
+    today: string;
+    userId: string;
+  },
+): Promise<{ broadcastId: string; recipients: number; excluded: Selection["excluded"] }> {
+  const selection = await previewCampaign(db, orgId, input.audience, input.today);
+  const { data: broadcast, error } = await db
+    .from("broadcasts")
+    .insert({
+      org_id: orgId,
+      kind: "campaign",
+      name: input.name,
+      template_key: input.templateKey,
+      body_en: input.bodyEn,
+      body_es: input.bodyEs,
+      category: "marketing",
+      audience: input.audience,
+      scheduled_at: input.sendAt.toISOString(),
+      status: "scheduled",
+      recipient_count: selection.recipients.length,
+      excluded: selection.excluded,
+      created_by: input.userId,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  if (selection.recipients.length) {
+    await db.from("scheduled_messages").insert(
+      selection.recipients.map((r) => ({
+        org_id: orgId,
+        contact_id: r.contactId,
+        broadcast_id: broadcast.id,
+        kind: "broadcast",
+        category: "marketing",
+        send_at: input.sendAt.toISOString(),
+      })),
+    );
+  }
+  return { broadcastId: broadcast.id, recipients: selection.recipients.length, excluded: selection.excluded };
+}
