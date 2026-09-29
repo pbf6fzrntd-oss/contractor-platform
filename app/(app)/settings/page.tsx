@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { isPlatformAdmin } from "@/lib/auth/admin";
 import { requireAppContext } from "@/lib/auth/context";
 import { BUSINESS_TYPE_INFO } from "@/lib/business-types";
 
@@ -22,6 +23,7 @@ export default async function SettingsPage() {
     ...(role === "owner"
       ? [{ href: "/settings/registration", label: "Carrier registration", detail: "Required before texting real customers" }]
       : []),
+    ...((await isPlatformAdmin()) ? [{ href: "/admin", label: "Platform admin", detail: "All businesses, registrations, plans" }] : []),
   ];
 
   return (
