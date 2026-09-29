@@ -1,109 +1,137 @@
 # Lowcountry Leads (working name)
 
-A texting and follow-up app for small home-service contractors: missed-call text-back, a lead inbox, estimate follow-ups, Google review requests, and, for lawn care companies, recurring customers, rain-delay bulk texts and seasonal campaigns.
+A texting and follow-up app for small home-service contractors: missed-call text-back, a lead inbox, estimate follow-ups, Google review requests, an owner dashboard and, for lawn care companies, recurring customers, one-tap rain-delay texts and seasonal campaigns.
 
 - Product plan and milestones: [`docs/PLAN.md`](docs/PLAN.md)
+- What still needs testing/connecting before launch: [`docs/LAUNCH_CHECKLIST.md`](docs/LAUNCH_CHECKLIST.md)
+- SMS compliance (what the app enforces, what you must do): [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md)
 - Project conventions (read before changing code): [`CLAUDE.md`](CLAUDE.md)
 
-**Stack:** Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, row-level security) · Twilio · Stripe (later) · Vercel · Vitest
+**Stack:** Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, row-level security) · Twilio · Stripe · Vercel · Vitest
 
 ---
 
 ## 1. Prerequisites
 
-- Node.js 22 or newer (`node -v`)
-- A free [Supabase](https://supabase.com) account. Create **two projects**: `yourapp-dev` and `yourapp-prod`. Use dev for everything below.
-- Git and a GitHub account with access to this repo
+- Node.js 22+
+- A [Supabase](https://supabase.com) account with **two projects**: `yourapp-dev` and `yourapp-prod`
+- Later: [Twilio](https://twilio.com), [Stripe](https://stripe.com), [Vercel](https://vercel.com) accounts
 
-You do **not** need Docker. Development runs against the dev Supabase project in the cloud.
+No Docker needed: development runs against the dev Supabase project.
 
 ## 2. Install
 
 ```bash
-git clone <repo-url>
-cd contractor-platform
+git clone <repo-url> && cd contractor-platform
 npm install
 cp .env.example .env.local
 ```
 
-## 3. Set up the Supabase dev project
+## 3. Supabase (dev project first)
 
-1. **Keys:** in the Supabase dashboard, go to *Project Settings → API Keys* and copy the project URL and the **publishable** key into `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`).
-2. **Database tables:** apply the migrations in `supabase/migrations/`:
+1. **Keys** (*Project Settings → API Keys*): put the project URL, the **publishable** key and the **secret** key into `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`). The secret key bypasses security rules: server-only, never `NEXT_PUBLIC_`.
+2. **Tables:** apply all migrations in `supabase/migrations/`:
    ```bash
    npx supabase login
-   npx supabase link --project-ref <your-dev-project-ref>
+   npx supabase link --project-ref <dev-project-ref>
    npm run db:push
    ```
-   (Alternative: paste each migration file, in order, into the dashboard's *SQL Editor* and run it.)
-3. **Auth settings** (*Authentication → URL Configuration*):
-   - Site URL: `http://localhost:3000` (production: your real domain)
-   - Redirect URLs: add `http://localhost:3000/auth/confirm` (and `https://<your-domain>/auth/confirm` for production, plus `https://*.vercel.app/auth/confirm` if you use Vercel preview links)
-4. **Email confirmation:** on the dev project, you can turn off *Authentication → Sign In / Providers → Email → Confirm email* so test sign-ups log in right away. Keep it **on** in production, and set up custom SMTP (e.g. Resend) before real customers sign up; Supabase's built-in email is heavily rate-limited.
+3. **Auth** (*Authentication → URL Configuration*): Site URL `http://localhost:3000`; Redirect URLs `http://localhost:3000/auth/confirm` (add your production and `https://*.vercel.app/auth/confirm` later).
+4. **Email:** on dev you can turn off *Confirm email* so sign-ups log straight in. In production keep it on and add custom SMTP (e.g. Resend) under *Authentication → Emails*.
+5. **Types (after future migrations):** `npx supabase gen types typescript --linked > lib/database.types.ts` and re-add the two helper types at the bottom (`Tables`, `TablesInsert`). Or use `DATABASE_URL=... npm run db:types`.
 
-## 4. Run it
+## 4. Run it (simulator mode, with no phone company needed)
 
 ```bash
 npm run dev
 ```
 
-Open http://localhost:3000. To try it on your phone, deploy a Vercel preview (step 6) or open `http://<your-computer's-LAN-IP>:3000` while on the same Wi-Fi.
+Open http://localhost:3000, sign up, and set up a business. Then:
 
-## 5. Tests and checks
+1. **Settings → Phone number → Get my business number.** In simulator mode (`SMS_PROVIDER=simulator`, the default) you get a pretend 555 number.
+2. **Settings → Simulator:** fake a missed call or an incoming text and see exactly what the customer receives. "Skip ahead" sends scheduled follow-ups and review requests immediately so you don't wait days.
+3. Add your email to `PLATFORM_ADMIN_EMAILS` to see **/admin** (all businesses, registrations, plans).
+
+## 5. The every-minute scheduler
+
+Follow-ups, review requests, rain delays and campaigns sit in an outbox until they're due. Something must call `/api/cron/dispatch` every minute with the header `Authorization: Bearer <CRON_SECRET>`.
+
+**Option A: Supabase pg_cron (free; works with any Vercel plan).** In the prod project's SQL editor (enable the `pg_cron` and `pg_net` extensions under *Database → Extensions* first):
+
+```sql
+select cron.schedule('send-due-texts', '* * * * *', $$
+  select net.http_get(
+    url := 'https://YOUR-DOMAIN/api/cron/dispatch',
+    headers := jsonb_build_object('Authorization', 'Bearer YOUR_CRON_SECRET'),
+    timeout_milliseconds := 55000
+  );
+$$);
+```
+
+**Option B: Vercel Cron (needs Vercel Pro).** Add a `vercel.json` with `{"crons":[{"path":"/api/cron/dispatch","schedule":"* * * * *"}]}` and set `CRON_SECRET` in Vercel; Vercel sends the header automatically. Don't add this on the free Hobby plan: deploys with per-minute crons fail there.
+
+Locally, the Simulator's buttons do the scheduler's job.
+
+## 6. Twilio (real calls and texts)
+
+1. Create a Twilio account and upgrade from trial. Copy the **Account SID** and **Auth Token** into `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN`, and set `SMS_PROVIDER=twilio`.
+2. `NEXT_PUBLIC_SITE_URL` **must be the public https address** of the deployed app before buying numbers. Numbers bought from **Settings → Phone number** get their webhooks set automatically to:
+   - Voice: `POST {SITE}/api/twilio/voice`
+   - Messaging: `POST {SITE}/api/twilio/sms`
+   - (Delivery updates arrive at `/api/twilio/status`.)
+   For a number bought in the Twilio console, set those two URLs yourself and assign it in **/admin → business → Phone number**.
+3. **Carrier registration (A2P 10DLC):** each business fills in **Settings → Carrier registration**. You copy the details from **/admin** into Twilio (*Messaging → Regulatory compliance*), create a Messaging Service per business, add their number to it, set the service's incoming messages to **"Defer to sender's webhook"**, then paste the Brand, Campaign and Messaging Service IDs into /admin and mark it **approved**. Texting to customers turns on at that moment.
+4. **Testing before approval:** with a Twilio *trial* account you can text your own verified phones. Set `ALLOW_UNREGISTERED_TEXTING=true` in dev only.
+5. Webhooks verify Twilio's signature. If you see 403s, check that `NEXT_PUBLIC_SITE_URL` exactly matches the URL Twilio calls.
+
+## 7. Stripe (when you stop invoicing by hand)
+
+1. In Stripe, create a Product per plan with a **monthly Price**. Paste each `price_...` ID into **/admin → Plans & prices**.
+2. Set `STRIPE_SECRET_KEY`. Add a webhook endpoint `{SITE}/api/stripe/webhook` for `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated` and `customer.subscription.deleted`, and put its signing secret in `STRIPE_WEBHOOK_SECRET`.
+3. Turn on the **Customer portal** in Stripe settings (for card updates and cancellations).
+4. Until `STRIPE_SECRET_KEY` is set, billing shows "billed by invoice" and pilots keep working.
+
+## 8. Deploy (Vercel)
+
+1. Import the repo in Vercel. Add every variable from `.env.example` (prod Supabase for Production, dev for Preview).
+2. Apply migrations to prod: `npx supabase link --project-ref <prod-ref> && npm run db:push`.
+3. Set up the scheduler (section 5), Twilio (section 6) and Stripe (section 7).
+4. Vercel Hobby doesn't allow commercial use. Switch to Pro before charging customers.
+
+## 9. Tests
 
 ```bash
-npm run test       # unit tests
-npm run check      # lint + typecheck + tests + production build (run before every commit)
+npm run test       # business rules (+ database security tests if TEST_DATABASE_URL is set)
+npm run check      # lint + typecheck + tests + production build: run before every commit
 ```
 
-**Database security tests** (`tests/db/rls.test.ts`) prove that one business can never see or change another business's data. They run only when `TEST_DATABASE_URL` is set:
+**Database security tests** (`tests/db/rls.test.ts`) prove one business can never see or change another's data. They run when `TEST_DATABASE_URL` is set: either your **dev** project's *Session pooler* connection string (tests roll back, leaving nothing behind; **never production**), or a plain local Postgres prepared with `npm run db:test:setup`.
 
-- **Against your dev Supabase project** (easiest): set `TEST_DATABASE_URL` in `.env.local` to the dev project's *Session pooler* connection string (dashboard → *Connect*), then run `TEST_DATABASE_URL=... npm run test`. Every test runs inside a transaction that is rolled back, so no data is left behind. **Never point this at production.**
-- **Against a plain local Postgres 15+** (e.g. in CI):
-  ```bash
-  export TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/cp_test
-  npm run db:test:setup   # creates the DB, adds a small Supabase stand-in, applies migrations
-  npm run test
-  ```
-
-## 6. Deploy (Vercel)
-
-1. Import the GitHub repo in Vercel.
-2. Add the environment variables from `.env.example` (use the **prod** Supabase project for Production and the **dev** project for Preview).
-3. Set `NEXT_PUBLIC_SITE_URL` to the deployed address.
-4. Apply migrations to prod: `npx supabase link --project-ref <prod-ref> && npm run db:push`.
-
-Vercel's free Hobby plan doesn't allow commercial use. Switch to Pro before charging customers (it's also needed for the once-a-minute scheduler in Milestone 3).
-
-## 7. Project layout
+## 10. Project layout
 
 ```
-app/                    Pages (Next.js App Router)
-  (auth)/               Login and signup
-  onboarding/           First-time business setup
-  invite/[token]/       Team invite links
-  (app)/                Logged-in app (bottom navigation)
-  auth/                 Email confirmation + logout endpoints
-components/             Shared UI pieces
-lib/                    Business rules and helpers (plain TypeScript)
-  templates/            Default EN/ES message templates + placeholder filling
-  supabase/             Database clients (server + session refresh)
-  auth/context.ts       "Who is logged in and which business" for every page
-  navigation.ts         Which screens each business type sees
-  entitlements.ts       Plan limits and feature switches
-supabase/migrations/    Database tables, security rules, functions (in order)
-tests/unit/             Tests for business rules
-tests/db/               Data-isolation (row-level security) tests
-proxy.ts                Runs before each page: refreshes login, redirects logged-out users
+app/
+  (auth)/          login, signup, forgot password
+  (legal)/         privacy, terms, SMS terms (carriers check these)
+  onboarding/      first-time business setup
+  invite/[token]/  team invite links
+  (app)/           logged-in app with bottom navigation:
+                   inbox, today, customers, campaigns, dashboard, simulator, settings/*
+  admin/           platform admin (PLATFORM_ADMIN_EMAILS only)
+  api/twilio/*     call and text webhooks
+  api/cron/        the every-minute scheduler
+  api/stripe/      Stripe webhook
+lib/
+  automation/      PURE business rules (tested): keywords, compliance, follow-ups,
+                   outbox checks, reviews, schedules, recipients, metrics, campaigns
+  messaging/       the single send pipeline + phone company adapters (Twilio, simulator)
+  services/        database work: inbound calls/texts, outbox, jobs, broadcasts, customers
+  templates/       default EN/ES templates + placeholder filling
+  billing/         Stripe
+supabase/migrations/  tables, security rules and database functions, in order
+tests/unit/        business-rule tests          tests/db/  data-isolation tests
 ```
 
-## 8. Environment variables
+## 11. Environment variables
 
-| Name | Where to find it | Secret? |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API | No |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase → Project Settings → API Keys (publishable) | No (protected by row-level security) |
-| `NEXT_PUBLIC_SITE_URL` | Your app's address | No |
-| `TEST_DATABASE_URL` | Dev project → Connect → Session pooler | **Yes**, tests only |
-
-Later milestones add Twilio, cron and Stripe secrets (listed in `.env.example`). Never commit `.env.local`, and never give a secret a `NEXT_PUBLIC_` prefix.
+See `.env.example` for the full, commented list. Secrets: `SUPABASE_SECRET_KEY`, `TWILIO_AUTH_TOKEN`, `CRON_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TEST_DATABASE_URL`. Never commit `.env.local`.

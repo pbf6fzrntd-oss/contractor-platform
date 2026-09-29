@@ -57,7 +57,7 @@ export async function sendNotice(_prev: FormState, formData: FormData): Promise<
   redirect(`/today?date=${date}&sent=${result.broadcastId}`);
 }
 
-export async function completeDay(date: string, _prev: FormState): Promise<FormState> {
+export async function completeDay(date: string): Promise<FormState> {
   const { org, userId } = await requireAppContext("/today");
   if (!isDate(date)) return { error: "Pick a day." };
   const result = await markDayComplete(createAdminClient(), org.id, date, userId);

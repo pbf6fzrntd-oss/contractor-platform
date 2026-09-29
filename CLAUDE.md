@@ -72,11 +72,21 @@ Founder decisions (2026-09-29): default phone setup is "keep your number" (condi
 ### Secrets
 - Never hardcode keys. All settings come from environment variables; document every new one in `.env.example` and the README. Anything secret must not start with `NEXT_PUBLIC_`.
 
+## How the pieces fit (quick map)
+- Inbound calls/texts: `app/api/twilio/*` → `lib/services/inbound.ts` (the Simulator calls the same functions).
+- Outgoing texts: always `lib/messaging/send.ts` → provider (`simulator` or `twilio`, via `SMS_PROVIDER`).
+- Anything scheduled: a row in `scheduled_messages` → `/api/cron/dispatch` (every minute) → `lib/services/outbox.ts` → `evaluateScheduledMessage` re-checks rules → send.
+- Rules are pure functions in `lib/automation/*` with tests in `tests/unit/*`.
+- Platform admin (`/admin`) is limited to `PLATFORM_ADMIN_EMAILS` and uses the admin client.
+- Launch status and remaining live tests: `docs/LAUNCH_CHECKLIST.md`. Compliance: `docs/COMPLIANCE.md`.
+
 ## Commands
 ```
 npm run dev            # start locally at http://localhost:3000
 npm run test           # unit tests (+ database tests if TEST_DATABASE_URL is set)
 npm run check          # lint + typecheck + tests + build: run before every commit
 npm run db:push        # apply new migrations to the linked Supabase project
+npm run db:types       # regenerate lib/database.types.ts (DATABASE_URL=... with migrations applied)
+npm run db:test:setup  # prepare a plain local Postgres for the database tests
 ```
 Definition of done for a milestone: `npm run check` passes, database tests pass against a real database, and the founder has a "how to test" checklist.

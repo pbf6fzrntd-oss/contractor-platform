@@ -49,10 +49,11 @@ export default async function CampaignPage({ params }: PageProps<"/campaigns/[id
   const excluded = (c.excluded ?? {}) as { no_marketing_consent?: number; opted_out?: number };
   const fmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: org.timezone });
   const upcoming = c.status !== "canceled" && r.pending > 0;
+  const nowMs = new Date().getTime();
 
   return (
     <>
-      {upcoming && Date.parse(c.scheduled_at) <= Date.now() && <AutoRefresh seconds={5} />}
+      {upcoming && Date.parse(c.scheduled_at) <= nowMs && <AutoRefresh seconds={5} />}
       <PageHeader
         title={c.name}
         subtitle={c.status === "canceled" ? "Canceled" : upcoming ? `Sending ${fmt.format(new Date(c.scheduled_at))}` : `Sent ${fmt.format(new Date(c.scheduled_at))}`}
@@ -92,7 +93,7 @@ export default async function CampaignPage({ params }: PageProps<"/campaigns/[id
           </ul>
         </section>
       )}
-      {upcoming && Date.parse(c.scheduled_at) > Date.now() && (
+      {upcoming && Date.parse(c.scheduled_at) > nowMs && (
         <form action={cancelCampaign.bind(null, id)}>
           <SubmitButton className="btn-danger w-full" pendingText="Canceling…">Cancel campaign</SubmitButton>
         </form>

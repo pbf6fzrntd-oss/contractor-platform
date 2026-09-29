@@ -21,7 +21,7 @@ export default async function CampaignsPage() {
     ? await supabase.from("leads").select("broadcast_id, stage").in("broadcast_id", ids)
     : { data: [] };
   const fmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: org.timezone });
-  const now = Date.now();
+  const now = new Date().getTime();
 
   return (
     <>

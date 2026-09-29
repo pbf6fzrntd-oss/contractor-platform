@@ -56,7 +56,7 @@ export async function simulateInboundText(_prev: FormState, formData: FormData):
 }
 
 /** Sends this business's scheduled texts now. `skipAhead` also sends ones scheduled for later. */
-export async function runSimulatedScheduler(skipAhead: boolean, _prev: FormState): Promise<FormState> {
+export async function runSimulatedScheduler(skipAhead: boolean): Promise<FormState> {
   const line = await simulatorLine();
   if ("error" in line) return { error: line.error };
   const summary = await runDispatch(createAdminClient(), { fastForwardOrgId: line.org.id, dueOnly: !skipAhead });

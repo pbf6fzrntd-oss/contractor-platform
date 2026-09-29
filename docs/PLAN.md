@@ -1,6 +1,6 @@
 # Build Plan — Contractor Text & Follow-up Platform (MVP)
 
-Status: **Approved.** Milestone 0 complete; see CLAUDE.md for current status.
+Status: **All milestones (M0–M11) built.** Next steps: `docs/LAUNCH_CHECKLIST.md`.
 Last updated: 2026-09-29
 
 ---
