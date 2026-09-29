@@ -106,7 +106,7 @@ export async function runDispatch(db: AdminClient, options: DispatchOptions = {}
     if (items.length) {
       await db
         .from("scheduled_messages")
-        .update({ status: "processing", processed_at: now.toISOString() })
+        .update({ status: "processing", processed_at: new Date().toISOString() })
         .in(
           "id",
           items.map((i) => i.id),
@@ -201,7 +201,7 @@ async function processItem(
   if (decision.action === "skip") {
     await db
       .from("scheduled_messages")
-      .update({ status: "skipped", skip_reason: decision.reason, processed_at: now.toISOString() })
+      .update({ status: "skipped", skip_reason: decision.reason, processed_at: new Date().toISOString() })
       .eq("id", item.id);
     return "skipped";
   }
@@ -241,7 +241,7 @@ async function processItem(
   if (result.status === "sent") {
     await db
       .from("scheduled_messages")
-      .update({ status: "sent", message_id: result.messageId, processed_at: now.toISOString() })
+      .update({ status: "sent", message_id: result.messageId, processed_at: new Date().toISOString() })
       .eq("id", item.id);
     if (item.kind === "review_request") {
       await db.from("contacts").update({ review_requested_at: now.toISOString() }).eq("id", contact!.id);
@@ -255,7 +255,7 @@ async function processItem(
       status: failed ? "failed" : "skipped",
       skip_reason: result.reason,
       message_id: result.messageId,
-      processed_at: now.toISOString(),
+      processed_at: new Date().toISOString(),
     })
     .eq("id", item.id);
   return failed ? "failed" : "skipped";
