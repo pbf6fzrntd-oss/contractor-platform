@@ -47,7 +47,7 @@ export default async function InboxPage({ searchParams }: PageProps<"/inbox">) {
 
   const tabs: { key: string; label: string; href: string }[] = [
     { key: "open", label: "Open", href: "/inbox" },
-    ...LEAD_STAGES.map((s) => ({ key: s, label: stageLabel(org.business_type, s), href: `/inbox?stage=${s}` })),
+    ...LEAD_STAGES.map((s) => ({ key: s, label: stageLabel(org.business_type, s, org.industry), href: `/inbox?stage=${s}` })),
   ];
   const active = filter ?? "open";
 
@@ -106,7 +106,7 @@ export default async function InboxPage({ searchParams }: PageProps<"/inbox">) {
                       {last ? `${last.direction === "outbound" ? "You: " : ""}${last.body}` : "Missed call"}
                     </span>
                     <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                      {stageLabel(org.business_type, lead.stage as LeadStage)}
+                      {stageLabel(org.business_type, lead.stage as LeadStage, org.industry)}
                       {contact?.opted_out_at ? " · opted out" : ""}
                     </span>
                   </span>

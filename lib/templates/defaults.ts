@@ -1,4 +1,5 @@
 import type { BusinessType, Language } from "@/lib/business-types";
+import { getIndustry } from "@/lib/industries";
 
 /**
  * Built-in message templates, copied into each new business at onboarding.
@@ -278,14 +279,19 @@ export type TemplateRow = {
   body: string;
 };
 
-/** The template rows a new business of this type starts with (both languages). */
-export function defaultTemplatesFor(businessType: BusinessType): TemplateRow[] {
+/**
+ * The template rows a new business of this type starts with (both languages).
+ * A specific industry can replace the wording of some templates (same key,
+ * category and rules); without one, the rows are exactly as before.
+ */
+export function defaultTemplatesFor(businessType: BusinessType, industry?: string | null): TemplateRow[] {
+  const overrides = getIndustry(industry)?.templates ?? {};
   return DEFAULT_TEMPLATES.filter((t) => t.businessTypes.includes(businessType)).flatMap((t) =>
     (Object.keys(t.text) as Language[]).map((language) => ({
       key: t.key,
       language,
       category: t.category,
-      body: t.text[language],
+      body: overrides[t.key]?.[language] ?? t.text[language],
     })),
   );
 }

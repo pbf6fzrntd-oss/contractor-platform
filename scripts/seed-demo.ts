@@ -67,6 +67,7 @@ async function createBusiness(input: {
   ownerId: string;
   name: string;
   type: "project" | "recurring";
+  industry: string;
   phone: string;
   alertPhone: string;
   reviewUrl: string;
@@ -78,6 +79,7 @@ async function createBusiness(input: {
       .insert({
         name: input.name,
         business_type: input.type,
+        industry: input.industry,
         alert_phone: input.alertPhone,
         google_review_url: input.reviewUrl,
         plan_id: "pilot",
@@ -88,8 +90,9 @@ async function createBusiness(input: {
   );
   await must(db.from("memberships").insert({ org_id: org.id, user_id: input.ownerId, role: "owner" }), "membership");
   await must(db.from("subscriptions").upsert({ org_id: org.id, status: "manual" }), "subscription");
+  await must(db.from("org_modules").insert({ org_id: org.id, module: "home_services" }), "modules");
   await must(
-    db.from("message_templates").insert(defaultTemplatesFor(input.type).map((t) => ({ ...t, org_id: org.id }))),
+    db.from("message_templates").insert(defaultTemplatesFor(input.type, input.industry).map((t) => ({ ...t, org_id: org.id }))),
     "templates",
   );
   await must(
@@ -242,6 +245,7 @@ async function seedRoofing() {
     ownerId,
     name: "Rick's Roofing",
     type: "project",
+    industry: "roofing",
     phone: "+18435550200",
     alertPhone: "+18435557777",
     reviewUrl: "https://g.page/r/ricks-roofing/review",
@@ -381,6 +385,7 @@ async function seedLawn() {
     ownerId,
     name: "Summerville Lawn Pros",
     type: "recurring",
+    industry: "lawn_care",
     phone: "+18435550100",
     alertPhone: "+18435558888",
     reviewUrl: "https://g.page/r/summerville-lawn-pros/review",

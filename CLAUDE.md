@@ -36,7 +36,7 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, ro
 
 **Industry modules program** (plan: `docs/MODULES_PLAN.md`, pricing: `docs/PRICING.md`, **resume notes: `docs/MODULES_PROGRESS.md`**):
 - [x] M14 Safety net (golden tests) + office managers connect their own AI tools
-- [ ] M15 Module framework + industry picker (`organizations.industry`, `lib/industries/`, `modules/registry.ts`)
+- [x] M15 Module framework + industry picker (`organizations.industry`, `lib/industries/`, `modules/registry.ts`)
 - [ ] M16 Industry configs for every industry (catalog, stages, EN/ES templates, voice, schema.org, licenses, audit checks)
 - [ ] M17 Sales audit tool (admin only, never public)
 - [ ] M18 Customer records (property/pet/vehicle), private fields, private files, licenses & insurance

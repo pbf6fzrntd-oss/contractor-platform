@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { isPlatformAdmin } from "@/lib/auth/admin";
 import { requireAppContext } from "@/lib/auth/context";
-import { BUSINESS_TYPE_INFO } from "@/lib/business-types";
+import { industryLabel } from "@/lib/industries";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -13,7 +13,7 @@ export default async function SettingsPage() {
   const { org, role, plan } = await requireAppContext();
 
   const rows: Row[] = [
-    { href: "/settings/business", label: "Business details", detail: BUSINESS_TYPE_INFO[org.business_type].label },
+    { href: "/settings/business", label: "Business details", detail: industryLabel(org) },
     { href: "/settings/team", label: "Team", detail: role === "owner" ? "Invite office managers" : "See your team" },
     { href: "/settings/templates", label: "Message templates", detail: "English and Spanish" },
     { href: "/settings/phone", label: "Phone number", detail: "Your business number and call forwarding" },

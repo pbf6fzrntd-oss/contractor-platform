@@ -6,6 +6,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { Thread } from "@/components/thread";
 import { requireAppContext } from "@/lib/auth/context";
 import { money } from "@/lib/format";
+import { getIndustry } from "@/lib/industries";
 import { LEAD_STAGES, stageLabel, type LeadStage } from "@/lib/leads/stages";
 import { formatUSPhone } from "@/lib/phone";
 import { loadLeadForUser } from "@/lib/services/leads";
@@ -33,7 +34,8 @@ export default async function LeadPage({ params }: PageProps<"/inbox/[leadId]">)
 
   if (lead.unread) await supabase.from("leads").update({ unread: false }).eq("id", lead.id);
   const thread = await loadThread(supabase, org.id, contact.id);
-  const stages = LEAD_STAGES.map((s) => ({ value: s, label: stageLabel(org.business_type, s) }));
+  const stages = LEAD_STAGES.map((s) => ({ value: s, label: stageLabel(org.business_type, s, org.industry) }));
+  const industry = getIndustry(org.industry);
 
   return (
     <>
@@ -95,6 +97,20 @@ export default async function LeadPage({ params }: PageProps<"/inbox/[leadId]">)
           estimateAmount={lead.estimate_amount_cents ? String(lead.estimate_amount_cents / 100) : ""}
         />
       </section>
+
+      {industry && (
+        <details className="card mb-4" open={lead.stage === "new"}>
+          <summary className="cursor-pointer font-semibold">Questions to ask</summary>
+          <ul className="mt-2 flex list-disc flex-col gap-1 pl-5 text-sm text-slate-700">
+            {industry.qualifyingQuestions.map((q) => (
+              <li key={q.en}>
+                {q.en}
+                {contact.preferred_language === "es" && <span className="block text-slate-500">{q.es}</span>}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       <LeadExtras ctx={ctx} lead={lead} contact={contact} />
 

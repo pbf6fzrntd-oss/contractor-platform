@@ -10,14 +10,16 @@ import { cancelService, pauseService, recordMarketingConsent, updateService } fr
 export function EditServiceForm({
   id,
   defaults,
+  suggestions,
 }: {
   id: string;
   defaults: { service_type: string; frequency: string; service_day: number; price: string; start_date: string };
+  suggestions: string[];
 }) {
   const [state, action] = useActionState(updateService.bind(null, id), undefined);
   return (
     <form action={action} className="flex flex-col gap-3">
-      <ServiceFields defaults={defaults} />
+      <ServiceFields defaults={defaults} suggestions={suggestions} />
       <FormMessage state={state} />
       <SubmitButton className="btn-secondary w-full">Save service</SubmitButton>
     </form>

@@ -9,6 +9,7 @@ import { formatUSPhone } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/server";
 import { DAY_NAMES, localDateString } from "@/lib/time";
 import { openConversation, resumeService, revokeMarketingConsent } from "./actions";
+import { serviceSuggestions } from "../customer-fields";
 import { EditServiceForm, MarketingConsentForm, PauseCancelForms } from "./forms";
 
 export const metadata: Metadata = { title: "Customer" };
@@ -146,6 +147,7 @@ export default async function CustomerPage({ params }: PageProps<"/customers/[id
               price: service.price_cents ? String(service.price_cents / 100) : "",
               start_date: service.start_date,
             }}
+            suggestions={serviceSuggestions(org.industry)}
           />
         </div>
       </details>

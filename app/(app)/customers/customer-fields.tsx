@@ -1,21 +1,30 @@
 import { FREQUENCIES, FREQUENCY_LABEL } from "@/lib/automation/schedule";
 import { MARKETING_CONSENT_METHODS } from "@/lib/consent";
+import { getIndustry } from "@/lib/industries";
 import { DAY_NAMES } from "@/lib/time";
 
 export const SERVICE_SUGGESTIONS = ["Mowing", "Mow, edge & blow", "Full service", "Shrub trimming", "Leaf service", "Weed control"];
 
+/** Service name suggestions: the industry's repeat services, or the original lawn list. */
+export function serviceSuggestions(industry: string | null): string[] {
+  const repeat = getIndustry(industry)?.services.filter((s) => s.bookingMode === "recurring").map((s) => s.name.en) ?? [];
+  return repeat.length ? repeat : SERVICE_SUGGESTIONS;
+}
+
 export function ServiceFields({
   defaults,
+  suggestions = SERVICE_SUGGESTIONS,
 }: {
   defaults?: { service_type?: string; frequency?: string; service_day?: number; price?: string; start_date?: string };
+  suggestions?: string[];
 }) {
   return (
     <>
       <div>
         <label htmlFor="service_type" className="label">Service</label>
-        <input id="service_type" name="service_type" list="service-suggestions" className="input" defaultValue={defaults?.service_type ?? "Mowing"} required />
+        <input id="service_type" name="service_type" list="service-suggestions" className="input" defaultValue={defaults?.service_type ?? suggestions[0]} required />
         <datalist id="service-suggestions">
-          {SERVICE_SUGGESTIONS.map((s) => <option key={s} value={s} />)}
+          {suggestions.map((s) => <option key={s} value={s} />)}
         </datalist>
       </div>
       <div className="grid grid-cols-2 gap-3">

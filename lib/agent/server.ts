@@ -23,9 +23,11 @@ import { templateTitle } from "@/lib/templates/defaults";
 import { findDefaultTemplate, validateTemplateBody } from "@/lib/templates/validate";
 import { zonedTimeToUtc } from "@/lib/time";
 import { hasFeature, type Plan } from "@/lib/entitlements";
+import { getIndustry } from "@/lib/industries";
 import { money } from "@/lib/format";
 import { LEAD_STAGES, stageLabel, type LeadStage } from "@/lib/leads/stages";
 import { BLOCK_REASON_TEXT } from "@/lib/messaging/gate";
+import type { AgentToolRegistrar } from "@/lib/modules/types";
 import type { Org, Role } from "@/lib/org";
 import { formatUSPhone, normalizeUSPhone } from "@/lib/phone";
 import { createServiceNotice, loadRecipientData, markDayComplete } from "@/lib/services/broadcasts";
@@ -53,6 +55,8 @@ export type AgentContext = {
   userId: string | null;
   /** Their role. Office managers' connections are capped at "Read and act". */
   role?: Role;
+  /** Enabled modules (org_modules). */
+  modules?: string[];
 };
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
@@ -64,13 +68,18 @@ const fail = (message: string): ToolResult => ({ content: [{ type: "text", text:
 
 const OPEN: LeadStage[] = ["new", "contacted", "estimate_sent"];
 
-export function buildAgentServer(ctx: AgentContext): McpServer {
+/**
+ * `extensions` are tool registrars from the business's enabled modules
+ * (see lib/modules/types.ts); they run after the core tools.
+ */
+export function buildAgentServer(ctx: AgentContext, extensions: AgentToolRegistrar[] = []): McpServer {
   const { db, org, plan } = ctx;
   const isLawn = org.business_type === "recurring";
+  const industry = getIndustry(org.industry);
   const canAct = accessAllows(ctx.access, "read_write");
   const canDoEverything = accessAllows(ctx.access, "full");
   const today = () => localDateString(new Date(), org.timezone);
-  const label = (stage: string) => stageLabel(org.business_type, stage as LeadStage);
+  const label = (stage: string) => stageLabel(org.business_type, stage as LeadStage, org.industry);
   /** "2026-09-30" -> "Wed, Sep 30" for owner-facing summaries. */
   const nice = (day: string) =>
     new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(day));
@@ -88,7 +97,10 @@ export function buildAgentServer(ctx: AgentContext): McpServer {
     { name: "lowcountry-leads", version: "1.0.0" },
     {
       instructions: [
-        `You're helping ${org.name}, a ${isLawn ? "lawn care / landscaping" : "home-service trade (e.g. roofing, HVAC)"} business in the Charleston, SC area (time zone ${org.timezone}).`,
+        `You're helping ${org.name}, a ${industry ? industry.label.toLowerCase() : isLawn ? "lawn care / landscaping" : "home-service trade (e.g. roofing, HVAC)"} business in the Charleston, SC area (time zone ${org.timezone}).`,
+        ...(industry
+          ? [`When a new lead comes in, these are good questions to ask: ${industry.qualifyingQuestions.map((q) => q.en).join(" ")} Only share price ranges the owner has confirmed.`]
+          : []),
         "Use these tools to check leads, conversations" + (isLawn ? ", today's route and customers" : "") + ", and business numbers.",
         canAct
           ? "Before sending any text, show the owner the exact wording and get their OK, unless they already told you what to send. Never invent prices, dates or promises the owner didn't give you."
@@ -123,6 +135,12 @@ export function buildAgentServer(ctx: AgentContext): McpServer {
         });
       }
     };
+  }
+
+  /** Adds the enabled modules' tools, then hands back the server. */
+  function finish(): McpServer {
+    for (const register of extensions) register(server, ctx, { logged, ok, fail });
+    return server;
   }
 
   // --- Read tools ---------------------------------------------------------------
@@ -489,7 +507,7 @@ export function buildAgentServer(ctx: AgentContext): McpServer {
     );
   }
 
-  if (!canAct) return server;
+  if (!canAct) return finish();
 
   // --- Action tools (read-and-act keys only) -----------------------------------
 
@@ -892,7 +910,7 @@ export function buildAgentServer(ctx: AgentContext): McpServer {
     );
   }
 
-  if (!canDoEverything) return server;
+  if (!canDoEverything) return finish();
 
   // --- "Everything" keys only ---------------------------------------------------
 
@@ -1069,5 +1087,5 @@ export function buildAgentServer(ctx: AgentContext): McpServer {
     );
   }
 
-  return server;
+  return finish();
 }

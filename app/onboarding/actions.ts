@@ -20,9 +20,10 @@ export async function createBusiness(_prev: FormState, formData: FormData): Prom
     p_name: input.name,
     p_business_type: input.business_type,
     p_default_language: input.default_language,
-    p_templates: defaultTemplatesFor(input.business_type),
+    p_templates: defaultTemplatesFor(input.business_type, input.industry),
     p_alert_phone: input.alert_phone ?? undefined,
     p_google_review_url: input.google_review_url ?? undefined,
+    p_industry: input.industry ?? undefined,
   });
   if (error) {
     console.error("create_organization failed", error);

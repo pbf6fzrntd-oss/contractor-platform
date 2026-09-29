@@ -2,7 +2,9 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { authenticateAgent } from "@/lib/agent/auth";
 import { CORS_HEADERS, corsPreflight, resourceMetadataUrl } from "@/lib/agent/oauth-metadata";
 import { buildAgentServer } from "@/lib/agent/server";
+import { moduleAgentTools } from "@/lib/modules/types";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { MODULES } from "@/modules/registry";
 
 /**
  * AI assistant access (MCP, "Model Context Protocol").
@@ -26,7 +28,7 @@ async function handle(request: Request): Promise<Response> {
     );
   }
 
-  const server = buildAgentServer(auth.ctx);
+  const server = buildAgentServer(auth.ctx, moduleAgentTools(MODULES, auth.ctx.modules ?? ["home_services"]));
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   await server.connect(transport);
   try {

@@ -2,6 +2,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import type { Plan } from "@/lib/entitlements";
+import { modulesOrDefault } from "@/lib/modules/defaults";
 import { canVisit, homePath } from "@/lib/navigation";
 import { toOrg, toRole, type Org, type Role } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
@@ -11,6 +12,8 @@ export type AppContext = {
   role: Role;
   org: Org;
   plan: Plan;
+  /** Enabled modules (org_modules), e.g. ["home_services"]. */
+  modules: string[];
 };
 
 /** The logged-in user's id, or null. Cached for the rest of the request. */
@@ -42,10 +45,13 @@ export const getAppContext = cache(async (): Promise<AppContext | null> => {
   const { data: org } = await supabase.from("organizations").select("*").eq("id", membership.org_id).single();
   if (!org) return null;
 
-  const { data: plan } = await supabase.from("plans").select("*").eq("id", org.plan_id).single();
+  const [{ data: plan }, { data: modules }] = await Promise.all([
+    supabase.from("plans").select("*").eq("id", org.plan_id).single(),
+    supabase.from("org_modules").select("module").eq("org_id", org.id).eq("enabled", true),
+  ]);
   if (!plan) return null;
 
-  return { userId, role: toRole(membership.role), org: toOrg(org), plan };
+  return { userId, role: toRole(membership.role), org: toOrg(org), plan, modules: modulesOrDefault(modules) };
 });
 
 /** Use at the top of every logged-in page. Sends people where they belong. */
@@ -57,6 +63,13 @@ export async function requireAppContext(path?: string): Promise<AppContext> {
   if (path && !canVisit(path, ctx.org.business_type, ctx.plan)) {
     redirect(homePath(ctx.org.business_type, ctx.plan));
   }
+  return ctx;
+}
+
+/** Use at the top of a module's pages: sends businesses without the module home. */
+export async function requireModule(moduleId: string, path?: string): Promise<AppContext> {
+  const ctx = await requireAppContext(path);
+  if (!ctx.modules.includes(moduleId)) redirect(homePath(ctx.org.business_type, ctx.plan));
   return ctx;
 }
 

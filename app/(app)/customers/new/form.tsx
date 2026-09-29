@@ -6,7 +6,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { createCustomer } from "../actions";
 import { ConsentFields, ServiceFields } from "../customer-fields";
 
-export function NewCustomerForm({ defaultLanguage, today }: { defaultLanguage: string; today: string }) {
+export function NewCustomerForm({ defaultLanguage, today, suggestions }: { defaultLanguage: string; today: string; suggestions: string[] }) {
   const [state, action] = useActionState(createCustomer, undefined);
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -29,7 +29,7 @@ export function NewCustomerForm({ defaultLanguage, today }: { defaultLanguage: s
           <option value="es">Spanish</option>
         </select>
       </div>
-      <ServiceFields defaults={{ start_date: today }} />
+      <ServiceFields defaults={{ start_date: today }} suggestions={suggestions} />
       <ConsentFields />
       <FormMessage state={state} />
       <SubmitButton pendingText="Saving…">Add customer</SubmitButton>

@@ -15,7 +15,7 @@ export default async function DashboardPage() {
   const { org } = await requireAppContext("/dashboard");
   const supabase = await createClient();
   const m = await loadCoreMetrics(supabase, org);
-  const estimateWord = stageLabel(org.business_type, "estimate_sent").replace(/ sent$/, "");
+  const estimateWord = stageLabel(org.business_type, "estimate_sent", org.industry).replace(/ sent$/, "");
 
   return (
     <>

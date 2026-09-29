@@ -1,4 +1,5 @@
 import type { BusinessType } from "@/lib/business-types";
+import { getIndustry } from "@/lib/industries";
 
 /**
  * Automation always works off these five fixed stages. Each business type
@@ -24,6 +25,7 @@ const LABELS: Record<BusinessType, Record<LeadStage, string>> = {
   },
 };
 
-export function stageLabel(businessType: BusinessType, stage: LeadStage): string {
-  return LABELS[businessType][stage];
+/** Words for a stage. A specific industry may rename some (e.g. "Booked"); automation never changes. */
+export function stageLabel(businessType: BusinessType, stage: LeadStage, industry?: string | null): string {
+  return getIndustry(industry)?.stageLabels?.[stage] ?? LABELS[businessType][stage];
 }

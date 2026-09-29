@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Automations" };
 
 export default async function AutomationsPage() {
   const { org, role } = await requireAppContext();
-  const estimateWord = stageLabel(org.business_type, "estimate_sent").replace(/ sent$/, "");
+  const estimateWord = stageLabel(org.business_type, "estimate_sent", org.industry).replace(/ sent$/, "");
   return (
     <>
       <PageHeader title="Automations" subtitle="What gets texted automatically, and when." backHref="/settings" />

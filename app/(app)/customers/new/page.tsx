@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { requireAppContext } from "@/lib/auth/context";
 import { localDateString } from "@/lib/time";
+import { serviceSuggestions } from "../customer-fields";
 import { NewCustomerForm } from "./form";
 
 export const metadata: Metadata = { title: "Add customer" };
@@ -11,7 +12,7 @@ export default async function NewCustomerPage() {
   return (
     <>
       <PageHeader title="Add a customer" backHref="/customers" />
-      <NewCustomerForm defaultLanguage={org.default_language} today={localDateString(new Date(), org.timezone)} />
+      <NewCustomerForm defaultLanguage={org.default_language} today={localDateString(new Date(), org.timezone)} suggestions={serviceSuggestions(org.industry)} />
     </>
   );
 }

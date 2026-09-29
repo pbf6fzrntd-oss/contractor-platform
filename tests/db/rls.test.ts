@@ -358,9 +358,44 @@ describe.skipIf(!url)("row-level security", () => {
     });
   });
 
+  describe("industries and modules (Milestone 15)", () => {
+    it("gives every new business Home Services and keeps old onboarding calls working", async () => {
+      await actAs(ownerA);
+      expect((await db.query("select module, enabled from public.org_modules")).rows).toEqual([{ module: "home_services", enabled: true }]);
+      const industry = await db.query("select industry from public.organizations where id = $1", [orgA]);
+      expect(industry.rows[0].industry).toBeNull();
+    });
+
+    it("saves the industry picked at onboarding", async () => {
+      const newOwner = randomUUID();
+      await db.query("reset role");
+      await db.query("insert into auth.users (id, email) values ($1, 'hvac@example.com')", [newOwner]);
+      await actAs(newOwner);
+      const id = (await db.query("select public.create_organization('Cool Air', 'project', 'en', '[]'::jsonb, null, null, 'hvac') as id")).rows[0].id;
+      expect((await db.query("select industry from public.organizations where id = $1", [id])).rows[0].industry).toBe("hvac");
+      const bad = await attempt("select public.create_organization('X', 'project', 'en', '[]'::jsonb, null, null, 'Not Valid!')");
+      expect(bad.error).not.toBeNull();
+    });
+
+    it("keeps modules private and server-controlled", async () => {
+      await actAs(ownerA);
+      expect((await db.query("select * from public.org_modules where org_id = $1", [orgB])).rowCount).toBe(0);
+      expect((await attempt("insert into public.org_modules (org_id, module) values ($1, 'pet_care')", [orgA])).error).not.toBeNull();
+      expect((await attempt("update public.org_modules set enabled = false where org_id = $1", [orgA])).error).not.toBeNull();
+    });
+
+    it("lets only the owner change the industry", async () => {
+      await actAs(managerA);
+      expect((await attempt("update public.organizations set industry = 'roofing' where id = $1", [orgA])).rowCount).toBe(0);
+      await actAs(ownerA);
+      expect((await attempt("update public.organizations set industry = 'roofing' where id = $1", [orgA])).rowCount).toBe(1);
+      expect((await attempt("update public.organizations set industry = 'roofing' where id = $1", [orgB])).rowCount).toBe(0);
+    });
+  });
+
   it("gives logged-out visitors nothing", async () => {
     await actAsAnonymous();
-    for (const table of ["organizations", "message_templates", "memberships", "profiles", "plans", "contacts", "leads", "messages"]) {
+    for (const table of ["organizations", "message_templates", "memberships", "profiles", "plans", "contacts", "leads", "messages", "org_modules", "api_keys"]) {
       const res = await attempt(`select * from public.${table}`);
       expect(res.rowCount, table).toBe(0);
     }

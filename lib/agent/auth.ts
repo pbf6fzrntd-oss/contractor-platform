@@ -5,6 +5,7 @@ import { canConnectAi, capAccess, isAccessLevel } from "@/lib/agent/oauth";
 import { isBillingActive } from "@/lib/entitlements";
 import { toOrg, toRole, type Role } from "@/lib/org";
 import type { AdminClient } from "@/lib/supabase/admin";
+import { modulesOrDefault } from "@/lib/modules/defaults";
 
 export type AgentAuth =
   | { ok: true; ctx: AgentContext }
@@ -36,7 +37,10 @@ export async function authenticateAgent(db: AdminClient, authorization: string |
   if ((recent ?? 0) >= RATE_LIMIT_PER_MINUTE) {
     return { ok: false, status: 429, message: "Too many requests. Wait a minute and try again." };
   }
-  const { data: plan } = await db.from("plans").select("*").eq("id", org.plan_id).single();
+  const [{ data: plan }, { data: modules }] = await Promise.all([
+    db.from("plans").select("*").eq("id", org.plan_id).single(),
+    db.from("org_modules").select("module").eq("org_id", org.id).eq("enabled", true),
+  ]);
 
   // A connection only works while the person who made it is on the team, and
   // never does more than their role allows. (Keys whose creator's login was
@@ -62,6 +66,7 @@ export async function authenticateAgent(db: AdminClient, authorization: string |
       access: capAccess(isAccessLevel(row.access) ? row.access : "read", role),
       userId: row.created_by,
       role,
+      modules: modulesOrDefault(modules),
     },
   };
 }

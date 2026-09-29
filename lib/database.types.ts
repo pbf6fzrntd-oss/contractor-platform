@@ -680,6 +680,30 @@ export type Database = {
         };
         Relationships: [];
       };
+      org_modules: {
+        Row: {
+          org_id: string;
+          module: string;
+          enabled: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          org_id: string;
+          module: string;
+          enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          org_id?: string;
+          module?: string;
+          enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       organizations: {
         Row: {
           id: string;
@@ -693,6 +717,7 @@ export type Database = {
           plan_id: string;
           created_at: string;
           updated_at: string;
+          industry: string | null;
         };
         Insert: {
           id?: string;
@@ -706,6 +731,7 @@ export type Database = {
           plan_id?: string;
           created_at?: string;
           updated_at?: string;
+          industry?: string | null;
         };
         Update: {
           id?: string;
@@ -719,6 +745,7 @@ export type Database = {
           plan_id?: string;
           created_at?: string;
           updated_at?: string;
+          industry?: string | null;
         };
         Relationships: [];
       };
@@ -1024,7 +1051,7 @@ export type Database = {
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
       claim_due_scheduled_messages: { Args: { p_now: string; p_limit?: number }; Returns: unknown[] };
-      create_organization: { Args: { p_name: string; p_business_type: string; p_default_language: string; p_templates: Json; p_alert_phone?: string; p_google_review_url?: string }; Returns: string };
+      create_organization: { Args: { p_name: string; p_business_type: string; p_default_language: string; p_templates: Json; p_alert_phone?: string; p_google_review_url?: string; p_industry?: string }; Returns: string };
       get_invitation: { Args: { p_token: string }; Returns: { org_name: string; role: string; is_valid: boolean }[] };
       has_org_role: { Args: { p_org_id: string; p_role: string }; Returns: boolean };
       increment_sms_usage: { Args: { p_org_id: string; p_month: string; p_count?: number }; Returns: number };

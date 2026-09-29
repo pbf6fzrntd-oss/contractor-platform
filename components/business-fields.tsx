@@ -1,10 +1,11 @@
-import { BUSINESS_TYPE_INFO, BUSINESS_TYPES, LANGUAGE_LABELS, LANGUAGES } from "@/lib/business-types";
+import { LANGUAGE_LABELS, LANGUAGES } from "@/lib/business-types";
+import { industryChoiceFor, industryGroups } from "@/lib/industries";
 import type { Org as FullOrg } from "@/lib/org";
 import { formatUSPhone } from "@/lib/phone";
 
 type Org = Pick<
   FullOrg,
-  "name" | "business_type" | "default_language" | "alert_phone" | "google_review_url"
+  "name" | "business_type" | "industry" | "default_language" | "alert_phone" | "google_review_url"
 >;
 
 /** Form fields for business details, used by onboarding and settings. */
@@ -26,31 +27,27 @@ export function BusinessFields({ org, disabled = false }: { org?: Org; disabled?
         <p className="hint">Customers see this at the start of every text.</p>
       </div>
 
-      <div role="radiogroup" aria-labelledby="business_type_label">
-        <p id="business_type_label" className="label">
-          What kind of business?
-        </p>
-        <div className="flex flex-col gap-2">
-          {BUSINESS_TYPES.map((type) => (
-            <label
-              key={type}
-              className="flex cursor-pointer gap-3 rounded-xl border border-slate-300 bg-white p-3 has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50"
-            >
-              <input
-                type="radio"
-                name="business_type"
-                value={type}
-                defaultChecked={org?.business_type === type}
-                className="mt-1 h-5 w-5 accent-brand-600"
-                required
-              />
-              <span>
-                <span className="block font-semibold">{BUSINESS_TYPE_INFO[type].label}</span>
-                <span className="block text-sm text-slate-600">{BUSINESS_TYPE_INFO[type].description}</span>
-              </span>
-            </label>
+      <div>
+        <label htmlFor="industry" className="label">
+          What&apos;s your industry?
+        </label>
+        <select id="industry" name="industry" className="input" defaultValue={org ? industryChoiceFor(org) : ""} required>
+          {!org && (
+            <option value="" disabled>
+              Pick one
+            </option>
+          )}
+          {industryGroups(org?.industry).map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.choices.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </optgroup>
           ))}
-        </div>
+        </select>
+        <p className="hint">We tailor your texts, lead questions and menus to your industry.</p>
       </div>
 
       <div>

@@ -22,7 +22,7 @@ export async function updateBusiness(_prev: FormState, formData: FormData): Prom
   // Switching business type: add any default templates the new type needs,
   // without touching templates the owner already has.
   if (parsed.data.business_type !== org.business_type) {
-    const rows = defaultTemplatesFor(parsed.data.business_type).map((t) => ({ ...t, org_id: org.id }));
+    const rows = defaultTemplatesFor(parsed.data.business_type, parsed.data.industry).map((t) => ({ ...t, org_id: org.id }));
     await supabase.from("message_templates").upsert(rows, { onConflict: "org_id,key,language", ignoreDuplicates: true });
   }
 

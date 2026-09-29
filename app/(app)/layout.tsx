@@ -1,12 +1,14 @@
 import { BottomNav } from "@/components/bottom-nav";
 import { requireAppContext } from "@/lib/auth/context";
+import { moduleNavEntries } from "@/lib/modules/types";
 import { buildNavigation } from "@/lib/navigation";
+import { MODULES } from "@/modules/registry";
 import { createClient } from "@/lib/supabase/server";
 
 /** Shell for every logged-in page: content on top, navigation bar at the bottom. */
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  const { org, plan } = await requireAppContext();
-  const nav = buildNavigation(org.business_type, plan);
+  const { org, plan, modules } = await requireAppContext();
+  const nav = buildNavigation(org.business_type, plan, moduleNavEntries(MODULES, modules));
   const supabase = await createClient();
   const { count: unread } = await supabase
     .from("leads")
