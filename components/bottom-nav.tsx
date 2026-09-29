@@ -6,7 +6,15 @@ import { NavIcon } from "@/components/nav-icon";
 import type { NavItem } from "@/lib/navigation";
 
 /** Thumb-reachable navigation bar fixed to the bottom of the phone screen. */
-export function BottomNav({ items, moreHrefs }: { items: NavItem[]; moreHrefs: string[] }) {
+export function BottomNav({
+  items,
+  moreHrefs,
+  badges = {},
+}: {
+  items: NavItem[];
+  moreHrefs: string[];
+  badges?: Record<string, number>;
+}) {
   const pathname = usePathname();
 
   function isActive(href: string) {
@@ -32,7 +40,14 @@ export function BottomNav({ items, moreHrefs }: { items: NavItem[]; moreHrefs: s
                   active ? "text-brand-700" : "text-slate-500"
                 }`}
               >
-                <NavIcon name={item.icon} />
+                <span className="relative">
+                  <NavIcon name={item.icon} />
+                  {(badges[item.href] ?? 0) > 0 && (
+                    <span className="absolute -right-2.5 -top-1.5 min-w-5 rounded-full bg-red-600 px-1 text-center text-[11px] font-bold leading-5 text-white">
+                      {badges[item.href] > 99 ? "99+" : badges[item.href]}
+                    </span>
+                  )}
+                </span>
                 {item.label}
               </Link>
             </li>

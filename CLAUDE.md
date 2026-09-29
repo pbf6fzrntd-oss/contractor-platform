@@ -21,7 +21,7 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, ro
 ## Milestone status
 - [x] M0 Foundation: auth, businesses, team invites, onboarding, RLS, mobile shell, default templates
 - [x] M1 Twilio number + missed-call text-back + STOP/HELP (+ texting simulator, since carrier registration waits on the founder's LLC/EIN)
-- [ ] M2 Lead inbox + two-way texting
+- [x] M2 Lead inbox + two-way texting
 - [ ] M3 Outbox/scheduler + estimate follow-ups + template editor
 - [ ] M4 Jobs + review requests
 - [ ] M5 Dashboard + hardening → pilots
