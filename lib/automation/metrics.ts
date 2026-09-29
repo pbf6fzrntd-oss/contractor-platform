@@ -92,3 +92,63 @@ export function formatDuration(minutes: number | null): string {
 export function formatPercent(ratio: number | null): string {
   return ratio === null ? "–" : `${Math.round(ratio * 100)}%`;
 }
+
+// --- Recurring customers (lawn care) -------------------------------------------
+
+export type RecurringRow = {
+  status: string;
+  paused_until: string | null;
+  start_date: string;
+  canceled_on: string | null;
+  cancel_reason: string | null;
+  frequency: string;
+  price_cents: number | null;
+};
+
+export type RecurringMetrics = {
+  active: number;
+  paused: number;
+  newThisMonth: number;
+  canceledThisMonth: number;
+  /** Cancellations in the last 30 days ÷ customers active 30 days ago. */
+  churn30Days: number | null;
+  /** Price per visit × visits per month, for active customers. */
+  estimatedMonthlyCents: number;
+  topCancelReasons: { reason: string; count: number }[];
+};
+
+const VISITS_PER_MONTH: Record<string, number> = { weekly: 52 / 12, biweekly: 26 / 12, every_4_weeks: 13 / 12 };
+
+export function computeRecurringMetrics(rows: RecurringRow[], today: string, monthStart: string, thirtyDaysAgo: string): RecurringMetrics {
+  const isActive = (r: RecurringRow) =>
+    r.status === "active" || (r.status === "paused" && r.paused_until !== null && r.paused_until <= today);
+  const active = rows.filter(isActive);
+  const canceled30 = rows.filter((r) => r.status === "canceled" && r.canceled_on && r.canceled_on >= thirtyDaysAgo);
+  // Customers who had started before the period and hadn't canceled before it.
+  const activeAtStart = rows.filter(
+    (r) => r.start_date < thirtyDaysAgo && !(r.status === "canceled" && r.canceled_on && r.canceled_on < thirtyDaysAgo),
+  ).length;
+
+  const reasons = new Map<string, number>();
+  for (const r of rows) {
+    if (r.status === "canceled" && r.canceled_on && r.canceled_on >= monthStart) {
+      const key = r.cancel_reason ?? "No reason given";
+      reasons.set(key, (reasons.get(key) ?? 0) + 1);
+    }
+  }
+
+  return {
+    active: active.length,
+    paused: rows.filter((r) => r.status === "paused" && !isActive(r)).length,
+    newThisMonth: rows.filter((r) => r.start_date >= monthStart && r.start_date <= today).length,
+    canceledThisMonth: rows.filter((r) => r.status === "canceled" && r.canceled_on && r.canceled_on >= monthStart).length,
+    churn30Days: activeAtStart > 0 ? canceled30.length / activeAtStart : null,
+    estimatedMonthlyCents: Math.round(
+      active.reduce((sum, r) => sum + (r.price_cents ?? 0) * (VISITS_PER_MONTH[r.frequency] ?? 0), 0),
+    ),
+    topCancelReasons: [...reasons.entries()]
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3),
+  };
+}

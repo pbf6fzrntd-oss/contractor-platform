@@ -93,7 +93,7 @@ export default async function DashboardPage() {
               : "Every missed call gets a text back automatically"
           }
         />
-        <RecurringMetricsSection />
+        <RecurringMetricsSection org={org} />
       </div>
     </>
   );
