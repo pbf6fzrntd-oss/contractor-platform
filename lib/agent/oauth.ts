@@ -1,4 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
+import { hasFeature, type Plan } from "@/lib/entitlements";
+import type { Role } from "@/lib/org";
 
 /**
  * Rules for "Connect" (OAuth 2.1 with PKCE), the standard way apps like Claude
@@ -22,6 +24,27 @@ export const ACCESS_DESCRIPTION: Record<AccessLevel, string> = {
 };
 
 const RANK: Record<AccessLevel, number> = { read: 0, read_write: 1, full: 2 };
+
+/**
+ * The most an AI connection can do, by the role of the person who connected it.
+ * Owners: everything. Office managers: day-to-day work (never campaigns,
+ * message wording or automation settings, which are owner decisions).
+ */
+export const ROLE_MAX_ACCESS: Record<Role, AccessLevel> = { owner: "full", manager: "read_write" };
+
+export function levelsForRole(role: Role): AccessLevel[] {
+  return ACCESS_LEVELS.filter((l) => RANK[l] <= RANK[ROLE_MAX_ACCESS[role]]);
+}
+
+/** A connection never does more than its person's role allows, even if it was granted more. */
+export function capAccess(access: AccessLevel, role: Role): AccessLevel {
+  return RANK[access] <= RANK[ROLE_MAX_ACCESS[role]] ? access : ROLE_MAX_ACCESS[role];
+}
+
+/** May this person connect AI tools? Owners always; office managers if the plan includes it. */
+export function canConnectAi(role: Role, plan: Plan): boolean {
+  return role === "owner" || hasFeature(plan, "team_ai");
+}
 
 /** Does a key with `access` allow something that needs `needed`? */
 export function accessAllows(access: string, needed: AccessLevel): boolean {

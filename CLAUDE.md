@@ -35,7 +35,7 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, ro
 - [x] M13 Agents for owners: one-tap connect (OAuth 2.1 + PKCE + dynamic registration) and full owner coverage with 3 access levels
 
 **Industry modules program** (plan: `docs/MODULES_PLAN.md`, pricing: `docs/PRICING.md`, **resume notes: `docs/MODULES_PROGRESS.md`**):
-- [ ] M14 Safety net (golden tests) + office managers connect their own AI tools
+- [x] M14 Safety net (golden tests) + office managers connect their own AI tools
 - [ ] M15 Module framework + industry picker (`organizations.industry`, `lib/industries/`, `modules/registry.ts`)
 - [ ] M16 Industry configs for every industry (catalog, stages, EN/ES templates, voice, schema.org, licenses, audit checks)
 - [ ] M17 Sales audit tool (admin only, never public)

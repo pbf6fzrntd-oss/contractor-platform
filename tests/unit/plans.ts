@@ -9,6 +9,7 @@ export const PILOT: Plan = {
   feature_recurring_customers: true,
   feature_bulk_messaging: true,
   feature_campaigns: true,
+  feature_team_ai: true,
 };
 
 export const CORE: Plan = {
@@ -18,4 +19,5 @@ export const CORE: Plan = {
   feature_recurring_customers: false,
   feature_bulk_messaging: false,
   feature_campaigns: false,
+  feature_team_ai: false,
 };

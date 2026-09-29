@@ -773,6 +773,7 @@ export type Database = {
           is_public: boolean;
           sort_order: number;
           created_at: string;
+          feature_team_ai: boolean;
         };
         Insert: {
           id: string;
@@ -788,6 +789,7 @@ export type Database = {
           is_public?: boolean;
           sort_order?: number;
           created_at?: string;
+          feature_team_ai?: boolean;
         };
         Update: {
           id?: string;
@@ -803,6 +805,7 @@ export type Database = {
           is_public?: boolean;
           sort_order?: number;
           created_at?: string;
+          feature_team_ai?: boolean;
         };
         Relationships: [];
       };

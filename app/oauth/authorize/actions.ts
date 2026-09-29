@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { CODE_SECONDS, isAccessLevel, randomToken, sha256 } from "@/lib/agent/oauth";
+import { canConnectAi, CODE_SECONDS, isAccessLevel, levelsForRole, randomToken, sha256 } from "@/lib/agent/oauth";
 import { getAppContext } from "@/lib/auth/context";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -25,10 +25,10 @@ function back(uri: string, params: Record<string, string>): never {
 
 export async function approveConnection(req: Request, formData: FormData): Promise<void> {
   const ctx = await getAppContext();
-  if (!ctx || ctx.role !== "owner") redirect("/home");
+  if (!ctx || !canConnectAi(ctx.role, ctx.plan)) redirect("/home");
   if (!(await validClient(req)) || !req.code_challenge) redirect("/home");
   const access = String(formData.get("access"));
-  if (!isAccessLevel(access)) redirect("/home");
+  if (!isAccessLevel(access) || !levelsForRole(ctx.role).includes(access)) redirect("/home");
 
   const code = randomToken("llc_");
   await createAdminClient()

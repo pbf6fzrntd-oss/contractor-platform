@@ -1,9 +1,9 @@
 import "server-only";
 import type { AgentContext } from "@/lib/agent/server";
 import { hashApiKey, keyFromAuthHeader, RATE_LIMIT_PER_MINUTE } from "@/lib/agent/keys";
-import { isAccessLevel } from "@/lib/agent/oauth";
+import { canConnectAi, capAccess, isAccessLevel } from "@/lib/agent/oauth";
 import { isBillingActive } from "@/lib/entitlements";
-import { toOrg } from "@/lib/org";
+import { toOrg, toRole, type Role } from "@/lib/org";
 import type { AdminClient } from "@/lib/supabase/admin";
 
 export type AgentAuth =
@@ -38,6 +38,19 @@ export async function authenticateAgent(db: AdminClient, authorization: string |
   }
   const { data: plan } = await db.from("plans").select("*").eq("id", org.plan_id).single();
 
+  // A connection only works while the person who made it is on the team, and
+  // never does more than their role allows. (Keys whose creator's login was
+  // deleted predate team access and were always owner keys.)
+  let role: Role = "owner";
+  if (row.created_by) {
+    const { data: member } = await db.from("memberships").select("role").eq("org_id", row.org_id).eq("user_id", row.created_by).maybeSingle();
+    if (!member) return { ok: false, status: 401, message: "The person who connected this assistant is no longer on the team." };
+    role = toRole(member.role);
+  }
+  if (!canConnectAi(role, plan!)) {
+    return { ok: false, status: 403, message: "This business's plan doesn't include AI tools for office managers. Ask the owner." };
+  }
+
   await db.from("api_keys").update({ last_used_at: new Date().toISOString() }).eq("id", row.id);
   return {
     ok: true,
@@ -46,8 +59,9 @@ export async function authenticateAgent(db: AdminClient, authorization: string |
       org: toOrg(org),
       plan: plan!,
       keyId: row.id,
-      access: isAccessLevel(row.access) ? row.access : "read",
+      access: capAccess(isAccessLevel(row.access) ? row.access : "read", role),
       userId: row.created_by,
+      role,
     },
   };
 }

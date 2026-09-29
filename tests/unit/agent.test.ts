@@ -95,3 +95,25 @@ describe("one-tap connect (OAuth) rules", () => {
     expect(accessFromScope("openid read_write")).toBe("read_write");
   });
 });
+
+import { canConnectAi, capAccess, levelsForRole } from "@/lib/agent/oauth";
+import { CORE, PILOT } from "./plans";
+
+describe("office managers' AI connections (Milestone 14)", () => {
+  it("owners can grant every level; managers up to day-to-day work", () => {
+    expect(levelsForRole("owner")).toEqual(["read", "read_write", "full"]);
+    expect(levelsForRole("manager")).toEqual(["read", "read_write"]);
+  });
+
+  it("caps a manager's connection even if it was granted more", () => {
+    expect(capAccess("full", "manager")).toBe("read_write");
+    expect(capAccess("read", "manager")).toBe("read");
+    expect(capAccess("full", "owner")).toBe("full");
+  });
+
+  it("only lets managers connect on plans with team AI access", () => {
+    expect(canConnectAi("owner", CORE)).toBe(true);
+    expect(canConnectAi("manager", CORE)).toBe(false);
+    expect(canConnectAi("manager", PILOT)).toBe(true);
+  });
+});

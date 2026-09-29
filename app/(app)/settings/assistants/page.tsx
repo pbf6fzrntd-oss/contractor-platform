@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { SubmitButton } from "@/components/submit-button";
-import { ACCESS_LABEL, isAccessLevel } from "@/lib/agent/oauth";
-import { requireOwner } from "@/lib/auth/context";
+import { ACCESS_LABEL, canConnectAi, isAccessLevel, levelsForRole } from "@/lib/agent/oauth";
+import { requireAppContext } from "@/lib/auth/context";
 import { publicEnv } from "@/lib/env-public";
 import { createClient } from "@/lib/supabase/server";
 import { revokeAssistantKey } from "./actions";
@@ -11,12 +11,27 @@ import { CreateKeyForm } from "./create-key";
 export const metadata: Metadata = { title: "AI assistants" };
 
 export default async function AssistantsPage() {
-  const { org } = await requireOwner();
+  const { org, role, plan } = await requireAppContext();
+  const isOwner = role === "owner";
+  if (!canConnectAi(role, plan)) {
+    return (
+      <>
+        <PageHeader title="AI assistants" backHref="/settings" />
+        <p className="card text-slate-700">
+          Connecting your own AI tools (Claude, ChatGPT and others) as an office manager is part of the Executive plan. Ask{" "}
+          {org.name}&apos;s owner about upgrading.
+        </p>
+      </>
+    );
+  }
   const supabase = await createClient();
-  const [{ data: keys }, { data: activity }] = await Promise.all([
-    supabase.from("api_keys").select("id, name, key_prefix, access, source, created_at, last_used_at, revoked_at, refresh_expires_at").eq("org_id", org.id).order("created_at", { ascending: false }),
+  // Owners see every connection; office managers only their own (row-level security).
+  const [{ data: keys }, { data: activity }, { data: team }] = await Promise.all([
+    supabase.from("api_keys").select("id, name, key_prefix, access, source, created_at, created_by, last_used_at, revoked_at, refresh_expires_at").eq("org_id", org.id).order("created_at", { ascending: false }),
     supabase.from("agent_activity").select("id, tool, summary, ok, created_at, api_key_id").eq("org_id", org.id).order("created_at", { ascending: false }).limit(25),
+    supabase.from("profiles").select("id, full_name, email"),
   ]);
+  const personName = new Map((team ?? []).map((p) => [p.id, p.full_name || p.email || "Teammate"]));
   const fmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: org.timezone });
   const now = new Date().getTime();
   // Connected apps stay listed while they can still refresh; typed keys until revoked.
@@ -29,7 +44,11 @@ export default async function AssistantsPage() {
     <>
       <PageHeader
         title="AI assistants"
-        subtitle="Let an AI assistant like Claude or ChatGPT run your inbox, customers and texts for you, using the same texting rules as the app. Team, billing and carrier registration stay with you."
+        subtitle={
+          isOwner
+            ? "Let an AI assistant like Claude or ChatGPT run your inbox, customers and texts for you, using the same texting rules as the app. Team, billing and carrier registration stay with you."
+            : "Connect your own AI assistant (Claude, ChatGPT and others) to help with the inbox, customers and texts. It can do day-to-day work; campaigns, message wording and settings stay with the owner."
+        }
         backHref="/settings"
       />
 
@@ -44,10 +63,10 @@ export default async function AssistantsPage() {
 
       <h2 className="mb-2 text-lg font-semibold">Or create a key</h2>
       <p className="mb-3 text-sm text-slate-600">For AI apps that ask for a key instead.</p>
-      <CreateKeyForm endpoint={`${publicEnv.siteUrl}/api/mcp`} />
+      <CreateKeyForm endpoint={`${publicEnv.siteUrl}/api/mcp`} levels={levelsForRole(role)} />
 
       <section className="mt-6">
-        <h2 className="mb-2 text-lg font-semibold">Your keys</h2>
+        <h2 className="mb-2 text-lg font-semibold">{isOwner ? "Connections" : "Your connections"}</h2>
         {active.length === 0 ? (
           <p className="text-sm text-slate-600">No keys yet.</p>
         ) : (
@@ -60,6 +79,9 @@ export default async function AssistantsPage() {
                     {ACCESS_LABEL[isAccessLevel(k.access) ? k.access : "read"]} ·{" "}
                     {k.source === "oauth" ? "Connected app" : <span className="font-mono">{k.key_prefix}…</span>}
                   </span>
+                  {isOwner && k.created_by && (
+                    <span className="block text-xs text-slate-500">Connected by {personName.get(k.created_by) ?? "a former teammate"}</span>
+                  )}
                   <span className="block text-xs text-slate-500">{k.last_used_at ? `Last used ${fmt.format(new Date(k.last_used_at))}` : "Not used yet"}</span>
                 </span>
                 <form action={revokeAssistantKey.bind(null, k.id)}>

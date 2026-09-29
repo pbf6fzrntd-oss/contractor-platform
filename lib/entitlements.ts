@@ -13,9 +13,10 @@ export type Plan = Pick<
   | "feature_recurring_customers"
   | "feature_bulk_messaging"
   | "feature_campaigns"
+  | "feature_team_ai"
 >;
 
-export const PLAN_FEATURES = ["recurring_customers", "bulk_messaging", "campaigns"] as const;
+export const PLAN_FEATURES = ["recurring_customers", "bulk_messaging", "campaigns", "team_ai"] as const;
 export type PlanFeature = (typeof PLAN_FEATURES)[number];
 
 export function hasFeature(plan: Plan, feature: PlanFeature): boolean {
@@ -26,6 +27,9 @@ export function hasFeature(plan: Plan, feature: PlanFeature): boolean {
       return plan.feature_bulk_messaging;
     case "campaigns":
       return plan.feature_campaigns;
+    case "team_ai":
+      // Office managers connecting their own AI tools (Executive tier).
+      return plan.feature_team_ai;
   }
 }
 

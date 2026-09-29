@@ -1,0 +1,895 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden: today's behavior for home-service businesses > AI assistant tools for project on core 1`] = `
+{
+  "full": [
+    "add_lead",
+    "cancel_follow_ups",
+    "find_contact",
+    "get_automation_settings",
+    "get_business_overview",
+    "get_conversation",
+    "list_leads",
+    "list_message_templates",
+    "mark_job_done",
+    "send_text",
+    "update_automation_settings",
+    "update_contact",
+    "update_lead_stage",
+    "update_message_template",
+  ],
+  "read": [
+    "find_contact",
+    "get_automation_settings",
+    "get_business_overview",
+    "get_conversation",
+    "list_leads",
+    "list_message_templates",
+  ],
+  "read_write": [
+    "add_lead",
+    "cancel_follow_ups",
+    "find_contact",
+    "get_automation_settings",
+    "get_business_overview",
+    "get_conversation",
+    "list_leads",
+    "list_message_templates",
+    "mark_job_done",
+    "send_text",
+    "update_contact",
+    "update_lead_stage",
+  ],
+}
+`;
+
+exports[`golden: today's behavior for home-service businesses > AI assistant tools for project on pilot 1`] = `
+{
+  "full": [
+    "add_lead",
+    "cancel_follow_ups",
+    "find_contact",
+    "get_automation_settings",
+    "get_business_overview",
+    "get_conversation",
+    "list_leads",
+    "list_message_templates",
+    "mark_job_done",
+    "send_text",
+    "update_automation_settings",
+    "update_contact",
+    "update_lead_stage",
+    "update_message_template",
+  ],
+  "read": [
+    "find_contact",
+    "get_automation_settings",
+    "get_business_overview",
+    "get_conversation",
+    "list_leads",
+    "list_message_templates",
+  ],
+  "read_write": [
+    "add_lead",
+    "cancel_follow_ups",
+    "find_contact",
+    "get_automation_settings",
+    "get_business_overview",
+    "get_conversation",
+    "list_leads",
+    "list_message_templates",
+    "mark_job_done",
+    "send_text",
+    "update_contact",
+    "update_lead_stage",
+  ],
+}
+`;
+
+exports[`golden: today's behavior for home-service businesses > AI assistant tools for recurring on core 1`] = `
+{
+  "full": [
+    "add_lead",
+    "cancel_follow_ups",
+    "find_contact",
+    "get_automation_settings",
+    "get_business_overview",
+    "get_conversation",
+    "list_leads",
+    "list_message_templates",
+    "mark_job_done",
+    "send_text",
+    "update_automation_settings",
+    "update_contact",
+    "update_lead_stage",
+    "update_message_template",
+  ],
+  "read": [
+    "find_contact",
+    "get_automation_settings",
+    "get_business_overview",
+    "get_conversation",
+    "list_leads",
+    "list_message_templates",
+  ],
+  "read_write": [
+    "add_lead",
+    "cancel_follow_ups",
+    "find_contact",
+    "get_automation_settings",
+    "get_business_overview",
+    "get_conversation",
+    "list_leads",
+    "list_message_templates",
+    "mark_job_done",
+    "send_text",
+    "update_contact",
+    "update_lead_stage",
+  ],
+}
+`;
+
+exports[`golden: today's behavior for home-service businesses > AI assistant tools for recurring on pilot 1`] = `
+{
+  "full": [
+    "add_customer",
+    "add_lead",
+    "cancel_campaign",
+    "cancel_follow_ups",
+    "change_customer_status",
+    "find_contact",
+    "get_automation_settings",
+    "get_business_overview",
+    "get_conversation",
+    "get_schedule",
+    "list_campaigns",
+    "list_customers",
+    "list_leads",
+    "list_message_templates",
+    "mark_day_complete",
+    "mark_job_done",
+    "send_campaign",
+    "send_rain_delay",
+    "send_text",
+    "text_scheduled_customers",
+    "update_automation_settings",
+    "update_contact",
+    "update_lead_stage",
+    "update_message_template",
+  ],
+  "read": [
+    "find_contact",
+    "get_automation_settings",
+    "get_business_overview",
+    "get_conversation",
+    "get_schedule",
+    "list_campaigns",
+    "list_customers",
+    "list_leads",
+    "list_message_templates",
+  ],
+  "read_write": [
+    "add_customer",
+    "add_lead",
+    "cancel_follow_ups",
+    "change_customer_status",
+    "find_contact",
+    "get_automation_settings",
+    "get_business_overview",
+    "get_conversation",
+    "get_schedule",
+    "list_campaigns",
+    "list_customers",
+    "list_leads",
+    "list_message_templates",
+    "mark_day_complete",
+    "mark_job_done",
+    "send_rain_delay",
+    "send_text",
+    "text_scheduled_customers",
+    "update_contact",
+    "update_lead_stage",
+  ],
+}
+`;
+
+exports[`golden: today's behavior for home-service businesses > automation defaults, placeholders, campaigns 1`] = `
+{
+  "CAMPAIGN_TEMPLATES": [
+    {
+      "key": "campaign_spring_cleanup",
+      "label": "Spring cleanup",
+      "season": "Feb–Mar",
+    },
+    {
+      "key": "campaign_pine_straw",
+      "label": "Pine straw",
+      "season": "Feb–Apr, Sep–Oct",
+    },
+    {
+      "key": "campaign_mulch",
+      "label": "Mulch",
+      "season": "Mar–May",
+    },
+    {
+      "key": "campaign_aeration",
+      "label": "Aeration",
+      "season": "May–Jun (warm-season lawns)",
+    },
+    {
+      "key": "campaign_overseeding",
+      "label": "Overseeding",
+      "season": "Sep–Oct",
+    },
+    {
+      "key": "campaign_leaf_cleanup",
+      "label": "Leaf cleanup",
+      "season": "Nov–Dec",
+    },
+  ],
+  "DEFAULT_SETTINGS": {
+    "businessHoursEnd": 19,
+    "businessHoursStart": 9,
+    "followUpDays": [
+      2,
+      5,
+      10,
+    ],
+    "followUpHour": 10,
+    "followUpsEnabled": true,
+    "missedCallTextEnabled": true,
+    "reviewAfterVisits": 3,
+    "reviewDelayHours": 2,
+    "reviewsEnabled": true,
+    "stopFollowUpsOnReply": true,
+  },
+  "TEMPLATE_VARIABLES": [
+    "business_name",
+    "business_phone",
+    "first_name",
+    "review_link",
+    "service_day",
+    "new_day",
+  ],
+}
+`;
+
+exports[`golden: today's behavior for home-service businesses > menus for project on core 1`] = `
+{
+  "canVisit": {
+    "/campaigns": false,
+    "/customers": false,
+    "/customers/new": false,
+    "/dashboard": true,
+    "/inbox": true,
+    "/inbox/abc": true,
+    "/settings": true,
+    "/settings/assistants": true,
+    "/simulator": true,
+    "/today": false,
+  },
+  "home": "/inbox",
+  "navigation": {
+    "more": [],
+    "primary": [
+      {
+        "href": "/inbox",
+        "icon": "inbox",
+        "label": "Inbox",
+      },
+      {
+        "href": "/dashboard",
+        "icon": "dashboard",
+        "label": "Dashboard",
+      },
+      {
+        "href": "/settings",
+        "icon": "settings",
+        "label": "Settings",
+      },
+    ],
+  },
+}
+`;
+
+exports[`golden: today's behavior for home-service businesses > menus for project on pilot 1`] = `
+{
+  "canVisit": {
+    "/campaigns": false,
+    "/customers": false,
+    "/customers/new": false,
+    "/dashboard": true,
+    "/inbox": true,
+    "/inbox/abc": true,
+    "/settings": true,
+    "/settings/assistants": true,
+    "/simulator": true,
+    "/today": false,
+  },
+  "home": "/inbox",
+  "navigation": {
+    "more": [],
+    "primary": [
+      {
+        "href": "/inbox",
+        "icon": "inbox",
+        "label": "Inbox",
+      },
+      {
+        "href": "/dashboard",
+        "icon": "dashboard",
+        "label": "Dashboard",
+      },
+      {
+        "href": "/settings",
+        "icon": "settings",
+        "label": "Settings",
+      },
+    ],
+  },
+}
+`;
+
+exports[`golden: today's behavior for home-service businesses > menus for recurring on core 1`] = `
+{
+  "canVisit": {
+    "/campaigns": false,
+    "/customers": false,
+    "/customers/new": false,
+    "/dashboard": true,
+    "/inbox": true,
+    "/inbox/abc": true,
+    "/settings": true,
+    "/settings/assistants": true,
+    "/simulator": true,
+    "/today": false,
+  },
+  "home": "/inbox",
+  "navigation": {
+    "more": [],
+    "primary": [
+      {
+        "href": "/inbox",
+        "icon": "inbox",
+        "label": "Inbox",
+      },
+      {
+        "href": "/dashboard",
+        "icon": "dashboard",
+        "label": "Dashboard",
+      },
+      {
+        "href": "/settings",
+        "icon": "settings",
+        "label": "Settings",
+      },
+    ],
+  },
+}
+`;
+
+exports[`golden: today's behavior for home-service businesses > menus for recurring on pilot 1`] = `
+{
+  "canVisit": {
+    "/campaigns": true,
+    "/customers": true,
+    "/customers/new": true,
+    "/dashboard": true,
+    "/inbox": true,
+    "/inbox/abc": true,
+    "/settings": true,
+    "/settings/assistants": true,
+    "/simulator": true,
+    "/today": true,
+  },
+  "home": "/today",
+  "navigation": {
+    "more": [
+      {
+        "href": "/campaigns",
+        "icon": "campaigns",
+        "label": "Campaigns",
+      },
+      {
+        "href": "/settings",
+        "icon": "settings",
+        "label": "Settings",
+      },
+    ],
+    "primary": [
+      {
+        "href": "/today",
+        "icon": "today",
+        "label": "Today",
+      },
+      {
+        "href": "/inbox",
+        "icon": "inbox",
+        "label": "Inbox",
+      },
+      {
+        "href": "/customers",
+        "icon": "customers",
+        "label": "Customers",
+      },
+      {
+        "href": "/dashboard",
+        "icon": "dashboard",
+        "label": "Dashboard",
+      },
+      {
+        "href": "/more",
+        "icon": "more",
+        "label": "More",
+      },
+    ],
+  },
+}
+`;
+
+exports[`golden: today's behavior for home-service businesses > plan switches 1`] = `
+{
+  "core": [
+    [
+      "recurring_customers",
+      false,
+    ],
+    [
+      "bulk_messaging",
+      false,
+    ],
+    [
+      "campaigns",
+      false,
+    ],
+  ],
+  "pilot": [
+    [
+      "recurring_customers",
+      true,
+    ],
+    [
+      "bulk_messaging",
+      true,
+    ],
+    [
+      "campaigns",
+      true,
+    ],
+  ],
+}
+`;
+
+exports[`golden: today's behavior for home-service businesses > stage words and label for project 1`] = `
+{
+  "info": {
+    "description": "Roofing, HVAC, electrical, remodeling: one-off jobs quoted with estimates.",
+    "label": "Project-based trade",
+  },
+  "stages": [
+    "New",
+    "Contacted",
+    "Estimate sent",
+    "Won",
+    "Lost",
+  ],
+}
+`;
+
+exports[`golden: today's behavior for home-service businesses > stage words and label for recurring 1`] = `
+{
+  "info": {
+    "description": "Weekly or biweekly service customers, plus seasonal extras.",
+    "label": "Lawn care & landscaping",
+  },
+  "stages": [
+    "New",
+    "Contacted",
+    "Quote sent",
+    "Signed up",
+    "Lost",
+  ],
+}
+`;
+
+exports[`golden: today's behavior for home-service businesses > starting templates for project 1`] = `
+[
+  {
+    "body": "Sorry we missed your call! This is {business_name}. We're probably on a job site. What can we help you with? Reply here and we'll get right back to you.",
+    "category": "conversational",
+    "key": "missed_call_reply",
+    "language": "en",
+  },
+  {
+    "body": "¡Disculpe que no pudimos contestar! Le habla {business_name}. Seguramente estamos en una obra. ¿En qué le podemos ayudar? Responda aquí y le contestamos pronto.",
+    "category": "conversational",
+    "key": "missed_call_reply",
+    "language": "es",
+  },
+  {
+    "body": "Hi {first_name}, it's {business_name}. Just checking that you got our estimate. Any questions we can answer?",
+    "category": "informational",
+    "key": "estimate_followup_1",
+    "language": "en",
+  },
+  {
+    "body": "Hola {first_name}, le escribe {business_name}. ¿Recibió nuestro presupuesto? ¿Tiene alguna pregunta?",
+    "category": "informational",
+    "key": "estimate_followup_1",
+    "language": "es",
+  },
+  {
+    "body": "Hi {first_name}, {business_name} here. Following up on your estimate. Happy to walk through it or adjust anything. Just reply here.",
+    "category": "informational",
+    "key": "estimate_followup_2",
+    "language": "en",
+  },
+  {
+    "body": "Hola {first_name}, le escribe {business_name}. Le damos seguimiento a su presupuesto. Con gusto se lo explicamos o lo ajustamos. Responda aquí.",
+    "category": "informational",
+    "key": "estimate_followup_2",
+    "language": "es",
+  },
+  {
+    "body": "Hi {first_name}, last check-in from {business_name} about your estimate. If the timing isn't right, no problem. Just let us know and we'll close it out.",
+    "category": "informational",
+    "key": "estimate_followup_3",
+    "language": "en",
+  },
+  {
+    "body": "Hola {first_name}, último mensaje de {business_name} sobre su presupuesto. Si no es buen momento, no hay problema. Avísenos y lo cerramos.",
+    "category": "informational",
+    "key": "estimate_followup_3",
+    "language": "es",
+  },
+  {
+    "body": "Thanks for choosing {business_name}, {first_name}! If you were happy with our work, would you leave us a quick Google review? It really helps a local business: {review_link}",
+    "category": "informational",
+    "key": "review_request",
+    "language": "en",
+  },
+  {
+    "body": "¡Gracias por elegir a {business_name}, {first_name}! Si le gustó nuestro trabajo, ¿nos deja una reseña en Google? Nos ayuda mucho como negocio local: {review_link}",
+    "category": "informational",
+    "key": "review_request",
+    "language": "es",
+  },
+  {
+    "body": "{business_name}: For help, call or text us at {business_phone}. Msg & data rates may apply. Reply STOP to opt out.",
+    "category": "conversational",
+    "key": "help_reply",
+    "language": "en",
+  },
+  {
+    "body": "{business_name}: Para ayuda, llámenos o escríbanos al {business_phone}. Pueden aplicar tarifas de mensajes y datos. Responda STOP para no recibir más mensajes.",
+    "category": "conversational",
+    "key": "help_reply",
+    "language": "es",
+  },
+  {
+    "body": "{business_name}: You're unsubscribed and won't get more texts from us. Reply START to resubscribe.",
+    "category": "conversational",
+    "key": "opt_out_confirmation",
+    "language": "en",
+  },
+  {
+    "body": "{business_name}: Ya no recibirá más mensajes de nosotros. Responda START para volver a suscribirse.",
+    "category": "conversational",
+    "key": "opt_out_confirmation",
+    "language": "es",
+  },
+  {
+    "body": "{business_name}: You're resubscribed and will get texts from us again. Reply STOP to opt out.",
+    "category": "conversational",
+    "key": "opt_in_confirmation",
+    "language": "en",
+  },
+  {
+    "body": "{business_name}: Volvió a suscribirse y recibirá nuestros mensajes otra vez. Responda STOP para cancelar.",
+    "category": "conversational",
+    "key": "opt_in_confirmation",
+    "language": "es",
+  },
+]
+`;
+
+exports[`golden: today's behavior for home-service businesses > starting templates for project 2`] = `
+{
+  "campaign_aeration": "Aeration",
+  "campaign_leaf_cleanup": "Leaf cleanup",
+  "campaign_mulch": "Mulch",
+  "campaign_overseeding": "Overseeding",
+  "campaign_pine_straw": "Pine straw",
+  "campaign_spring_cleanup": "Spring cleanup",
+  "estimate_followup_1": "Estimate follow-up #1",
+  "estimate_followup_2": "Estimate follow-up #2",
+  "estimate_followup_3": "Estimate follow-up #3",
+  "help_reply": "HELP auto-reply",
+  "missed_call_reply": "Missed-call text-back",
+  "opt_in_confirmation": "Resubscribe confirmation",
+  "opt_out_confirmation": "Opt-out confirmation",
+  "rain_delay": "Rain delay",
+  "review_request": "Google review request",
+  "running_late": "Running late",
+}
+`;
+
+exports[`golden: today's behavior for home-service businesses > starting templates for recurring 1`] = `
+[
+  {
+    "body": "Sorry we missed your call! This is {business_name}. Our crew is out in the field. What can we help you with? Reply here and we'll get right back to you.",
+    "category": "conversational",
+    "key": "missed_call_reply",
+    "language": "en",
+  },
+  {
+    "body": "¡Disculpe que no pudimos contestar! Le habla {business_name}. Nuestro equipo está trabajando afuera. ¿En qué le podemos ayudar? Responda aquí y le contestamos pronto.",
+    "category": "conversational",
+    "key": "missed_call_reply",
+    "language": "es",
+  },
+  {
+    "body": "Hi {first_name}, it's {business_name}. Just checking that you got our quote. Any questions we can answer?",
+    "category": "informational",
+    "key": "estimate_followup_1",
+    "language": "en",
+  },
+  {
+    "body": "Hola {first_name}, le escribe {business_name}. ¿Recibió nuestro presupuesto? ¿Tiene alguna pregunta?",
+    "category": "informational",
+    "key": "estimate_followup_1",
+    "language": "es",
+  },
+  {
+    "body": "Hi {first_name}, {business_name} here. Following up on your quote. Happy to answer questions or adjust anything. Just reply here.",
+    "category": "informational",
+    "key": "estimate_followup_2",
+    "language": "en",
+  },
+  {
+    "body": "Hola {first_name}, le escribe {business_name}. Le damos seguimiento a su presupuesto. Con gusto se lo explicamos o lo ajustamos. Responda aquí.",
+    "category": "informational",
+    "key": "estimate_followup_2",
+    "language": "es",
+  },
+  {
+    "body": "Hi {first_name}, last check-in from {business_name} about your quote. If the timing isn't right, no problem. Just let us know and we'll close it out.",
+    "category": "informational",
+    "key": "estimate_followup_3",
+    "language": "en",
+  },
+  {
+    "body": "Hola {first_name}, último mensaje de {business_name} sobre su presupuesto. Si no es buen momento, no hay problema. Avísenos y lo cerramos.",
+    "category": "informational",
+    "key": "estimate_followup_3",
+    "language": "es",
+  },
+  {
+    "body": "Thanks for being a {business_name} customer, {first_name}! If you like how your yard looks, would you leave us a quick Google review? It really helps a local business: {review_link}",
+    "category": "informational",
+    "key": "review_request",
+    "language": "en",
+  },
+  {
+    "body": "¡Gracias por ser cliente de {business_name}, {first_name}! Si le gusta cómo luce su jardín, ¿nos deja una reseña en Google? Nos ayuda mucho como negocio local: {review_link}",
+    "category": "informational",
+    "key": "review_request",
+    "language": "es",
+  },
+  {
+    "body": "{business_name}: For help, call or text us at {business_phone}. Msg & data rates may apply. Reply STOP to opt out.",
+    "category": "conversational",
+    "key": "help_reply",
+    "language": "en",
+  },
+  {
+    "body": "{business_name}: Para ayuda, llámenos o escríbanos al {business_phone}. Pueden aplicar tarifas de mensajes y datos. Responda STOP para no recibir más mensajes.",
+    "category": "conversational",
+    "key": "help_reply",
+    "language": "es",
+  },
+  {
+    "body": "{business_name}: You're unsubscribed and won't get more texts from us. Reply START to resubscribe.",
+    "category": "conversational",
+    "key": "opt_out_confirmation",
+    "language": "en",
+  },
+  {
+    "body": "{business_name}: Ya no recibirá más mensajes de nosotros. Responda START para volver a suscribirse.",
+    "category": "conversational",
+    "key": "opt_out_confirmation",
+    "language": "es",
+  },
+  {
+    "body": "{business_name}: You're resubscribed and will get texts from us again. Reply STOP to opt out.",
+    "category": "conversational",
+    "key": "opt_in_confirmation",
+    "language": "en",
+  },
+  {
+    "body": "{business_name}: Volvió a suscribirse y recibirá nuestros mensajes otra vez. Responda STOP para cancelar.",
+    "category": "conversational",
+    "key": "opt_in_confirmation",
+    "language": "es",
+  },
+  {
+    "body": "{business_name}: Rain today, so your {service_day} service is moving to {new_day}. No need to reply. Thanks for understanding!",
+    "category": "informational",
+    "key": "rain_delay",
+    "language": "en",
+  },
+  {
+    "body": "{business_name}: Hoy llueve, así que su servicio del {service_day} pasa al {new_day}. No necesita responder. ¡Gracias por su comprensión!",
+    "category": "informational",
+    "key": "rain_delay",
+    "language": "es",
+  },
+  {
+    "body": "{business_name}: Our crew is running a little behind today, but you're still on the schedule. Thanks for your patience!",
+    "category": "informational",
+    "key": "running_late",
+    "language": "en",
+  },
+  {
+    "body": "{business_name}: Nuestro equipo va un poco atrasado hoy, pero sí vamos a llegar. ¡Gracias por su paciencia!",
+    "category": "informational",
+    "key": "running_late",
+    "language": "es",
+  },
+  {
+    "body": "Hi {first_name}, {business_name} here. We're booking core aeration now. It helps your lawn soak up water and nutrients and come back thicker. Want in? Reply YES.",
+    "category": "marketing",
+    "key": "campaign_aeration",
+    "language": "en",
+  },
+  {
+    "body": "Hola {first_name}, le escribe {business_name}. Estamos programando la aireación del césped. Ayuda a que su jardín absorba agua y nutrientes y crezca más tupido. ¿Le interesa? Responda SÍ.",
+    "category": "marketing",
+    "key": "campaign_aeration",
+    "language": "es",
+  },
+  {
+    "body": "Hi {first_name}, {business_name} here. Want a green lawn this winter? We're scheduling overseeding now. Reply YES and we'll send you a price.",
+    "category": "marketing",
+    "key": "campaign_overseeding",
+    "language": "en",
+  },
+  {
+    "body": "Hola {first_name}, le escribe {business_name}. ¿Quiere un césped verde este invierno? Estamos programando la resiembra. Responda SÍ y le enviamos el precio.",
+    "category": "marketing",
+    "key": "campaign_overseeding",
+    "language": "es",
+  },
+  {
+    "body": "Hi {first_name}, {business_name} here. Leaves are coming down and we're booking fall leaf cleanups now. Reply YES and we'll get you on the schedule.",
+    "category": "marketing",
+    "key": "campaign_leaf_cleanup",
+    "language": "en",
+  },
+  {
+    "body": "Hola {first_name}, le escribe {business_name}. Ya están cayendo las hojas y estamos programando limpiezas de otoño. Responda SÍ y lo agregamos al calendario.",
+    "category": "marketing",
+    "key": "campaign_leaf_cleanup",
+    "language": "es",
+  },
+  {
+    "body": "Hi {first_name}, {business_name} here. Spring is almost here! We're booking spring cleanups (beds, trimming, debris removal). Reply YES to get on the schedule before we fill up.",
+    "category": "marketing",
+    "key": "campaign_spring_cleanup",
+    "language": "en",
+  },
+  {
+    "body": "Hola {first_name}, le escribe {business_name}. ¡Ya casi llega la primavera! Estamos programando limpiezas de primavera (canteros, podas y retiro de escombros). Responda SÍ para reservar antes de que se llene la agenda.",
+    "category": "marketing",
+    "key": "campaign_spring_cleanup",
+    "language": "es",
+  },
+  {
+    "body": "Hi {first_name}, {business_name} here. Fresh mulch makes beds look sharp and holds in moisture. We're scheduling installs now. Reply YES for a free quote.",
+    "category": "marketing",
+    "key": "campaign_mulch",
+    "language": "en",
+  },
+  {
+    "body": "Hola {first_name}, le escribe {business_name}. El mantillo nuevo hace que sus canteros luzcan bien y conserva la humedad. Estamos programando instalaciones. Responda SÍ para un presupuesto gratis.",
+    "category": "marketing",
+    "key": "campaign_mulch",
+    "language": "es",
+  },
+  {
+    "body": "Hi {first_name}, {business_name} here. Time to refresh your pine straw! We're booking installs now. Reply YES for a free quote.",
+    "category": "marketing",
+    "key": "campaign_pine_straw",
+    "language": "en",
+  },
+  {
+    "body": "Hola {first_name}, le escribe {business_name}. ¡Es hora de renovar la paja de pino! Estamos programando instalaciones. Responda SÍ para un presupuesto gratis.",
+    "category": "marketing",
+    "key": "campaign_pine_straw",
+    "language": "es",
+  },
+]
+`;
+
+exports[`golden: today's behavior for home-service businesses > starting templates for recurring 2`] = `
+{
+  "campaign_aeration": "Aeration",
+  "campaign_leaf_cleanup": "Leaf cleanup",
+  "campaign_mulch": "Mulch",
+  "campaign_overseeding": "Overseeding",
+  "campaign_pine_straw": "Pine straw",
+  "campaign_spring_cleanup": "Spring cleanup",
+  "estimate_followup_1": "Quote follow-up #1",
+  "estimate_followup_2": "Quote follow-up #2",
+  "estimate_followup_3": "Quote follow-up #3",
+  "help_reply": "HELP auto-reply",
+  "missed_call_reply": "Missed-call text-back",
+  "opt_in_confirmation": "Resubscribe confirmation",
+  "opt_out_confirmation": "Opt-out confirmation",
+  "rain_delay": "Rain delay",
+  "review_request": "Google review request",
+  "running_late": "Running late",
+}
+`;
+
+exports[`golden: today's behavior for home-service businesses > texting rules 1`] = `
+{
+  "automated": [
+    null,
+    {
+      "end": 19,
+      "start": 9,
+    },
+    {
+      "end": 20,
+      "start": 8,
+    },
+  ],
+  "blockReasons": {
+    "billing_inactive": "Not sent: your subscription isn't active (Settings → Billing).",
+    "monthly_limit_reached": "Not sent: you've used this month's texts on your plan.",
+    "no_business_number": "Not sent: set up your business phone number first (Settings → Phone number).",
+    "no_marketing_consent": "Not sent: no marketing consent on file for this customer.",
+    "opted_out": "Not sent: this customer opted out of texts.",
+    "outside_marketing_hours": "Not sent: promotions can only go out 8am–8pm.",
+    "provider_error": "Not sent: the phone company returned an error.",
+    "texting_not_approved": "Not sent: texting turns on once carrier registration is approved.",
+  },
+  "footers": [
+    "Hi
+Reply STOP to opt out.",
+    "Hi",
+    "Hola
+Responda STOP para no recibir más mensajes.",
+  ],
+  "policy": [
+    {
+      "allowed": true,
+    },
+    {
+      "allowed": false,
+      "reason": "no_marketing_consent",
+    },
+    {
+      "allowed": true,
+    },
+    {
+      "allowed": false,
+      "reason": "opted_out",
+    },
+    {
+      "allowed": true,
+    },
+  ],
+  "windows": {
+    "MARKETING_WINDOW": {
+      "end": 20,
+      "start": 8,
+    },
+    "SERVICE_NOTICE_WINDOW": {
+      "end": 21,
+      "start": 6,
+    },
+  },
+}
+`;

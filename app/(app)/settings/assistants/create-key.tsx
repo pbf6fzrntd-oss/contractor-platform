@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { FormMessage } from "@/components/form-message";
 import { SubmitButton } from "@/components/submit-button";
-import { ACCESS_DESCRIPTION, ACCESS_LABEL, ACCESS_LEVELS } from "@/lib/agent/oauth";
+import { ACCESS_DESCRIPTION, ACCESS_LABEL, type AccessLevel } from "@/lib/agent/oauth";
 import { createAssistantKey } from "./actions";
 
 function CopyBox({ label, value }: { label: string; value: string }) {
@@ -33,7 +33,7 @@ function CopyBox({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function CreateKeyForm({ endpoint }: { endpoint: string }) {
+export function CreateKeyForm({ endpoint, levels }: { endpoint: string; levels: AccessLevel[] }) {
   const [state, action] = useActionState(createAssistantKey, undefined);
   return (
     <div className="flex flex-col gap-4">
@@ -44,7 +44,7 @@ export function CreateKeyForm({ endpoint }: { endpoint: string }) {
         </div>
         <fieldset className="flex flex-col gap-2">
           <legend className="label">What can it do?</legend>
-          {ACCESS_LEVELS.map((level) => (
+          {levels.map((level) => (
             <label key={level} className="flex items-start gap-3">
               <input type="radio" name="access" value={level} defaultChecked={level === "read_write"} className="mt-1 h-5 w-5 accent-brand-600" />
               <span>

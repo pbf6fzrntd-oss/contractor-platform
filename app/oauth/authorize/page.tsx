@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SubmitButton } from "@/components/submit-button";
-import { accessFromScope, ACCESS_DESCRIPTION, ACCESS_LABEL, ACCESS_LEVELS } from "@/lib/agent/oauth";
+import { accessFromScope, ACCESS_DESCRIPTION, ACCESS_LABEL, canConnectAi, capAccess, levelsForRole } from "@/lib/agent/oauth";
 import { getAppContext, getUserId } from "@/lib/auth/context";
 import { APP_NAME } from "@/lib/brand";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -47,10 +47,16 @@ export default async function AuthorizePage({ searchParams }: PageProps<"/oauth/
 
   const ctx = await getAppContext();
   if (!ctx) redirect("/onboarding");
-  if (ctx.role !== "owner") {
-    return <Problem>Only the business owner can connect an AI assistant. Ask {ctx.org.name}&apos;s owner to do it.</Problem>;
+  if (!canConnectAi(ctx.role, ctx.plan)) {
+    return (
+      <Problem>
+        Office managers can connect their own AI tools on the Executive plan. Ask {ctx.org.name}&apos;s owner about upgrading, or to
+        connect it for you.
+      </Problem>
+    );
   }
-  const requested = accessFromScope(get("scope"));
+  const levels = levelsForRole(ctx.role);
+  const requested = capAccess(accessFromScope(get("scope")), ctx.role);
   const returnHost = new URL(req.redirect_uri).host;
 
   return (
@@ -65,7 +71,7 @@ export default async function AuthorizePage({ searchParams }: PageProps<"/oauth/
       <form action={approveConnection.bind(null, req)} className="flex flex-col gap-4">
         <fieldset className="flex flex-col gap-2">
           <legend className="label">What can it do?</legend>
-          {ACCESS_LEVELS.map((level) => (
+          {levels.map((level) => (
             <label key={level} className="card flex cursor-pointer items-start gap-3 has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50">
               <input type="radio" name="access" value={level} defaultChecked={level === requested} className="mt-1 h-5 w-5 accent-brand-600" />
               <span>
@@ -76,7 +82,9 @@ export default async function AuthorizePage({ searchParams }: PageProps<"/oauth/
           ))}
         </fieldset>
         <p className="text-sm text-slate-500">
-          Team, billing and carrier registration always stay with you. You&apos;ll return to {returnHost}. You can disconnect any
+          {ctx.role === "owner"
+            ? "Team, billing and carrier registration always stay with you."
+            : "As an office manager, your assistant can do day-to-day work; campaigns, wording and settings stay with the owner."} You&apos;ll return to {returnHost}. You can disconnect any
           time.
         </p>
         <SubmitButton pendingText="Connecting…">Allow</SubmitButton>

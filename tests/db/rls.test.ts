@@ -314,6 +314,22 @@ describe.skipIf(!url)("row-level security", () => {
       expect((await db.query("select name from public.api_keys")).rows).toEqual([{ name: "Other" }]);
     });
 
+    it("lets an office manager see only the connections they made (Milestone 14)", async () => {
+      await db.query("reset role");
+      await db.query(
+        "insert into public.api_keys (org_id, name, key_prefix, key_hash, access, created_by) values ($1, 'Manager Claude', 'llk_cccccc', 'hash-c', 'read_write', $2)",
+        [orgA, managerA],
+      );
+      await actAs(managerA);
+      expect((await db.query("select name from public.api_keys")).rows).toEqual([{ name: "Manager Claude" }]);
+      const upd = await attempt("update public.api_keys set access = 'full' where org_id = $1", [orgA]);
+      expect(upd.error).not.toBeNull();
+      await actAs(ownerA);
+      expect((await db.query("select name from public.api_keys order by name")).rows).toEqual([{ name: "Claude" }, { name: "Manager Claude" }]);
+      await actAs(ownerB);
+      expect((await db.query("select name from public.api_keys")).rows).toEqual([{ name: "Other" }]);
+    });
+
     it("never lets anyone create, change or read key hashes of another business directly", async () => {
       await actAs(ownerA);
       const ins = await attempt("insert into public.api_keys (org_id, name, key_prefix, key_hash) values ($1, 'x', 'x', 'x')", [orgA]);

@@ -99,13 +99,18 @@ export async function POST(request: Request) {
     if (!p.refresh_token) return invalid("invalid_request", "Missing refresh_token.");
     const { data: key } = await db
       .from("api_keys")
-      .select("id, access, oauth_client_id, revoked_at, refresh_expires_at")
+      .select("id, org_id, created_by, access, oauth_client_id, revoked_at, refresh_expires_at")
       .eq("refresh_hash", sha256(p.refresh_token))
       .maybeSingle();
     if (!key || key.revoked_at || !key.refresh_expires_at || Date.parse(key.refresh_expires_at) < Date.now()) {
       return invalid("invalid_grant", "This connection was revoked or expired. Connect again.");
     }
     if (p.client_id && key.oauth_client_id !== p.client_id) return invalid("invalid_grant", "Wrong app for this token.");
+    // Someone who left the team can't keep their connection alive.
+    if (key.created_by) {
+      const { data: member } = await db.from("memberships").select("role").eq("org_id", key.org_id).eq("user_id", key.created_by).maybeSingle();
+      if (!member) return invalid("invalid_grant", "The person who connected this is no longer on the team.");
+    }
     return issueTokens(db, key.id, key.access);
   }
 
