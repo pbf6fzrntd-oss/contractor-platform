@@ -5,14 +5,13 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import type { FormState } from "@/components/form-message";
 import { requireAppContext } from "@/lib/auth/context";
-import { campaignSendTime } from "@/lib/automation/campaigns";
 import type { CampaignAudience } from "@/lib/automation/recipients";
 import { hasFeature } from "@/lib/entitlements";
-import { createCampaign } from "@/lib/services/broadcasts";
+import { scheduleCampaign as scheduleCampaignService } from "@/lib/services/campaigns";
 import { cancelPending, runDispatch } from "@/lib/services/outbox";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { findUnknownVariables } from "@/lib/templates/render";
-import { localDateString, zonedTimeToUtc } from "@/lib/time";
+import { zonedTimeToUtc } from "@/lib/time";
 
 export async function scheduleCampaign(_prev: FormState, formData: FormData): Promise<FormState> {
   const { org, plan, userId } = await requireAppContext("/campaigns");
@@ -44,19 +43,17 @@ export async function scheduleCampaign(_prev: FormState, formData: FormData): Pr
     requested = zonedTimeToUtc(date, h, m, org.timezone);
     if (requested.getTime() < Date.now() - 60_000) return { error: "Pick a time in the future." };
   }
-  const sendAt = campaignSendTime(requested, org.timezone);
-
   const db = createAdminClient();
-  const result = await createCampaign(db, org.id, {
+  const result = await scheduleCampaignService(db, org, {
     name,
     templateKey: String(formData.get("template_key") ?? "") || null,
     bodyEn,
     bodyEs: bodyEs || null,
     audience,
-    sendAt,
-    today: localDateString(new Date(), org.timezone),
+    requestedAt: requested,
     userId,
   });
+  const sendAt = result.sendAt;
   if (result.recipients === 0) return { error: "Nobody in that group has given written consent to receive offers." };
 
   if (sendAt.getTime() <= Date.now()) {

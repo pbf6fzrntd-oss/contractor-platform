@@ -322,6 +322,16 @@ describe.skipIf(!url)("row-level security", () => {
       expect(upd.rowCount).toBe(0);
     });
 
+    it("keeps one-tap connect records completely server-only", async () => {
+      await actAs(ownerA);
+      for (const table of ["oauth_clients", "oauth_codes"]) {
+        const read = await attempt(`select * from public.${table}`);
+        expect(read.error, table).not.toBeNull();
+      }
+      const add = await attempt("insert into public.oauth_clients (client_name, redirect_uris) values ('x', '{https://x.test/cb}')");
+      expect(add.error).not.toBeNull();
+    });
+
     it("keeps the assistant activity log private and tamper-proof", async () => {
       await actAs(managerA);
       expect((await db.query("select summary from public.agent_activity")).rows).toEqual([{ summary: "Listed 3 leads" }]);

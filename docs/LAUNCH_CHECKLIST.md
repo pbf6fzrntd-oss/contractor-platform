@@ -58,6 +58,8 @@ Legend: ☐ = to do · ✅ = already verified in development
 ✅ Stripe webhook: signed event switches plan; cancellation stops texting; forged event rejected
 ✅ Carrier registration form → admin approves → owner sees "texting is on"; non-admins get "not found" at /admin
 ✅ Twilio webhooks: forged request rejected (403), duplicate delivery ignored, spoken greeting + missed-call handling, delivery status updates
+✅ One-tap connect, tested with the official MCP library's own sign-in functions: discovery from a 401, app registration, owner login → Allow (with access level), PKCE-checked code exchange, code reuse refused, token refresh (old token stops working), Disconnect locks the app out
+✅ Full owner coverage: add customer (refused without consent confirmation), pause/resume, running-late preview → send, campaign preview (consented customers only) → schedule → cancel, wording change (refuses dropping the business name), settings change (refuses out-of-range values), cancel follow-ups, update contact
 ✅ AI assistant (MCP), tested with the official MCP client: keys created in Settings; overview, leads, conversations, schedule, customers; reply marked "via AI assistant" and New→Contacted; stage change schedules follow-ups; job done schedules review; rain delay preview → confirm → texts sent and visits moved; read-only keys can't see action tools; missing/fake keys rejected (401); every call logged
 
 ## Part 4: What needs a live test (real phones, money, people)
@@ -91,7 +93,8 @@ Do these with 2 phones (yours + a friend's) once Twilio is connected.
 **AI assistant (MCP)**
 - ☐ Connect a real assistant app to the deployed `/api/mcp` with a key (Claude Code or another MCP-capable app) and try: "any new leads?", "reply to …", "rain delay today to tomorrow". Confirm it asks before sending.
 - ☐ Decide whether AI access is included in every plan or only higher plans (it's on for all plans now).
-- ☐ One-click "Connect" buttons inside Claude/ChatGPT apps require an OAuth sign-in flow instead of pasted keys. That's the next step for this feature if owners find keys confusing.
+- ☐ One-tap connect from inside the Claude and ChatGPT apps (add a custom connector with `https://YOUR-DOMAIN/api/mcp`): log in, tap Allow, then ask it to do real work. Each app's connector rules change often. If one refuses, check its current requirements (for example, some need the site on https with a real domain).
+- ☐ Try each access level once (Read only / Read and act / Everything) and confirm the assistant can't do more than its level.
 
 **People**
 - ☐ Native Spanish speaker reviews every Spanish template (Settings → Message templates → Spanish).

@@ -1,5 +1,6 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { authenticateAgent } from "@/lib/agent/auth";
+import { CORS_HEADERS, corsPreflight, resourceMetadataUrl } from "@/lib/agent/oauth-metadata";
 import { buildAgentServer } from "@/lib/agent/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -17,7 +18,11 @@ async function handle(request: Request): Promise<Response> {
   if (!auth.ok) {
     return Response.json(
       { jsonrpc: "2.0", error: { code: -32001, message: auth.message }, id: null },
-      { status: auth.status, headers: auth.status === 401 ? { "WWW-Authenticate": 'Bearer realm="lowcountry-leads"' } : {} },
+      {
+        status: auth.status,
+        // Points AI apps to our sign-in, so owners can connect with one tap (RFC 9728).
+        headers: auth.status === 401 ? { "WWW-Authenticate": `Bearer resource_metadata="${resourceMetadataUrl()}"`, ...CORS_HEADERS } : CORS_HEADERS,
+      },
     );
   }
 
@@ -35,3 +40,4 @@ async function handle(request: Request): Promise<Response> {
 export const POST = handle;
 export const GET = handle;
 export const DELETE = handle;
+export const OPTIONS = corsPreflight;

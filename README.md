@@ -93,16 +93,22 @@ Locally, the Simulator's buttons do the scheduler's job.
 
 ## 7b. AI assistants (MCP)
 
-Owners can let an AI assistant (Claude, ChatGPT, or any app that supports **MCP servers**) work their inbox:
+Owners can let an AI assistant (Claude, ChatGPT, or any app that supports **MCP servers**) run their inbox, customers and texts. Team, billing and carrier registration always stay with the owner.
 
-1. Owner: **Settings → AI assistants → Create key** (read-only, or read-and-act).
-2. In the AI app, add an MCP server with address `{SITE}/api/mcp` and header `Authorization: Bearer <key>`.
-   Claude Code example: `claude mcp add --transport http lowcountry-leads https://YOUR-DOMAIN/api/mcp --header "Authorization: Bearer llk_..."`.
-3. Ask things like "any new leads?", "reply to the Cane Bay lead with a price range", "it's raining, move today's route to tomorrow".
+**Connect, the easy way (one-tap, OAuth):** in the AI app, add a custom connector / MCP server with the address `{SITE}/api/mcp`. The app discovers our sign-in automatically, sends the owner to log in, and the owner picks an access level and taps **Allow**. Connections refresh themselves and appear under **Settings → AI assistants**, where the owner can disconnect them.
 
-**Tools** (`lib/agent/server.ts`): `get_business_overview`, `list_leads`, `get_conversation`, `find_contact`, plus for lawn care `get_schedule` and `list_customers`. Read-and-act keys add `send_text`, `update_lead_stage`, `add_lead`, `mark_job_done`, and for lawn care `send_rain_delay` (preview first; sends only with `confirm: true`) and `mark_day_complete`. Campaigns are intentionally not available to assistants.
+**Connect with a key:** for apps that ask for a key, the owner creates one in **Settings → AI assistants** and the app sends `Authorization: Bearer <key>`. Claude Code example: `claude mcp add --transport http lowcountry-leads https://YOUR-DOMAIN/api/mcp --header "Authorization: Bearer llk_..."`.
 
-**Safety:** keys are stored only as a hash and can be revoked; each business's tools only see that business; every call is logged (Settings → AI assistants); 60 calls per minute per key; texts go through the same send pipeline (opt-outs, consent, hours, plan limits) and are labeled "via AI assistant".
+**Access levels:**
+- **Read only:** `get_business_overview`, `list_leads`, `get_conversation`, `find_contact`, `list_message_templates`, `get_automation_settings`; lawn care adds `get_schedule`, `list_customers`, `list_campaigns`.
+- **Read and act** adds day-to-day work: `send_text`, `update_lead_stage`, `add_lead`, `mark_job_done`, `update_contact`, `cancel_follow_ups`; lawn care adds `add_customer`, `change_customer_status`, `send_rain_delay`, `text_scheduled_customers`, `mark_day_complete`.
+- **Everything** adds `send_campaign`, `cancel_campaign`, `update_message_template`, `update_automation_settings`.
+
+Anything that texts many people (rain delays, running-late texts, campaigns) returns a **preview first** and only sends with `confirm: true`.
+
+**Safety:** keys and tokens are stored only as hashes; connected-app tokens last 1 hour and refresh for 60 days (each refresh replaces the old token); sign-in uses PKCE; each business's tools only see that business; every call is logged for the owner; 60 calls per minute per connection; texts go through the same send pipeline (opt-outs, consent, hours, plan limits) and are labeled "via AI assistant"; `add_customer` requires the owner to confirm service-text consent, and offers go only to customers with recorded written consent.
+
+**Sign-in endpoints:** `/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`, `/api/oauth/register` (dynamic client registration), `/oauth/authorize` (owner's Allow screen), `/api/oauth/token`.
 
 **Demo data:** `npm run demo:seed` loads two realistic demo businesses into a **dev** database (`dana@lawn.test` and `rick@roof.test`, password `password123`).
 
@@ -137,6 +143,7 @@ app/
   api/cron/        the every-minute scheduler
   api/stripe/      Stripe webhook
   api/mcp/         AI assistant access (MCP)
+  api/oauth/, oauth/, .well-known/   one-tap connect for AI apps (OAuth sign-in)
 lib/
   automation/      PURE business rules (tested): keywords, compliance, follow-ups,
                    outbox checks, reviews, schedules, recipients, metrics, campaigns

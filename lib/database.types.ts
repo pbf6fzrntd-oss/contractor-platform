@@ -116,6 +116,11 @@ export type Database = {
           created_at: string;
           last_used_at: string | null;
           revoked_at: string | null;
+          source: string;
+          expires_at: string | null;
+          oauth_client_id: string | null;
+          refresh_hash: string | null;
+          refresh_expires_at: string | null;
         };
         Insert: {
           id?: string;
@@ -128,6 +133,11 @@ export type Database = {
           created_at?: string;
           last_used_at?: string | null;
           revoked_at?: string | null;
+          source?: string;
+          expires_at?: string | null;
+          oauth_client_id?: string | null;
+          refresh_hash?: string | null;
+          refresh_expires_at?: string | null;
         };
         Update: {
           id?: string;
@@ -140,6 +150,11 @@ export type Database = {
           created_at?: string;
           last_used_at?: string | null;
           revoked_at?: string | null;
+          source?: string;
+          expires_at?: string | null;
+          oauth_client_id?: string | null;
+          refresh_hash?: string | null;
+          refresh_expires_at?: string | null;
         };
         Relationships: [];
       };
@@ -601,6 +616,66 @@ export type Database = {
           body?: string;
           link?: string | null;
           sms_status?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      oauth_clients: {
+        Row: {
+          id: string;
+          client_name: string;
+          redirect_uris: string[];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          client_name: string;
+          redirect_uris: string[];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          client_name?: string;
+          redirect_uris?: string[];
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      oauth_codes: {
+        Row: {
+          code_hash: string;
+          client_id: string;
+          org_id: string;
+          user_id: string;
+          access: string;
+          redirect_uri: string;
+          code_challenge: string;
+          expires_at: string;
+          used_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          code_hash: string;
+          client_id: string;
+          org_id: string;
+          user_id: string;
+          access: string;
+          redirect_uri: string;
+          code_challenge: string;
+          expires_at: string;
+          used_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          code_hash?: string;
+          client_id?: string;
+          org_id?: string;
+          user_id?: string;
+          access?: string;
+          redirect_uri?: string;
+          code_challenge?: string;
+          expires_at?: string;
+          used_at?: string | null;
           created_at?: string;
         };
         Relationships: [];

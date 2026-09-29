@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { FormState } from "@/components/form-message";
 import { generateApiKey } from "@/lib/agent/keys";
+import { isAccessLevel } from "@/lib/agent/oauth";
 import { requireOwner } from "@/lib/auth/context";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -12,7 +13,8 @@ export async function createAssistantKey(_prev: KeyState, formData: FormData): P
   const { org, userId } = await requireOwner();
   const name = String(formData.get("name") ?? "").trim().slice(0, 60);
   if (!name) return { error: "Name the key, e.g. \"Claude on my phone\"." };
-  const access = formData.get("access") === "read" ? "read" : "read_write";
+  const requested = String(formData.get("access"));
+  const access = isAccessLevel(requested) ? requested : "read";
 
   const db = createAdminClient();
   const { count } = await db.from("api_keys").select("id", { count: "exact", head: true }).eq("org_id", org.id).is("revoked_at", null);

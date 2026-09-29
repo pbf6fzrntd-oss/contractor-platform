@@ -1,6 +1,7 @@
 import "server-only";
 import type { AgentContext } from "@/lib/agent/server";
 import { hashApiKey, keyFromAuthHeader, RATE_LIMIT_PER_MINUTE } from "@/lib/agent/keys";
+import { isAccessLevel } from "@/lib/agent/oauth";
 import { isBillingActive } from "@/lib/entitlements";
 import { toOrg } from "@/lib/org";
 import type { AdminClient } from "@/lib/supabase/admin";
@@ -16,10 +17,13 @@ export async function authenticateAgent(db: AdminClient, authorization: string |
 
   const { data: row } = await db
     .from("api_keys")
-    .select("id, org_id, access, created_by, revoked_at")
+    .select("id, org_id, access, created_by, revoked_at, expires_at")
     .eq("key_hash", hashApiKey(key))
     .maybeSingle();
   if (!row || row.revoked_at) return { ok: false, status: 401, message: "This key is invalid or was revoked." };
+  if (row.expires_at && Date.parse(row.expires_at) < Date.now()) {
+    return { ok: false, status: 401, message: "This connection's access token expired. Refresh it or connect again." };
+  }
 
   const since = new Date(Date.now() - 60_000).toISOString();
   const [{ data: org }, { data: sub }, { count: recent }] = await Promise.all([
@@ -42,7 +46,7 @@ export async function authenticateAgent(db: AdminClient, authorization: string |
       org: toOrg(org),
       plan: plan!,
       keyId: row.id,
-      access: row.access === "read" ? "read" : "read_write",
+      access: isAccessLevel(row.access) ? row.access : "read",
       userId: row.created_by,
     },
   };

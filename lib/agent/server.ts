@@ -2,12 +2,26 @@ import "server-only";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { resolveDay } from "@/lib/agent/dates";
+import { accessAllows, type AccessLevel } from "@/lib/agent/oauth";
 import { SERVICE_NOTICE_WINDOW } from "@/lib/automation/compliance";
 import { formatDuration, formatPercent } from "@/lib/automation/metrics";
 import { selectNoticeRecipients } from "@/lib/automation/recipients";
 import { REVIEW_REASON_TEXT } from "@/lib/automation/reviews";
 import { effectiveStatus, FREQUENCY_LABEL, isScheduledOn, type Frequency } from "@/lib/automation/schedule";
 import { SKIP_REASON_TEXT } from "@/lib/automation/outbox";
+import { CAMPAIGN_TEMPLATES, summarizeCampaign } from "@/lib/automation/campaigns";
+import { FREQUENCIES, firstServiceDate, parseServiceDay } from "@/lib/automation/schedule";
+import { MARKETING_CONSENT_METHODS } from "@/lib/consent";
+import { addRecurringCustomer } from "@/lib/services/customers";
+import { cancelService, pauseService, resumeService } from "@/lib/services/customer-actions";
+import { previewCampaign } from "@/lib/services/broadcasts";
+import { scheduleCampaign } from "@/lib/services/campaigns";
+import { cancelPending } from "@/lib/services/outbox";
+import { saveTemplateText } from "@/lib/services/templates";
+import { applySettingsChanges, parseSettings, type OrgSettings } from "@/lib/settings";
+import { templateTitle } from "@/lib/templates/defaults";
+import { findDefaultTemplate, validateTemplateBody } from "@/lib/templates/validate";
+import { zonedTimeToUtc } from "@/lib/time";
 import { hasFeature, type Plan } from "@/lib/entitlements";
 import { money } from "@/lib/format";
 import { LEAD_STAGES, stageLabel, type LeadStage } from "@/lib/leads/stages";
@@ -34,7 +48,7 @@ export type AgentContext = {
   org: Org;
   plan: Plan;
   keyId: string;
-  access: "read" | "read_write";
+  access: AccessLevel;
   /** The owner who created the key; texts are attributed to them. */
   userId: string | null;
 };
@@ -51,7 +65,8 @@ const OPEN: LeadStage[] = ["new", "contacted", "estimate_sent"];
 export function buildAgentServer(ctx: AgentContext): McpServer {
   const { db, org, plan } = ctx;
   const isLawn = org.business_type === "recurring";
-  const canAct = ctx.access === "read_write";
+  const canAct = accessAllows(ctx.access, "read_write");
+  const canDoEverything = accessAllows(ctx.access, "full");
   const today = () => localDateString(new Date(), org.timezone);
   const label = (stage: string) => stageLabel(org.business_type, stage as LeadStage);
   /** "2026-09-30" -> "Wed, Sep 30" for owner-facing summaries. */
@@ -377,6 +392,7 @@ export function buildAgentServer(ctx: AgentContext): McpServer {
           .filter(({ svc, c }) => !s || [c?.name, c?.phone, c?.address, svc.service_type].some((v) => v?.toLowerCase().includes(s)))
           .slice(0, 100)
           .map(({ svc, c }) => ({
+            customer_id: svc.id,
             customer: c?.name ?? null,
             phone: c ? formatUSPhone(c.phone) : null,
             address: c?.address ?? null,
@@ -388,6 +404,84 @@ export function buildAgentServer(ctx: AgentContext): McpServer {
             gets_offers: Boolean(c?.marketing_consent_at) && !c?.opted_out_at,
           }));
         return { result: ok(rows.length ? rows : "No customers match."), summary: `Listed ${rows.length} customer(s)` };
+      }),
+    );
+  }
+
+
+  const lawnCampaigns = isLawn && hasFeature(plan, "campaigns");
+
+  server.registerTool(
+    "list_message_templates",
+    {
+      title: "Message wording",
+      description: "The business's automatic text wording (missed-call reply, follow-ups, review request" + (isLawn ? ", rain delay, campaigns" : "") + ") in English and Spanish.",
+      annotations: { readOnlyHint: true },
+    },
+    logged("list_message_templates", async () => {
+      const { data } = await db.from("message_templates").select("key, language, category, body").eq("org_id", org.id).order("key");
+      const byKey = new Map<string, { key: string; title: string; kind: string; english?: string; spanish?: string }>();
+      for (const t of data ?? []) {
+        const row = byKey.get(t.key) ?? { key: t.key, title: templateTitle(t.key, org.business_type), kind: t.category };
+        if (t.language === "es") row.spanish = t.body;
+        else row.english = t.body;
+        byKey.set(t.key, row);
+      }
+      return {
+        result: ok({ placeholders: "{business_name} {business_phone} {first_name} {review_link} {service_day} {new_day}", templates: [...byKey.values()] }),
+        summary: "Looked at message wording",
+      };
+    }),
+  );
+
+  server.registerTool(
+    "get_automation_settings",
+    {
+      title: "Automation settings",
+      description: "What's texted automatically and when: missed-call replies, follow-up days/time, review requests, business hours.",
+      annotations: { readOnlyHint: true },
+    },
+    logged("get_automation_settings", async () => ({ result: ok(parseSettings(org.settings)), summary: "Looked at automation settings" })),
+  );
+
+  if (lawnCampaigns) {
+    server.registerTool(
+      "list_campaigns",
+      {
+        title: "Campaign results",
+        description: "Seasonal offer campaigns and how each did: texts sent, replies, new leads, jobs won.",
+        annotations: { readOnlyHint: true },
+      },
+      logged("list_campaigns", async () => {
+        const { data: campaigns } = await db
+          .from("broadcasts")
+          .select("id, name, status, scheduled_at, recipient_count, excluded")
+          .eq("org_id", org.id)
+          .eq("kind", "campaign")
+          .order("scheduled_at", { ascending: false })
+          .limit(20);
+        const ids = (campaigns ?? []).map((c) => c.id);
+        const [{ data: sched }, { data: leads }] = await Promise.all([
+          db.from("scheduled_messages").select("broadcast_id, status, contact_id").in("broadcast_id", ids),
+          db.from("leads").select("broadcast_id, stage").in("broadcast_id", ids),
+        ]);
+        const rows = (campaigns ?? []).map((c) => {
+          const r = summarizeCampaign({
+            scheduledStatuses: (sched ?? []).filter((x) => x.broadcast_id === c.id).map((x) => x.status),
+            replyContactIds: [],
+            leadStages: (leads ?? []).filter((l) => l.broadcast_id === c.id).map((l) => l.stage),
+          });
+          return {
+            campaign_id: c.id,
+            name: c.name,
+            status: c.status === "canceled" ? "canceled" : r.pending ? `scheduled for ${when(c.scheduled_at)}` : `sent ${when(c.scheduled_at)}`,
+            texts_sent: r.sent,
+            new_leads: r.leads,
+            won: r.won,
+            left_out_no_consent: (c.excluded as { no_marketing_consent?: number } | null)?.no_marketing_consent ?? 0,
+          };
+        });
+        return { result: ok(rows.length ? rows : "No campaigns yet."), summary: `Looked at ${rows.length} campaign(s)` };
       }),
     );
   }
@@ -581,6 +675,393 @@ export function buildAgentServer(ctx: AgentContext): McpServer {
           result: ok(`${r.visits} visit(s) marked done for ${day}.${r.reviewsScheduled ? ` ${r.reviewsScheduled} review request(s) scheduled.` : ""}`),
           summary: `Marked ${r.visits} visit(s) done for ${nice(day)}`,
         };
+      }),
+    );
+  }
+
+
+  server.registerTool(
+    "update_contact",
+    {
+      title: "Update a lead's contact details",
+      description: "Change a lead's name, text language, notes, or mark them as never getting automatic texts (suppliers, family).",
+      inputSchema: {
+        lead_id: z.string().uuid(),
+        name: z.string().max(100).optional(),
+        language: z.enum(["en", "es"]).optional(),
+        never_auto_text: z.boolean().optional(),
+        notes: z.string().max(2000).optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    logged("update_contact", async ({ lead_id, name, language, never_auto_text, notes }) => {
+      const loaded = await loadLead(db, org.id, lead_id);
+      if (!loaded) return { result: fail("No lead with that id in this business."), summary: "Lead not found" };
+      const update: { name?: string | null; preferred_language?: string; do_not_autotext?: boolean; notes?: string | null } = {};
+      if (name !== undefined) update.name = name.trim() || null;
+      if (language) update.preferred_language = language;
+      if (never_auto_text !== undefined) update.do_not_autotext = never_auto_text;
+      if (notes !== undefined) update.notes = notes.trim() || null;
+      if (!Object.keys(update).length) return { result: fail("Nothing to change."), summary: "No contact changes" };
+      await db.from("contacts").update(update).eq("id", loaded.contact.id).eq("org_id", org.id);
+      return { result: ok("Contact updated."), summary: `Updated contact details for ${update.name ?? loaded.contact.name ?? formatUSPhone(loaded.contact.phone)}` };
+    }),
+  );
+
+  server.registerTool(
+    "cancel_follow_ups",
+    {
+      title: "Stop follow-ups",
+      description: "Cancel a lead's remaining automatic estimate follow-up texts.",
+      inputSchema: { lead_id: z.string().uuid() },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    logged("cancel_follow_ups", async ({ lead_id }) => {
+      const loaded = await loadLead(db, org.id, lead_id);
+      if (!loaded) return { result: fail("No lead with that id in this business."), summary: "Lead not found" };
+      await cancelPending(db, { orgId: org.id, leadId: lead_id, kind: "estimate_followup" }, "canceled");
+      return { result: ok("Remaining follow-ups canceled."), summary: `Canceled follow-ups for ${loaded.contact.name ?? formatUSPhone(loaded.contact.phone)}` };
+    }),
+  );
+
+  if (isLawn && hasFeature(plan, "recurring_customers")) {
+    server.registerTool(
+      "add_customer",
+      {
+        title: "Add a recurring customer",
+        description:
+          "Add a lawn care customer with their service day and frequency. Only do this if the owner confirms the customer agreed to texts about their service. " +
+          "Only record offers/promotions consent if the owner says the customer agreed IN WRITING.",
+        inputSchema: {
+          phone: z.string(),
+          name: z.string().max(100).optional(),
+          address: z.string().max(300).optional(),
+          language: z.enum(["en", "es"]).optional(),
+          service: z.string().min(1).max(60).describe('e.g. "Mowing", "Full service"'),
+          frequency: z.enum(FREQUENCIES),
+          service_day: z.string().describe('Weekday, e.g. "Tuesday"'),
+          price_per_visit_dollars: z.number().min(0).max(100_000).optional(),
+          first_visit: z.string().optional().describe('YYYY-MM-DD, "today", or a weekday. Default today.'),
+          service_texts_consent: z.literal(true).describe("Owner confirmed the customer agreed to texts about their service."),
+          written_offers_consent: z.enum(Object.keys(MARKETING_CONSENT_METHODS) as [keyof typeof MARKETING_CONSENT_METHODS]).optional().describe("How they agreed in writing to offers, if they did."),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false },
+      },
+      logged("add_customer", async (a) => {
+        const phone = normalizeUSPhone(a.phone);
+        if (!phone) return { result: fail("That isn't a valid 10-digit US phone number."), summary: "Bad phone number" };
+        const day = parseServiceDay(a.service_day);
+        if (day === null) return { result: fail(`"${a.service_day}" isn't a day of the week.`), summary: "Bad service day" };
+        const start = resolveDay(a.first_visit, today());
+        if (!start) return { result: fail(`Couldn't understand the first visit date "${a.first_visit}".`), summary: "Bad start date" };
+        const { serviceId } = await addRecurringCustomer(
+          db,
+          org.id,
+          {
+            phone,
+            name: a.name?.trim() || null,
+            address: a.address?.trim() || null,
+            email: null,
+            language: a.language ?? org.default_language,
+            service_type: a.service.trim(),
+            frequency: a.frequency,
+            service_day: day,
+            price_cents: a.price_per_visit_dollars === undefined ? null : Math.round(a.price_per_visit_dollars * 100),
+            start_date: start,
+          },
+          {
+            serviceTextsMethod: "owner_recorded",
+            marketing: a.written_offers_consent ? { method: a.written_offers_consent, evidence: "Owner confirmed through their AI assistant." } : null,
+          },
+        );
+        return {
+          result: ok({
+            customer_id: serviceId,
+            message: `Added. ${FREQUENCY_LABEL[a.frequency]} on ${DAY_NAMES.en[day]}s; first visit ${nice(firstServiceDate({ start_date: start, service_day: day }))}.`,
+          }),
+          summary: `Added customer ${a.name ?? formatUSPhone(phone)}`,
+        };
+      }),
+    );
+
+    server.registerTool(
+      "change_customer_status",
+      {
+        title: "Pause, resume or cancel a customer",
+        description: "Pause service (optionally until a date), resume it, or cancel it with a reason. Get customer_id from list_customers.",
+        inputSchema: {
+          customer_id: z.string().uuid(),
+          action: z.enum(["pause", "resume", "cancel"]),
+          resume_on: z.string().optional().describe("For pause: the date they come back (YYYY-MM-DD or weekday)."),
+          reason: z.string().max(300).optional().describe("For cancel: why (e.g. Price, Moving)."),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false },
+      },
+      logged("change_customer_status", async ({ customer_id, action, resume_on, reason }) => {
+        let done = false;
+        if (action === "pause") {
+          const until = resume_on ? resolveDay(resume_on, today(), { after: true }) : null;
+          if (resume_on && !until) return { result: fail(`The resume date must be in the future. Couldn't use "${resume_on}".`), summary: "Bad resume date" };
+          done = await pauseService(db, org.id, customer_id, until);
+          if (done) return { result: ok(until ? `Paused until ${nice(until)}.` : "Paused."), summary: `Paused a customer${until ? ` until ${nice(until)}` : ""}` };
+        } else if (action === "resume") {
+          done = await resumeService(db, org.id, customer_id);
+          if (done) return { result: ok("Back on the schedule."), summary: "Resumed a customer" };
+        } else {
+          done = await cancelService(db, org.id, customer_id, reason?.trim() || null, org.timezone);
+          if (done) return { result: ok("Service canceled."), summary: `Canceled a customer${reason ? ` (${reason})` : ""}` };
+        }
+        return { result: fail("No customer with that id in this business."), summary: "Customer not found" };
+      }),
+    );
+  }
+
+  if (isLawn && hasFeature(plan, "bulk_messaging")) {
+    server.registerTool(
+      "text_scheduled_customers",
+      {
+        title: "Text a day's customers",
+        description:
+          "Send a 'running late' notice or a custom message to everyone scheduled on a day (default today). For rain delays use send_rain_delay. " +
+          "Call first WITHOUT confirm to preview; call again with confirm=true after the owner says yes.",
+        inputSchema: {
+          kind: z.enum(["running_late", "custom"]),
+          date: z.string().optional(),
+          message: z.string().max(600).optional().describe("For custom: the English text. Include {business_name}."),
+          message_spanish: z.string().max(600).optional().describe("For custom: Spanish text (optional; English is used if missing)."),
+          confirm: z.boolean().optional(),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+      },
+      logged("text_scheduled_customers", async ({ kind, date, message, message_spanish, confirm }) => {
+        const day = resolveDay(date, today());
+        if (!day) return { result: fail(`Couldn't understand the date "${date}".`), summary: "Bad date" };
+        let bodyEn = "";
+        let bodyEs: string | null = null;
+        if (kind === "running_late") {
+          const { data: tpl } = await db.from("message_templates").select("language, body").eq("org_id", org.id).eq("key", "running_late");
+          bodyEn = tpl?.find((t) => t.language === "en")?.body ?? "";
+          bodyEs = tpl?.find((t) => t.language === "es")?.body ?? null;
+        } else {
+          bodyEn = message?.trim() ?? "";
+          bodyEs = message_spanish?.trim() || null;
+          if (!bodyEn) return { result: fail("Write the message for a custom text."), summary: "Missing message" };
+          if (!bodyEn.includes("{business_name}")) bodyEn = `{business_name}: ${bodyEn}`;
+          if (bodyEs && !bodyEs.includes("{business_name}")) bodyEs = `{business_name}: ${bodyEs}`;
+        }
+        const data = await loadRecipientData(db, org.id);
+        const selection = selectNoticeRecipients(data.services, data.contacts, day, data.moves);
+        if (selection.recipients.length === 0) {
+          return { result: ok(`Nobody who can receive texts is scheduled on ${nice(day)}.`), summary: `Nobody to text on ${nice(day)}` };
+        }
+        const values = { business_name: org.name };
+        if (!confirm) {
+          return {
+            result: ok({
+              preview_only: true,
+              day,
+              customers_to_text: selection.recipients.length,
+              in_spanish: selection.recipients.filter((r) => r.language === "es").length,
+              english_text: renderTemplate(bodyEn, values),
+              spanish_text: bodyEs ? renderTemplate(bodyEs, values) : "(Spanish speakers get the English text)",
+              next_step: "Show this to the owner. If they approve, call again with the same details and confirm=true.",
+            }),
+            summary: `Previewed a ${kind === "running_late" ? "running-late" : "custom"} text for ${nice(day)} (${selection.recipients.length} customers)`,
+          };
+        }
+        const created = await createServiceNotice(db, org.id, {
+          name: kind === "running_late" ? "Running late" : "Message to today's customers",
+          templateKey: kind === "running_late" ? "running_late" : null,
+          bodyEn,
+          bodyEs,
+          date: day,
+          newDate: null,
+          userId: ctx.userId,
+        });
+        const sent = isWithinWindow(new Date(), org.timezone, SERVICE_NOTICE_WINDOW)
+          ? (await runDispatch(db, { broadcastId: created.broadcastId })).sent
+          : 0;
+        return {
+          result: ok(sent ? `Sent to ${sent} of ${created.recipients} customers.` : `Queued for ${created.recipients} customers (goes out at 6am).`),
+          summary: `Sent a ${kind === "running_late" ? "running-late" : "custom"} text for ${nice(day)} to ${created.recipients} customers`,
+        };
+      }),
+    );
+  }
+
+  if (!canDoEverything) return server;
+
+  // --- "Everything" keys only ---------------------------------------------------
+
+  server.registerTool(
+    "update_message_template",
+    {
+      title: "Change message wording",
+      description: "Change the wording of one automatic text in one language. Get keys from list_message_templates. Keep {business_name}.",
+      inputSchema: {
+        key: z.string().regex(/^[a-z0-9_]{1,50}$/),
+        language: z.enum(["en", "es"]),
+        text: z.string().min(1).max(1000),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    logged("update_message_template", async ({ key, language, text }) => {
+      const def = findDefaultTemplate(key, org.business_type);
+      if (!def) return { result: fail(`There's no message called "${key}".`), summary: "Unknown template" };
+      const problem = validateTemplateBody(text.trim(), language, def);
+      if (problem) return { result: fail(problem), summary: `Wording not saved: ${problem}` };
+      const saved = await saveTemplateText(db, org.id, { key, language, body: text.trim(), category: def.category });
+      if (!saved) return { result: fail("Couldn't save. Try again."), summary: "Wording not saved" };
+      return {
+        result: ok(
+          `Saved. Preview: ${renderTemplate(text.trim(), {
+            business_name: org.name,
+            business_phone: "(843) 555-0100",
+            first_name: language === "es" ? "María" : "Mike",
+            review_link: org.google_review_url ?? "https://g.page/r/your-review-link",
+            service_day: DAY_NAMES[language][2],
+            new_day: DAY_NAMES[language][4],
+          })}`,
+        ),
+        summary: `Changed the ${language === "es" ? "Spanish" : "English"} wording of "${templateTitle(key, org.business_type)}"`,
+      };
+    }),
+  );
+
+  server.registerTool(
+    "update_automation_settings",
+    {
+      title: "Change automation settings",
+      description: "Change what's texted automatically and when. Only include the settings to change.",
+      inputSchema: {
+        missedCallTextEnabled: z.boolean().optional(),
+        followUpsEnabled: z.boolean().optional(),
+        followUpDays: z.array(z.number().int()).optional().describe("Days after the estimate, e.g. [2, 5, 10]."),
+        followUpHour: z.number().int().optional().describe("Hour of day, 8–18."),
+        stopFollowUpsOnReply: z.boolean().optional(),
+        reviewsEnabled: z.boolean().optional(),
+        reviewDelayHours: z.number().int().optional(),
+        reviewAfterVisits: z.number().int().optional(),
+        businessHoursStart: z.number().int().optional(),
+        businessHoursEnd: z.number().int().optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    logged("update_automation_settings", async (changes) => {
+      const { data: fresh } = await db.from("organizations").select("settings").eq("id", org.id).single();
+      const clean = Object.fromEntries(Object.entries(changes).filter(([, v]) => v !== undefined)) as Partial<OrgSettings>;
+      if (!Object.keys(clean).length) return { result: fail("Nothing to change."), summary: "No settings changes" };
+      const result = applySettingsChanges(parseSettings(fresh?.settings), clean);
+      if ("error" in result) return { result: fail(result.error), summary: `Settings not saved: ${result.error}` };
+      await db.from("organizations").update({ settings: result.settings }).eq("id", org.id);
+      return { result: ok({ saved: true, settings: result.settings }), summary: `Changed automation settings: ${Object.keys(clean).join(", ")}` };
+    }),
+  );
+
+  if (lawnCampaigns) {
+    server.registerTool(
+      "send_campaign",
+      {
+        title: "Seasonal campaign",
+        description:
+          "Send a seasonal offer to customers who agreed IN WRITING to get offers (others are left out automatically). Offers only go out 8am–8pm. " +
+          "Call first WITHOUT confirm to preview; call again with confirm=true after the owner says yes.",
+        inputSchema: {
+          offer: z.enum(CAMPAIGN_TEMPLATES.map((t) => t.key) as [string, ...string[]]),
+          audience: z.array(z.enum(["active", "past"])).min(1).optional().describe('Default ["active"]. "past" = canceled customers (win-back).'),
+          service_types: z.array(z.string()).optional().describe("Only customers with these services (optional)."),
+          send_on: z.string().optional().describe('Default "today". YYYY-MM-DD, "tomorrow" or a weekday.'),
+          send_time: z.string().regex(/^\d{1,2}:\d{2}$/).optional().describe('24-hour local time, e.g. "10:00". Default: right away.'),
+          message: z.string().max(600).optional().describe("Custom English wording (optional; the saved wording is used otherwise)."),
+          message_spanish: z.string().max(600).optional(),
+          confirm: z.boolean().optional(),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+      },
+      logged("send_campaign", async (a) => {
+        const offer = CAMPAIGN_TEMPLATES.find((t) => t.key === a.offer)!;
+        const audience = { statuses: a.audience ?? ["active" as const], serviceTypes: a.service_types ?? [] };
+        const day = resolveDay(a.send_on, today());
+        if (!day) return { result: fail(`Couldn't understand the date "${a.send_on}".`), summary: "Bad date" };
+        let requested = new Date();
+        if (a.send_time) {
+          const [h, m] = a.send_time.split(":").map(Number);
+          requested = zonedTimeToUtc(day, h, m, org.timezone);
+        } else if (day !== today()) {
+          requested = zonedTimeToUtc(day, 10, 0, org.timezone);
+        }
+        if (requested.getTime() < Date.now() - 60_000) return { result: fail("That time has already passed."), summary: "Past time" };
+
+        const { data: tpl } = await db.from("message_templates").select("language, body").eq("org_id", org.id).eq("key", offer.key);
+        const bodyEn = a.message?.trim() || tpl?.find((t) => t.language === "en")?.body || "";
+        const bodyEs = a.message_spanish?.trim() || (a.message ? null : tpl?.find((t) => t.language === "es")?.body) || null;
+        for (const [body, lang] of [[bodyEn, "en"], [bodyEs, "es"]] as const) {
+          if (!body) continue;
+          const problem = validateTemplateBody(body, lang, findDefaultTemplate(offer.key, org.business_type)!);
+          if (problem) return { result: fail(problem), summary: `Campaign not sent: ${problem}` };
+        }
+
+        const selection = await previewCampaign(db, org.id, audience, today());
+        if (selection.recipients.length === 0) {
+          return {
+            result: ok(`Nobody in that group has written consent to get offers (${selection.excluded.no_marketing_consent} left out). Record consent on their customer page first.`),
+            summary: "Campaign preview: nobody with consent",
+          };
+        }
+        const values = { business_name: org.name, first_name: "Mike" };
+        if (!a.confirm) {
+          return {
+            result: ok({
+              preview_only: true,
+              offer: offer.label,
+              customers_to_text: selection.recipients.length,
+              in_spanish: selection.recipients.filter((r) => r.language === "es").length,
+              left_out_no_written_consent: selection.excluded.no_marketing_consent,
+              left_out_opted_out: selection.excluded.opted_out,
+              sends: a.send_time || day !== today() ? when(requested.toISOString()) : "right away (or 8am if it's after hours)",
+              english_text: `${renderTemplate(bodyEn, values)}\nReply STOP to opt out.`,
+              spanish_text: bodyEs ? `${renderTemplate(bodyEs, { ...values, first_name: "María" })}\nResponda STOP para no recibir más mensajes.` : null,
+              next_step: "Show this to the owner. If they approve, call again with the same details and confirm=true.",
+            }),
+            summary: `Previewed a ${offer.label} campaign (${selection.recipients.length} customers)`,
+          };
+        }
+        const season = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: org.timezone }).format(requested);
+        const result = await scheduleCampaign(db, org, {
+          name: `${offer.label}: ${season}`,
+          templateKey: offer.key,
+          bodyEn,
+          bodyEs,
+          audience,
+          requestedAt: requested,
+          userId: ctx.userId,
+        });
+        let sent = 0;
+        if (result.sendAt.getTime() <= Date.now()) sent = (await runDispatch(db, { broadcastId: result.broadcastId })).sent;
+        return {
+          result: ok({
+            campaign_id: result.broadcastId,
+            message: sent ? `Sent to ${sent} of ${result.recipients} customers.` : `Scheduled for ${when(result.sendAt.toISOString())} to ${result.recipients} customers.`,
+          }),
+          summary: `${sent ? "Sent" : "Scheduled"} a ${offer.label} campaign to ${result.recipients} customers`,
+        };
+      }),
+    );
+
+    server.registerTool(
+      "cancel_campaign",
+      {
+        title: "Cancel a scheduled campaign",
+        description: "Stop a campaign's texts that haven't gone out yet. Get campaign_id from list_campaigns.",
+        inputSchema: { campaign_id: z.string().uuid() },
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+      },
+      logged("cancel_campaign", async ({ campaign_id }) => {
+        const { data: c } = await db.from("broadcasts").select("id, name").eq("id", campaign_id).eq("org_id", org.id).eq("kind", "campaign").maybeSingle();
+        if (!c) return { result: fail("No campaign with that id in this business."), summary: "Campaign not found" };
+        await db.from("broadcasts").update({ status: "canceled" }).eq("id", c.id);
+        await cancelPending(db, { orgId: org.id, broadcastId: c.id }, "broadcast_canceled");
+        return { result: ok(`"${c.name}" canceled. Texts already sent can't be unsent.`), summary: `Canceled campaign "${c.name}"` };
       }),
     );
   }

@@ -49,3 +49,49 @@ describe("assistant keys", () => {
     expect(keyFromAuthHeader("llk_abc")).toBeNull();
   });
 });
+
+import {
+  accessAllows,
+  accessFromScope,
+  isAllowedRedirectUri,
+  pkceChallenge,
+  verifyPkce,
+} from "@/lib/agent/oauth";
+
+describe("one-tap connect (OAuth) rules", () => {
+  it("matches the PKCE example from the OAuth standard (RFC 7636)", () => {
+    const verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+    expect(pkceChallenge(verifier)).toBe("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
+    expect(verifyPkce(verifier, "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM")).toBe(true);
+  });
+
+  it("rejects a wrong, missing or too-short verifier", () => {
+    expect(verifyPkce("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXX", "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM")).toBe(false);
+    expect(verifyPkce(null, "x")).toBe(false);
+    expect(verifyPkce("short", pkceChallenge("short"))).toBe(false);
+  });
+
+  it("only sends owners back to https or their own computer", () => {
+    expect(isAllowedRedirectUri("https://claude.ai/api/mcp/auth_callback")).toBe(true);
+    expect(isAllowedRedirectUri("http://localhost:6274/oauth/callback")).toBe(true);
+    expect(isAllowedRedirectUri("http://127.0.0.1:33418/callback")).toBe(true);
+    expect(isAllowedRedirectUri("http://evil.example.com/cb")).toBe(false);
+    expect(isAllowedRedirectUri("https://ok.example.com/cb#frag")).toBe(false);
+    expect(isAllowedRedirectUri("javascript:alert(1)")).toBe(false);
+    expect(isAllowedRedirectUri("not a url")).toBe(false);
+  });
+
+  it("orders access levels", () => {
+    expect(accessAllows("full", "read_write")).toBe(true);
+    expect(accessAllows("read_write", "full")).toBe(false);
+    expect(accessAllows("read", "read")).toBe(true);
+    expect(accessAllows("bogus", "read")).toBe(false);
+  });
+
+  it("reads the level an app asks for, defaulting to day-to-day work", () => {
+    expect(accessFromScope("full")).toBe("full");
+    expect(accessFromScope("read")).toBe("read");
+    expect(accessFromScope(undefined)).toBe("read_write");
+    expect(accessFromScope("openid read_write")).toBe("read_write");
+  });
+});

@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { FormMessage } from "@/components/form-message";
 import { SubmitButton } from "@/components/submit-button";
+import { ACCESS_DESCRIPTION, ACCESS_LABEL, ACCESS_LEVELS } from "@/lib/agent/oauth";
 import { createAssistantKey } from "./actions";
 
 function CopyBox({ label, value }: { label: string; value: string }) {
@@ -43,22 +44,15 @@ export function CreateKeyForm({ endpoint }: { endpoint: string }) {
         </div>
         <fieldset className="flex flex-col gap-2">
           <legend className="label">What can it do?</legend>
-          <label className="flex items-start gap-3">
-            <input type="radio" name="access" value="read_write" defaultChecked className="mt-1 h-5 w-5 accent-brand-600" />
-            <span>
-              <span className="block font-medium">Read and act</span>
-              <span className="block text-sm text-slate-600">
-                Check leads and numbers, reply to leads, change stages, mark jobs done, send rain delays (after you confirm).
+          {ACCESS_LEVELS.map((level) => (
+            <label key={level} className="flex items-start gap-3">
+              <input type="radio" name="access" value={level} defaultChecked={level === "read_write"} className="mt-1 h-5 w-5 accent-brand-600" />
+              <span>
+                <span className="block font-medium">{ACCESS_LABEL[level]}</span>
+                <span className="block text-sm text-slate-600">{ACCESS_DESCRIPTION[level]}</span>
               </span>
-            </span>
-          </label>
-          <label className="flex items-start gap-3">
-            <input type="radio" name="access" value="read" className="mt-1 h-5 w-5 accent-brand-600" />
-            <span>
-              <span className="block font-medium">Read only</span>
-              <span className="block text-sm text-slate-600">Look things up. Can&apos;t text anyone or change anything.</span>
-            </span>
-          </label>
+            </label>
+          ))}
         </fieldset>
         <FormMessage state={state?.key ? undefined : state} />
         <SubmitButton pendingText="Creating…">Create key</SubmitButton>

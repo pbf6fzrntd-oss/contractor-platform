@@ -7,6 +7,8 @@ import { requireAppContext } from "@/lib/auth/context";
 import { FREQUENCIES } from "@/lib/automation/schedule";
 import { parseDollars } from "@/lib/format";
 import { MARKETING_CONSENT_METHODS } from "@/lib/consent";
+import { cancelService as cancelSvc, pauseService as pauseSvc, resumeService as resumeSvc } from "@/lib/services/customer-actions";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { localDateString } from "@/lib/time";
 
@@ -61,7 +63,7 @@ export async function pauseService(id: string, _prev: FormState, formData: FormD
   const until = String(formData.get("paused_until") ?? "");
   const today = localDateString(new Date(), loaded.ctx.org.timezone);
   if (until && (!/^\d{4}-\d{2}-\d{2}$/.test(until) || until <= today)) return { error: "Pick a resume date in the future." };
-  await loaded.supabase.from("recurring_services").update({ status: "paused", paused_until: until || null }).eq("id", id);
+  await pauseSvc(createAdminClient(), loaded.ctx.org.id, id, until || null);
   done(id);
   return { success: until ? "Paused. They'll be back on the schedule automatically." : "Paused." };
 }
@@ -69,7 +71,7 @@ export async function pauseService(id: string, _prev: FormState, formData: FormD
 export async function resumeService(id: string): Promise<void> {
   const loaded = await loadService(id);
   if (!loaded) return;
-  await loaded.supabase.from("recurring_services").update({ status: "active", paused_until: null, canceled_on: null, cancel_reason: null }).eq("id", id);
+  await resumeSvc(createAdminClient(), loaded.ctx.org.id, id);
   done(id);
 }
 
@@ -77,15 +79,7 @@ export async function cancelService(id: string, _prev: FormState, formData: Form
   const loaded = await loadService(id);
   if (!loaded) return { error: "Customer not found." };
   const reason = String(formData.get("cancel_reason") ?? "").slice(0, 300) || null;
-  await loaded.supabase
-    .from("recurring_services")
-    .update({
-      status: "canceled",
-      paused_until: null,
-      canceled_on: localDateString(new Date(), loaded.ctx.org.timezone),
-      cancel_reason: reason,
-    })
-    .eq("id", id);
+  await cancelSvc(createAdminClient(), loaded.ctx.org.id, id, reason, loaded.ctx.org.timezone);
   done(id);
   return { success: "Canceled." };
 }

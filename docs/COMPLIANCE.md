@@ -22,7 +22,7 @@ Not legal advice. Have an attorney who knows the TCPA review this before launch.
 | Missed-call text-back: one text, no promotions, not repeated within 12 hours | `lib/automation/missed-call.ts` |
 | Texting to the public is off until carrier (A2P) registration is marked approved | `lib/messaging/send.ts` → `loadSendingContext` |
 | Imports and manually added customers require the owner to confirm service-text consent; marketing consent requires choosing how it was given | Customers → Add / Import |
-| AI assistants (MCP) send texts only through the same pipeline, can't run campaigns, need a preview + confirm for rain delays, and every action is logged for the owner; texts are labeled "via AI assistant" | `lib/agent/server.ts` |
+| AI assistants (MCP) send texts only through the same pipeline; bulk texts and campaigns need a preview + confirm; campaigns need the owner's "Everything" level and still only reach customers with written consent; adding a customer requires the owner to confirm service-text consent; every action is logged; texts are labeled "via AI assistant" | `lib/agent/server.ts` |
 | Public privacy policy (with required "no sharing of mobile information" language), terms, and SMS terms (frequency, rates, STOP/HELP) | `/privacy`, `/terms`, `/sms-terms` |
 
 ## Your to-do list
