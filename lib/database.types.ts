@@ -230,6 +230,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      jobs: {
+        Row: {
+          id: string;
+          org_id: string;
+          contact_id: string;
+          lead_id: string | null;
+          recurring_service_id: string | null;
+          description: string | null;
+          amount_cents: number | null;
+          completed_on: string;
+          completed_at: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          contact_id: string;
+          lead_id?: string | null;
+          recurring_service_id?: string | null;
+          description?: string | null;
+          amount_cents?: number | null;
+          completed_on: string;
+          completed_at?: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          contact_id?: string;
+          lead_id?: string | null;
+          recurring_service_id?: string | null;
+          description?: string | null;
+          amount_cents?: number | null;
+          completed_on?: string;
+          completed_at?: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       leads: {
         Row: {
           id: string;

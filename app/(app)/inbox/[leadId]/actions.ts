@@ -12,6 +12,8 @@ import { loadSendingContext, sendToContact } from "@/lib/messaging/send";
 import { onLeadStageChanged } from "@/lib/services/automations";
 import { loadLeadForUser } from "@/lib/services/leads";
 import { cancelPending } from "@/lib/services/outbox";
+import { recordJobCompleted } from "@/lib/services/jobs";
+import { REVIEW_REASON_TEXT } from "@/lib/automation/reviews";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 function refresh(leadId: string) {
@@ -141,4 +143,31 @@ export async function cancelFollowUps(leadId: string): Promise<void> {
   if (!loaded) return;
   await cancelPending(createAdminClient(), { orgId: ctx.org.id, leadId, kind: "estimate_followup" }, "canceled");
   refresh(leadId);
+}
+
+export async function markJobComplete(leadId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const ctx = await requireAppContext();
+  const loaded = await loadLeadForUser(ctx, leadId);
+  if (!loaded) return { error: "Lead not found." };
+  const amount = parseDollars(formData.get("amount")?.toString());
+  if (amount === undefined) return { error: "Enter the job amount in dollars, like 4500." };
+  const description = String(formData.get("description") ?? "").trim().slice(0, 500) || null;
+
+  const db = createAdminClient();
+  const { review } = await recordJobCompleted(db, ctx.org.id, {
+    contactId: loaded.contact.id,
+    leadId,
+    description,
+    amountCents: amount ?? loaded.lead.estimate_amount_cents,
+    userId: ctx.userId,
+  });
+
+  if (loaded.lead.stage !== "won") {
+    await db.from("leads").update({ stage: "won" }).eq("id", leadId);
+    await onLeadStageChanged(db, ctx.org.id, leadId, { from: loaded.lead.stage as LeadStage, to: "won" });
+  }
+  refresh(leadId);
+  return review.schedule
+    ? { success: "Job marked complete. A Google review request is scheduled." }
+    : { success: `Job marked complete. ${REVIEW_REASON_TEXT[review.reason]}` };
 }

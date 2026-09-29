@@ -23,7 +23,7 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, ro
 - [x] M1 Twilio number + missed-call text-back + STOP/HELP (+ texting simulator, since carrier registration waits on the founder's LLC/EIN)
 - [x] M2 Lead inbox + two-way texting
 - [x] M3 Outbox/scheduler + estimate follow-ups + template editor
-- [ ] M4 Jobs + review requests
+- [x] M4 Jobs + review requests
 - [ ] M5 Dashboard + hardening → pilots
 - [ ] M6 Recurring customers + CSV import · M7 Today/rain delay · M8 Campaigns · M9 Recurring metrics
 - [ ] M10 Stripe · M11 Self-serve A2P registration
