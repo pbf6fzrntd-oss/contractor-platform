@@ -13,7 +13,8 @@
     "db:test:setup": "bash scripts/setup-test-db.sh",
     "db:push": "supabase db push",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build",
-    "db:types": "node scripts/gen-db-types.mjs"
+    "db:types": "node scripts/gen-db-types.mjs",
+    "demo:seed": "tsx --env-file=.env.local scripts/seed-demo.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -36,6 +37,7 @@
     "pg": "^8.23.0",
     "supabase": "^2.118.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.2"
   }
