@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/* Brand colors: change these to re-theme the whole app. */
+@theme {
+  --color-brand-50: #ecfdf5;
+  --color-brand-100: #d1fae5;
+  --color-brand-600: #047857;
+  --color-brand-700: #065f46;
+  --color-brand-800: #064e3b;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  @apply bg-slate-50 text-slate-900 antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Shared building blocks. Big tap targets (48px) for use with work gloves. */
+@utility card {
+  @apply rounded-2xl border border-slate-200 bg-white p-4 shadow-sm;
+}
+@utility label {
+  @apply mb-1 block text-sm font-medium text-slate-700;
+}
+@utility input {
+  @apply block min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-slate-100 disabled:text-slate-500;
+}
+@utility hint {
+  @apply mt-1 text-sm text-slate-500;
+}
+@utility btn {
+  @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-base font-semibold transition disabled:opacity-60;
+}
+@utility btn-primary {
+  @apply btn bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800;
+}
+@utility btn-secondary {
+  @apply btn border border-slate-300 bg-white text-slate-800 hover:bg-slate-50;
+}
+@utility btn-danger {
+  @apply btn border border-red-200 bg-white text-red-700 hover:bg-red-50;
+}
+@utility link {
+  @apply font-medium text-brand-700 underline underline-offset-2;
+}

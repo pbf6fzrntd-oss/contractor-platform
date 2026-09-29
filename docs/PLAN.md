@@ -1,6 +1,6 @@
 # Build Plan — Contractor Text & Follow-up Platform (MVP)
 
-Status: **Draft for founder review.** No application code has been written yet.
+Status: **Approved.** Milestone 0 complete; see CLAUDE.md for current status.
 Last updated: 2026-09-29
 
 ---
@@ -230,6 +230,7 @@ Each milestone ends with something you can test on your phone. After each one I'
 - Connect a Twilio number to an org (both setup options from §7)
 - Missed call → text-back → call and message logged → owner alert
 - STOP/HELP/START handling in English and Spanish, consent log
+- Texting simulator (fake incoming calls/texts) so everything works before carrier registration
 - Public website pages: privacy policy, terms, SMS terms (needed for A2P)
 - *Start your own A2P registration during this milestone.*
 - *You test:* call the number from your cell, don't answer, and time the text (goal: under 60 seconds, usually about 5). Reply STOP, then confirm nothing else is sent and the opt-out appears in the log.
@@ -313,9 +314,12 @@ Each milestone ends with something you can test on your phone. After each one I'
 
 ---
 
-## 10. Decisions I need from you before Milestone 0
+## 10. Decisions made (2026-09-29)
 
-1. **Default phone setup.** I recommend "keep your number" (conditional forwarding) as the default, with "new number" as an option. OK?
-2. **Pilot billing.** Invoice pilots by hand and build Stripe at M10, or build Stripe right after M5?
-3. **Your company.** Do you already have an LLC + EIN and a domain name? Both are needed to start Twilio A2P registration in Milestone 1.
-4. **Team logins.** Owner + office manager is assumed (2 roles: owner, member). Do crew leads need logins in the MVP, or can that wait?
+1. **Default phone setup:** "keep your number" (forward unanswered calls to the Twilio number). "New number" stays available as an option.
+2. **Billing:** pilot customers are invoiced by hand until Stripe is added in M10.
+3. **LLC, EIN and domain:** come later, after the founder has seen the whole prototype. Consequences:
+   - Carrier (A2P) registration can't start yet, so real texting to the public waits.
+   - M1 adds a **texting simulator**: a screen that fakes an incoming call or text and shows what the app would send, so every feature can be built and demoed without Twilio approval. A Twilio trial account can also be used to text *your own verified phone numbers* for live testing.
+   - Until there's a domain, the app runs on a free `*.vercel.app` address.
+4. **Team:** owner + office manager roles only. Crew-lead logins can come later.
