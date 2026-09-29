@@ -1,9 +1,9 @@
 import { BUSINESS_TYPE_INFO, BUSINESS_TYPES, LANGUAGE_LABELS, LANGUAGES } from "@/lib/business-types";
-import type { Tables } from "@/lib/database.types";
+import type { Org as FullOrg } from "@/lib/org";
 import { formatUSPhone } from "@/lib/phone";
 
 type Org = Pick<
-  Tables<"organizations">,
+  FullOrg,
   "name" | "business_type" | "default_language" | "alert_phone" | "google_review_url"
 >;
 

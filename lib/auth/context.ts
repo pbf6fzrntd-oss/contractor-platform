@@ -1,15 +1,15 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import type { Tables } from "@/lib/database.types";
 import type { Plan } from "@/lib/entitlements";
 import { canVisit, homePath } from "@/lib/navigation";
+import { toOrg, toRole, type Org, type Role } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 
 export type AppContext = {
   userId: string;
-  role: "owner" | "manager";
-  org: Tables<"organizations">;
+  role: Role;
+  org: Org;
   plan: Plan;
 };
 
@@ -45,7 +45,7 @@ export const getAppContext = cache(async (): Promise<AppContext | null> => {
   const { data: plan } = await supabase.from("plans").select("*").eq("id", org.plan_id).single();
   if (!plan) return null;
 
-  return { userId, role: membership.role, org, plan };
+  return { userId, role: toRole(membership.role), org: toOrg(org), plan };
 });
 
 /** Use at the top of every logged-in page. Sends people where they belong. */

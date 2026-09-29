@@ -1,10 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/database.types";
-import { publicEnv } from "@/lib/env";
+import { publicEnv } from "@/lib/env-public";
 
 /** Pages anyone can open without logging in. */
-const PUBLIC_PATHS = ["/", "/login", "/signup", "/auth", "/invite", "/privacy", "/terms"];
+const PUBLIC_PATHS = ["/", "/login", "/signup", "/forgot-password", "/auth", "/invite", "/privacy", "/terms", "/sms-terms"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || (p !== "/" && pathname.startsWith(`${p}/`)));

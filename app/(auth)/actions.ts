@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { FormState } from "@/components/form-message";
-import { publicEnv } from "@/lib/env";
+import { publicEnv } from "@/lib/env-public";
 import { safeNextPath } from "@/lib/redirects";
 import { createClient } from "@/lib/supabase/server";
 
@@ -48,4 +48,24 @@ export async function signup(_prev: FormState, formData: FormData): Promise<Form
   // If email confirmation is turned off in Supabase, they're logged in now.
   if (data.session) redirect(next);
   return { success: "Check your email and tap the link to confirm your account." };
+}
+
+export async function requestPasswordReset(_prev: FormState, formData: FormData): Promise<FormState> {
+  const email = z.string().trim().email().safeParse(formData.get("email"));
+  if (!email.success) return { error: "Enter a valid email address." };
+  const supabase = await createClient();
+  await supabase.auth.resetPasswordForEmail(email.data, {
+    redirectTo: `${publicEnv.siteUrl}/auth/confirm?next=/reset-password`,
+  });
+  // Same message whether or not the account exists, so nobody can probe for emails.
+  return { success: "If that email has an account, a reset link is on its way." };
+}
+
+export async function updatePassword(_prev: FormState, formData: FormData): Promise<FormState> {
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8) return { error: "Use at least 8 characters." };
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: "Couldn't update your password. Request a new reset link and try again." };
+  redirect("/home");
 }

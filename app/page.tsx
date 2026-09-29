@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 
-// Public home page. A fuller marketing site (plus privacy/SMS terms pages,
-// which carrier registration requires) comes in Milestone 1.
+// Public home page. Carrier registration reviewers look for the privacy and
+// SMS terms links at the bottom.
 export default function HomePage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 px-5 py-10">
@@ -22,6 +22,11 @@ export default function HomePage() {
           Log in
         </Link>
       </div>
+      <nav className="flex justify-center gap-4 text-sm text-slate-500">
+        <Link href="/privacy">Privacy</Link>
+        <Link href="/terms">Terms</Link>
+        <Link href="/sms-terms">SMS terms</Link>
+      </nav>
     </main>
   );
 }

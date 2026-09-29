@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "db:test:setup": "bash scripts/setup-test-db.sh",
     "db:push": "supabase db push",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run build"
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "db:types": "node scripts/gen-db-types.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

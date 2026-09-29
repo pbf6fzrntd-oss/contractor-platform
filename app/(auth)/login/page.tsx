@@ -18,6 +18,11 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         </p>
       )}
       <AuthForm mode="login" action={login} next={nextPath} />
+      <p className="mt-4 text-center">
+        <Link href="/forgot-password" className="link">
+          Forgot your password?
+        </Link>
+      </p>
       <p className="mt-6 text-center text-slate-600">
         New here?{" "}
         <Link href={nextPath ? `/signup?next=${encodeURIComponent(nextPath)}` : "/signup"} className="link">

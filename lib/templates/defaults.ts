@@ -175,6 +175,17 @@ export const DEFAULT_TEMPLATES: readonly DefaultTemplate[] = [
     },
   },
 
+  {
+    key: "opt_in_confirmation",
+    title: "Resubscribe confirmation",
+    category: "conversational",
+    businessTypes: BOTH,
+    text: {
+      en: "{business_name}: You're resubscribed and will get texts from us again. Reply STOP to opt out.",
+      es: "{business_name}: Volvió a suscribirse y recibirá nuestros mensajes otra vez. Responda STOP para cancelar.",
+    },
+  },
+
   // --- Service notices (Feature 6, lawn/landscaping) ---------------------
   {
     key: "rain_delay",

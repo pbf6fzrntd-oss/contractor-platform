@@ -32,3 +32,11 @@ export function hasFeature(plan: Plan, feature: PlanFeature): boolean {
 export function canAddUser(plan: Plan, currentUserCount: number): boolean {
   return currentUserCount < plan.max_users;
 }
+
+/**
+ * Is the business's account in good standing? "manual" = billed by hand
+ * (pilots). past_due still works (grace period while Stripe retries the card).
+ */
+export function isBillingActive(status: string | null | undefined): boolean {
+  return status === "manual" || status === "active" || status === "trialing" || status === "past_due";
+}

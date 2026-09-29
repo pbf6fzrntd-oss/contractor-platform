@@ -2,7 +2,7 @@ import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { Database } from "@/lib/database.types";
-import { publicEnv } from "@/lib/env";
+import { publicEnv } from "@/lib/env-public";
 
 /**
  * Supabase client for server code (pages, server actions, route handlers).

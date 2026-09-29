@@ -304,9 +304,9 @@ create or replace function public.create_organization(
   p_name text,
   p_business_type text,
   p_default_language text,
-  p_alert_phone text,
-  p_google_review_url text,
-  p_templates jsonb
+  p_templates jsonb,
+  p_alert_phone text default null,
+  p_google_review_url text default null
 )
 returns uuid
 language plpgsql
@@ -401,9 +401,9 @@ begin
 end;
 $$;
 
-revoke execute on function public.create_organization(text, text, text, text, text, jsonb) from public, anon;
+revoke execute on function public.create_organization(text, text, text, jsonb, text, text) from public, anon;
 revoke execute on function public.get_invitation(text) from public, anon;
 revoke execute on function public.accept_invitation(text) from public, anon;
-grant execute on function public.create_organization(text, text, text, text, text, jsonb) to authenticated;
+grant execute on function public.create_organization(text, text, text, jsonb, text, text) to authenticated;
 grant execute on function public.get_invitation(text) to authenticated;
 grant execute on function public.accept_invitation(text) to authenticated;

@@ -11,6 +11,7 @@ const CORE_KEYS = [
   "review_request",
   "help_reply",
   "opt_out_confirmation",
+  "opt_in_confirmation",
 ];
 
 describe("default templates", () => {

@@ -69,7 +69,7 @@ describe.skipIf(!url)("row-level security", () => {
     await actAs(ownerA);
     orgA = (
       await db.query(
-        "select public.create_organization('A Roofing', 'project', 'en', null, null, $1::jsonb) as id",
+        "select public.create_organization('A Roofing', 'project', 'en', $1::jsonb) as id",
         [templates],
       )
     ).rows[0].id;
@@ -77,7 +77,7 @@ describe.skipIf(!url)("row-level security", () => {
     await actAs(ownerB);
     orgB = (
       await db.query(
-        "select public.create_organization('B Lawn', 'recurring', 'es', null, null, $1::jsonb) as id",
+        "select public.create_organization('B Lawn', 'recurring', 'es', $1::jsonb) as id",
         [templates],
       )
     ).rows[0].id;
@@ -203,14 +203,106 @@ describe.skipIf(!url)("row-level security", () => {
     expect(over.error?.message).toMatch(/user limit/);
   });
 
+  describe("contacts, leads, messages and consent (Milestone 1)", () => {
+    let contactB = "";
+
+    beforeAll(async () => {
+      await actAs(ownerB);
+      contactB = (
+        await db.query("insert into public.contacts (org_id, phone, name) values ($1, '+18435550100', 'Pat') returning id", [
+          orgB,
+        ])
+      ).rows[0].id;
+      await db.query("insert into public.leads (org_id, contact_id, source) values ($1, $2, 'manual')", [orgB, contactB]);
+      await db.query("reset role"); // the server writes messages
+      await db.query(
+        "insert into public.messages (org_id, contact_id, direction, body, sender_type, status) values ($1, $2, 'inbound', 'hi', 'contact', 'received')",
+        [orgB, contactB],
+      );
+    });
+
+    it("keeps each business's customers and conversations private", async () => {
+      await actAs(ownerA);
+      for (const table of ["contacts", "leads", "messages", "consent_events", "phone_numbers", "notifications"]) {
+        const res = await db.query(`select * from public.${table} where org_id = $1`, [orgB]);
+        expect(res.rowCount, table).toBe(0);
+      }
+      await actAs(ownerB);
+      expect((await db.query("select * from public.messages")).rowCount).toBe(1);
+    });
+
+    it("won't let one business add contacts or leads to another", async () => {
+      await actAs(ownerA);
+      const c = await attempt("insert into public.contacts (org_id, phone) values ($1, '+18435550101')", [orgB]);
+      expect(c.error).not.toBeNull();
+      const l = await attempt("insert into public.leads (org_id, contact_id) values ($1, $2)", [orgB, contactB]);
+      expect(l.error).not.toBeNull();
+    });
+
+    it("only changes consent through the logged function", async () => {
+      await actAs(ownerB);
+      const direct = await attempt("update public.contacts set opted_out_at = null where id = $1", [contactB]);
+      expect(direct.error).not.toBeNull();
+
+      await db.query("select public.record_consent_event($1, $2, 'opt_out', 'owner_recorded', 'Asked on the phone')", [
+        orgB,
+        contactB,
+      ]);
+      const row = await db.query("select opted_out_at from public.contacts where id = $1", [contactB]);
+      expect(row.rows[0].opted_out_at).not.toBeNull();
+      const log = await db.query("select kind, recorded_by from public.consent_events where contact_id = $1", [contactB]);
+      expect(log.rows).toEqual([{ kind: "opt_out", recorded_by: ownerB }]);
+
+      const tamper = await attempt("delete from public.consent_events where contact_id = $1", [contactB]);
+      expect(tamper.rowCount).toBe(0);
+    });
+
+    it("blocks recording consent for another business's contact", async () => {
+      await actAs(ownerA);
+      const res = await attempt("select public.record_consent_event($1, $2, 'marketing_granted', 'owner_recorded')", [
+        orgB,
+        contactB,
+      ]);
+      expect(res.error?.message).toMatch(/Not allowed/);
+    });
+
+    it("lets team members write messages only through the server", async () => {
+      await actAs(ownerB);
+      const res = await attempt(
+        "insert into public.messages (org_id, contact_id, direction, body, sender_type, status) values ($1, $2, 'outbound', 'x', 'user', 'sent')",
+        [orgB, contactB],
+      );
+      expect(res.error).not.toBeNull();
+    });
+
+    it("sets lead stage dates automatically", async () => {
+      await actAs(ownerB);
+      const lead = await db.query(
+        "update public.leads set stage = 'estimate_sent' where org_id = $1 returning estimate_sent_at",
+        [orgB],
+      );
+      expect(lead.rows[0].estimate_sent_at).not.toBeNull();
+    });
+
+    it("shows carrier registration only to the owner", async () => {
+      await actAs(ownerA);
+      expect((await db.query("select * from public.a2p_registrations")).rowCount).toBe(1);
+      await actAs(managerA);
+      expect((await db.query("select * from public.a2p_registrations")).rowCount).toBe(0);
+      await actAs(ownerA);
+      const approve = await attempt("update public.a2p_registrations set status = 'approved' where org_id = $1", [orgA]);
+      expect(approve.error).not.toBeNull();
+    });
+  });
+
   it("gives logged-out visitors nothing", async () => {
     await actAsAnonymous();
-    for (const table of ["organizations", "message_templates", "memberships", "profiles", "plans"]) {
+    for (const table of ["organizations", "message_templates", "memberships", "profiles", "plans", "contacts", "leads", "messages"]) {
       const res = await attempt(`select * from public.${table}`);
       expect(res.rowCount, table).toBe(0);
     }
     const create = await attempt(
-      "select public.create_organization('X', 'project', 'en', null, null, '[]'::jsonb)",
+      "select public.create_organization('X', 'project', 'en', '[]'::jsonb)",
     );
     expect(create.error).not.toBeNull();
   });
