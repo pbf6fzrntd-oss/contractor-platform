@@ -620,6 +620,60 @@ export type Database = {
         };
         Relationships: [];
       };
+      recurring_services: {
+        Row: {
+          id: string;
+          org_id: string;
+          contact_id: string;
+          service_type: string;
+          frequency: string;
+          service_day: number;
+          start_date: string;
+          price_cents: number | null;
+          status: string;
+          paused_until: string | null;
+          canceled_on: string | null;
+          cancel_reason: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          contact_id: string;
+          service_type: string;
+          frequency: string;
+          service_day: number;
+          start_date: string;
+          price_cents?: number | null;
+          status?: string;
+          paused_until?: string | null;
+          canceled_on?: string | null;
+          cancel_reason?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          contact_id?: string;
+          service_type?: string;
+          frequency?: string;
+          service_day?: number;
+          start_date?: string;
+          price_cents?: number | null;
+          status?: string;
+          paused_until?: string | null;
+          canceled_on?: string | null;
+          cancel_reason?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       scheduled_messages: {
         Row: {
           id: string;
@@ -677,6 +731,36 @@ export type Database = {
           attempts?: number;
           created_at?: string;
           processed_at?: string | null;
+        };
+        Relationships: [];
+      };
+      service_date_moves: {
+        Row: {
+          id: string;
+          org_id: string;
+          recurring_service_id: string;
+          from_date: string;
+          to_date: string;
+          broadcast_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          recurring_service_id: string;
+          from_date: string;
+          to_date: string;
+          broadcast_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          recurring_service_id?: string;
+          from_date?: string;
+          to_date?: string;
+          broadcast_id?: string | null;
+          created_at?: string;
         };
         Relationships: [];
       };

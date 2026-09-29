@@ -25,7 +25,8 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, ro
 - [x] M3 Outbox/scheduler + estimate follow-ups + template editor
 - [x] M4 Jobs + review requests
 - [x] M5 Dashboard + hardening → pilots
-- [ ] M6 Recurring customers + CSV import · M7 Today/rain delay · M8 Campaigns · M9 Recurring metrics
+- [x] M6 Recurring customers + CSV import
+- [ ] M7 Today/rain delay · M8 Campaigns · M9 Recurring metrics
 - [ ] M10 Stripe · M11 Self-serve A2P registration
 
 Founder decisions (2026-09-29): default phone setup is "keep your number" (conditional forwarding); pilots are billed by hand until M10; LLC/EIN/domain come later, so build and demo without real carrier registration; team roles are owner + office manager only.
