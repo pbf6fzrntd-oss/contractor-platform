@@ -1,4 +1,6 @@
 import "server-only";
+import { toOrg } from "@/lib/org";
+import { handleBookingReply } from "@/lib/services/booking-replies";
 import { classifyInbound } from "@/lib/automation/keywords";
 import { shouldTextBackMissedCall } from "@/lib/automation/missed-call";
 import type { Tables } from "@/lib/database.types";
@@ -241,6 +243,9 @@ export async function handleInboundSms(
     if (weReply) await reply("opt_in_confirmation", "normal");
   } else if (classification.kind === "help") {
     if (weReply) await reply("help_reply", "help_reply");
+  } else if (classification.kind === "message" && !contact.opted_out_at) {
+    // YES / C / R about a booking (only when there's a booking waiting for that answer).
+    await handleBookingReply(db, toOrg(line.org), contact, input.body, now);
   }
 
   return { leadId: lead?.id ?? null, kind: classification.kind };

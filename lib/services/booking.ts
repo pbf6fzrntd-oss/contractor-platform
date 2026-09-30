@@ -29,6 +29,7 @@ import { evaluateApproval, hasBehaviorWarning, parseApprovalSettings } from "@/l
 import type { Tables } from "@/lib/database.types";
 import type { Org } from "@/lib/org";
 import type { AdminClient } from "@/lib/supabase/admin";
+import { scheduleBookingReminder } from "@/lib/services/booking-reminders";
 import { addDays, localDateString, zonedTimeToUtc } from "@/lib/time";
 
 /**
@@ -112,10 +113,11 @@ export type Opening =
 export function openingsOn(data: BookingData, service: ServiceRow, date: string, org: Org, nowMs: number, zip?: string | null): Opening[] {
   const s = toService(service, data.settings);
   const hours = openHoursFrom(data.settings);
-  if (!isOpenDay(date, hours)) return [];
+  const closedDates = data.settings.closedDates;
+  if (!isOpenDay(date, hours, closedDates)) return [];
   if (s.mode === "arrival_window") {
-    return arrivalWindows(date, hours, data.settings.windowMinutes, org.timezone)
-      .filter((w) => checkOpenTime({ ...w, nowMs, timeZone: org.timezone, hours, minNoticeHours: s.minNoticeHours }).ok)
+    return arrivalWindows(date, hours, data.settings.windowMinutes, org.timezone, closedDates)
+      .filter((w) => checkOpenTime({ ...w, nowMs, timeZone: org.timezone, hours, minNoticeHours: s.minNoticeHours, closedDates }).ok)
       .map((w) => {
         const taken = data.existing.filter((b) => b.mode === "arrival_window" && b.startMs === w.startMs && b.endMs === w.endMs).length;
         return { kind: "window" as const, ...w, left: Math.max(0, data.settings.windowCapacity - taken) };
@@ -140,6 +142,7 @@ export function openingsOn(data: BookingData, service: ServiceRow, date: string,
       stepMinutes: data.settings.stepMinutes,
       zip,
       serviceZips: data.settings.serviceZips,
+      closedDates,
     }).map((t) => ({ kind: "time" as const, ...t }));
   }
   return [];
@@ -163,6 +166,14 @@ export type BookingRequest = {
   status?: BookingStatus;
   source: BookingSource;
   userId?: string | null;
+  /**
+   * AI-agent bookings: hold the slot as "requested" until the customer texts
+   * YES (lib/services/booking-replies.ts). Approval reasons are saved and
+   * applied after they confirm.
+   */
+  holdForCustomerVerification?: boolean;
+  /** Set when a customer moves an existing booking (the old one is canceled after this succeeds). */
+  rescheduledFrom?: string | null;
 };
 
 export type BookingOutcome =
@@ -184,6 +195,7 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
   const data = await loadBookingData(db, org, from, req.checkOut ?? from);
   const s = toService(serviceRow, data.settings);
   const hours = openHoursFrom(data.settings);
+  const closedDates = data.settings.closedDates;
   if (from > addDays(today, data.settings.maxDaysAhead)) return { ok: false, error: `Bookings open up to ${data.settings.maxDaysAhead} days ahead.` };
 
   let startsAt: Date;
@@ -199,7 +211,7 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
 
   if (s.mode === "multi_day_reservation") {
     if (!req.checkIn || !req.checkOut) return { ok: false, error: "Pick check-in and check-out dates." };
-    const r = checkStay({ checkIn: req.checkIn, checkOut: req.checkOut, today, unitClass: req.unitClass ?? serviceRow.unit_class, resources: data.resources, existing: data.existing, minNights: s.minNights, maxNights: s.maxNights });
+    const r = checkStay({ checkIn: req.checkIn, checkOut: req.checkOut, today, unitClass: req.unitClass ?? serviceRow.unit_class, resources: data.resources, existing: data.existing, minNights: s.minNights, maxNights: s.maxNights, closedDates });
     if (!r.ok) return fail(r);
     startsAt = zonedTimeToUtc(req.checkIn, data.settings.openHour, 0, org.timezone);
     endsAt = zonedTimeToUtc(req.checkOut, data.settings.openHour, 0, org.timezone);
@@ -211,7 +223,7 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
     const date = req.date ?? (req.startMs ? localDateString(new Date(req.startMs), org.timezone) : null);
     if (!date) return { ok: false, error: "Pick a day." };
     if (date < today) return fail({ ok: false, reason: "in_past" });
-    if (!isOpenDay(date, hours)) return fail({ ok: false, reason: "closed_day" });
+    if (!isOpenDay(date, hours, closedDates)) return fail({ ok: false, reason: "closed_day" });
     const r = checkDayCapacity(date, s.id, s.dailyCapacity ?? 1, data.existing);
     if (!r.ok) return fail(r);
     startsAt = zonedTimeToUtc(date, data.settings.openHour, 0, org.timezone);
@@ -226,10 +238,10 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
     startsAt = new Date(req.startMs);
     serviceDate = lastDay = localDateString(startsAt, org.timezone);
     if (s.mode === "arrival_window") {
-      const window = arrivalWindows(serviceDate, hours, data.settings.windowMinutes, org.timezone).find((w) => w.startMs === req.startMs);
+      const window = arrivalWindows(serviceDate, hours, data.settings.windowMinutes, org.timezone, closedDates).find((w) => w.startMs === req.startMs);
       if (!window) return { ok: false, error: "Pick one of the arrival windows." };
       endsAt = new Date(window.endMs);
-      const base = checkOpenTime({ startMs: window.startMs, endMs: window.endMs, nowMs, timeZone: org.timezone, hours, minNoticeHours: s.minNoticeHours });
+      const base = checkOpenTime({ startMs: window.startMs, endMs: window.endMs, nowMs, timeZone: org.timezone, hours, minNoticeHours: s.minNoticeHours, closedDates });
       if (!base.ok) return fail(base);
       const r = checkArrivalWindow(window, data.settings.windowCapacity, data.existing);
       if (!r.ok) return fail(r);
@@ -237,7 +249,7 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
       capacity = data.settings.windowCapacity;
     } else {
       endsAt = new Date(req.startMs + s.durationMin * 60_000);
-      const base = checkOpenTime({ startMs: req.startMs, endMs: endsAt.getTime(), nowMs, timeZone: org.timezone, hours, minNoticeHours: s.minNoticeHours });
+      const base = checkOpenTime({ startMs: req.startMs, endMs: endsAt.getTime(), nowMs, timeZone: org.timezone, hours, minNoticeHours: s.minNoticeHours, closedDates });
       if (!base.ok) return fail(base);
       const slot = { startMs: req.startMs, endMs: endsAt.getTime() };
       const r =
@@ -303,6 +315,9 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
       approvalReasons = decision.reasons;
     }
   }
+  // AI-agent bookings wait for the customer's YES first (the approval, if any, comes after).
+  const hold = Boolean(req.holdForCustomerVerification);
+  if (hold) status = "requested";
 
   const row = {
     org_id: org.id,
@@ -328,6 +343,9 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
     price_cents: serviceRow.price_from_cents,
     customer_notes: req.customerNotes ?? null,
     created_by: req.userId ?? null,
+    verify_by: hold ? new Date(nowMs + data.settings.agentVerifyMinutes * 60_000).toISOString() : null,
+    pending_reasons: hold ? approvalReasons : [],
+    rescheduled_from: req.rescheduledFrom ?? null,
   };
   const { data: id, error } = await db.rpc("book_slot", { p_booking: row, p_capacity_scope: scope, p_capacity: capacity ?? undefined });
   if (error || !id) {
@@ -339,6 +357,7 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
     console.error("book_slot failed", error);
     return { ok: false, error: "Couldn't save the booking. Please try again." };
   }
+  if (status === "confirmed") await scheduleBookingReminder(db, org, id, nowMs);
   if (status === "pending_approval") {
     await db.from("approval_requests").insert({
       org_id: org.id,
@@ -353,13 +372,18 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
 }
 
 /** "Mon, Oct 5, 8–10am" style label for a booking. */
-export function bookingWhen(b: { mode: string; starts_at: string; ends_at: string; check_in: string | null; check_out: string | null; service_date: string }, timeZone: string): string {
-  const day = (iso: string) => new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone }).format(new Date(iso));
+export function bookingWhen(
+  b: { mode: string; starts_at: string; ends_at: string; check_in: string | null; check_out: string | null; service_date: string },
+  timeZone: string,
+  lang: "en" | "es" = "en",
+): string {
+  const locale = lang === "es" ? "es-US" : "en-US";
+  const day = (iso: string) => new Intl.DateTimeFormat(locale, { weekday: "short", month: "short", day: "numeric", timeZone }).format(new Date(iso));
   const time = (iso: string) =>
     new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone }).format(new Date(iso)).replace(":00", "").replace(/\s?([AP])M/, (_m, x: string) => `${x.toLowerCase()}m`);
-  const plain = (d: string) => new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${d}T12:00:00Z`));
+  const plain = (d: string) => new Intl.DateTimeFormat(locale, { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${d}T12:00:00Z`));
   if (b.mode === "multi_day_reservation" && b.check_in && b.check_out) return `${plain(b.check_in)} → ${plain(b.check_out)}`;
-  if (b.mode === "day_capacity") return `${plain(b.service_date)} (all day)`;
-  if (b.mode === "arrival_window") return `${day(b.starts_at)}, arriving ${time(b.starts_at)}–${time(b.ends_at)}`;
+  if (b.mode === "day_capacity") return `${plain(b.service_date)} (${lang === "es" ? "todo el día" : "all day"})`;
+  if (b.mode === "arrival_window") return lang === "es" ? `${day(b.starts_at)}, llegada entre ${time(b.starts_at)} y ${time(b.ends_at)}` : `${day(b.starts_at)}, arriving ${time(b.starts_at)}–${time(b.ends_at)}`;
   return `${day(b.starts_at)}, ${time(b.starts_at)}`;
 }

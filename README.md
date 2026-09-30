@@ -126,6 +126,9 @@ Anything that texts many people (rain delays, running-late texts, campaigns) ret
   - `{SITE}/b/<slug>/llms.txt`: an AI summary;
   - `{SITE}/api/agent/<slug>`: a public MCP for customers' AI agents (read the business, check times, request a booking).
 
+  - `{SITE}/m/<token>`: a customer's private link to move or cancel one booking (sent in confirmation and reminder texts);
+  - add `?lang=es` to any public page for Spanish.
+  Reminders go out at 5pm the day before (reply C to confirm, R to reschedule). Requests from customers' AI agents need the customer to text YES first. Requests the owner doesn't answer within the hold time are released by `/api/cron/dispatch`.
   Outside bookings wait for the owner's OK by default (Settings → Approval rules). Public data comes only from the `public_business_profile()` database function (an allow-list).
 - **Sales audit:** /admin → Sales audits (admin only).
 
@@ -162,6 +165,7 @@ app/
   api/mcp/         AI assistant access (MCP) for the business's own team
   api/agent/[slug] public MCP for customers' AI agents (Agent Ready)
   b/[slug]/        public business profile, booking page, llms.txt
+  m/[token]/       customer's private manage-booking page
   api/oauth/, oauth/, .well-known/   one-tap connect for AI apps (OAuth sign-in)
 lib/
   automation/      PURE business rules (tested): keywords, compliance, follow-ups,

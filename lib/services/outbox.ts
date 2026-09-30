@@ -3,7 +3,10 @@ import { planFollowUps } from "@/lib/automation/followups";
 import { evaluateScheduledMessage, type OutboxItem } from "@/lib/automation/outbox";
 import type { Tables } from "@/lib/database.types";
 import { loadSendingContext, sendToContact, type SendingContext } from "@/lib/messaging/send";
+import { manageUrl } from "@/lib/booking/manage-link";
+import { bookingReminderText } from "@/lib/booking/messages";
 import { formatUSPhone } from "@/lib/phone";
+import { bookingWhen } from "@/lib/services/booking";
 import { getTemplateBody } from "@/lib/services/conversations";
 import { parseSettings, type OrgSettings } from "@/lib/settings";
 import type { AdminClient } from "@/lib/supabase/admin";
@@ -165,7 +168,8 @@ async function processItem(
   b: OrgBundle,
   fastForward: boolean,
 ): Promise<keyof DispatchSummary> {
-  const [{ data: contact }, { data: lead }, { data: lastInbound }, broadcast] = await Promise.all([
+  const bookingId = item.kind === "booking_reminder" ? ((item.context ?? {}) as { booking_id?: string }).booking_id : undefined;
+  const [{ data: contact }, { data: lead }, { data: lastInbound }, broadcast, { data: booking }] = await Promise.all([
     db.from("contacts").select("*").eq("id", item.contact_id).maybeSingle(),
     item.lead_id
       ? db.from("leads").select("stage, estimate_sent_at").eq("id", item.lead_id).maybeSingle()
@@ -179,6 +183,9 @@ async function processItem(
       .limit(1)
       .maybeSingle(),
     loadBroadcast(db, item.broadcast_id),
+    bookingId
+      ? db.from("bookings").select("*").eq("id", bookingId).eq("org_id", item.org_id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   const outboxItem: OutboxItem = {
@@ -195,6 +202,7 @@ async function processItem(
     lastInboundAt: lastInbound?.created_at ?? null,
     hasReviewLink: Boolean(b.org.google_review_url),
     broadcastStatus: broadcast?.status ?? null,
+    booking: booking ? { status: booking.status, starts_at: booking.starts_at } : null,
   });
 
   // In fast-forward, jump straight to when the window opens instead of waiting.
@@ -232,6 +240,8 @@ async function processItem(
     if (context.service_date) values.service_day = DAY_NAMES[language][weekdayOf(context.service_date)];
     if (context.new_date) values.new_day = DAY_NAMES[language][weekdayOf(context.new_date)];
     body = language === "es" && broadcast.body_es ? broadcast.body_es : broadcast.body_en;
+  } else if (item.kind === "booking_reminder" && booking) {
+    body = bookingReminderText(language, b.org.name, bookingWhen(booking, b.org.timezone, language), manageUrl(booking.id));
   } else if (item.template_key) {
     body = (await getTemplateBody(db, b.org.id, item.template_key, language))?.body ?? null;
   }

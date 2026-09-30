@@ -309,6 +309,12 @@ export type Database = {
           created_by: string | null;
           created_at: string;
           updated_at: string;
+          verify_by: string | null;
+          customer_verified_at: string | null;
+          pending_reasons: string[];
+          customer_confirmed_at: string | null;
+          canceled_by: string | null;
+          rescheduled_from: string | null;
         };
         Insert: {
           id?: string;
@@ -340,6 +346,12 @@ export type Database = {
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
+          verify_by?: string | null;
+          customer_verified_at?: string | null;
+          pending_reasons?: string[];
+          customer_confirmed_at?: string | null;
+          canceled_by?: string | null;
+          rescheduled_from?: string | null;
         };
         Update: {
           id?: string;
@@ -371,6 +383,12 @@ export type Database = {
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
+          verify_by?: string | null;
+          customer_verified_at?: string | null;
+          pending_reasons?: string[];
+          customer_confirmed_at?: string | null;
+          canceled_by?: string | null;
+          rescheduled_from?: string | null;
         };
         Relationships: [];
       };

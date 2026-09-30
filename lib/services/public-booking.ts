@@ -2,7 +2,7 @@ import "server-only";
 import { parsePublicProfile, type PublicProfile } from "@/lib/public/profile";
 import { normalizeUSPhone } from "@/lib/phone";
 import { toOrg, type Org } from "@/lib/org";
-import { sendBookingConfirmed, sendBookingReceived } from "@/lib/services/approvals";
+import { sendBookingConfirmed, sendBookingReceived, textAboutBooking } from "@/lib/services/approvals";
 import { bookingWhen, createBooking } from "@/lib/services/booking";
 import { notifyOwner } from "@/lib/services/conversations";
 import type { AdminClient } from "@/lib/supabase/admin";
@@ -44,7 +44,7 @@ export type PublicBookingInput = {
 };
 
 export type PublicBookingResult =
-  | { ok: true; reference: string; status: "confirmed" | "pending_approval"; when: string; texted: boolean }
+  | { ok: true; reference: string; status: "confirmed" | "pending_approval" | "awaiting_customer"; when: string; texted: boolean }
   | { ok: false; error: string };
 
 export async function requestPublicBooking(db: AdminClient, biz: PublicBusiness, input: PublicBookingInput): Promise<PublicBookingResult> {
@@ -100,11 +100,18 @@ export async function requestPublicBooking(db: AdminClient, biz: PublicBusiness,
     zip: input.zip ?? null,
     customerNotes: input.notes?.slice(0, 1000) || null,
     source: input.channel,
+    // A customer's AI agent can't prove the phone number is theirs: the customer must text YES first.
+    holdForCustomerVerification: input.channel === "outside_agent",
   });
   if (!result.ok) return result;
 
   const { data: b } = await db.from("bookings").select("mode, starts_at, ends_at, check_in, check_out, service_date").eq("id", result.bookingId).single();
-  const when = b ? bookingWhen(b, org.timezone) : "";
+  const when = b ? bookingWhen(b, org.timezone, input.language) : "";
+  if (result.status === "requested") {
+    const texted = await textAboutBooking(db, org, result.bookingId, "verify", null);
+    // The owner hears about it once the customer confirms (lib/services/booking-replies.ts).
+    return { ok: true, reference: result.bookingId.slice(0, 8).toUpperCase(), status: "awaiting_customer", when, texted };
+  }
   const waiting = result.status === "pending_approval";
   const texted = waiting ? await sendBookingReceived(db, org, result.bookingId) : await sendBookingConfirmed(db, org, result.bookingId);
 

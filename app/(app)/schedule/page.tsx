@@ -54,9 +54,15 @@ export default async function SchedulePage() {
 
   const Row = ({ b }: { b: (typeof list)[number] }) => {
     const c = contacts?.find((x) => x.id === b.contact_id);
-    const s = STATUS[b.status];
-    const actions: [string, string, string][] =
-      b.status === "requested" || b.status === "pending_approval"
+    const awaitingCustomer = b.status === "requested" && b.verify_by !== null && !b.customer_verified_at;
+    const s = awaitingCustomer
+      ? { label: "Waiting for customer's YES", className: "bg-slate-100 text-slate-700" }
+      : b.status === "canceled" && b.canceled_by === "customer"
+        ? { label: "Canceled by customer", className: STATUS.canceled.className }
+        : STATUS[b.status];
+    const actions: [string, string, string][] = awaitingCustomer
+      ? [["cancel", "Decline", "btn-secondary"]]
+      : b.status === "requested" || b.status === "pending_approval"
         ? [["confirm", "Confirm", "btn-primary"], ["cancel", "Decline", "btn-secondary"]]
         : b.status === "confirmed" || b.status === "in_progress"
           ? [["complete", "Done", "btn-primary"], ["no_show", "No-show", "btn-secondary"], ["cancel", "Cancel", "btn-secondary"]]
@@ -74,7 +80,9 @@ export default async function SchedulePage() {
             <span className="block text-sm text-slate-600">
               {b.lead_id ? <Link href={`/inbox/${b.lead_id}`} className="text-brand-700 underline">{c?.name ?? (c ? formatUSPhone(c.phone) : "Customer")}</Link> : (c?.name ?? (c ? formatUSPhone(c.phone) : "Customer"))}
               {SOURCE[b.source] ? ` · ${SOURCE[b.source]}` : ""}
+              {b.rescheduled_from ? " · Moved by customer" : ""}
             </span>
+            {b.customer_confirmed_at && b.status === "confirmed" && <span className="block text-sm font-medium text-emerald-700">✓ Customer confirmed</span>}
           </span>
           <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${s.className}`}>{s.label}</span>
         </div>

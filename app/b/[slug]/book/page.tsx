@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { priceText } from "@/lib/public/profile";
 import { bookingConsentText } from "@/lib/public/consent";
+import { publicLang, words } from "@/lib/public/i18n";
 import { loadBookingData, openingsOn } from "@/lib/services/booking";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { addDays, localDateString } from "@/lib/time";
@@ -18,11 +19,14 @@ export default async function PublicBookingPage({ params, searchParams }: PagePr
   const sp = await searchParams;
   const biz = await getPublicBusiness(slug);
   if (!biz || !biz.profile.booking_available) notFound();
+  const lang = publicLang(sp.lang);
+  const t = words(lang);
+  const serviceName = (s: { name: string; name_es: string | null }) => (lang === "es" && s.name_es ? s.name_es : s.name);
   const { org, profile } = biz;
   const today = localDateString(new Date(), org.timezone);
   const service = profile.services.find((s) => s.id === sp.service);
   const day = typeof sp.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) && sp.day >= today ? sp.day : addDays(today, 1);
-  const time = (ms: number) => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: org.timezone }).format(new Date(ms));
+  const time = (ms: number) => new Intl.DateTimeFormat(lang === "es" ? "es-US" : "en-US", { hour: "numeric", minute: "2-digit", timeZone: org.timezone }).format(new Date(ms));
 
   let choices: Choice[] = [];
   if (service && service.booking_mode !== "multi_day_reservation") {
@@ -32,49 +36,54 @@ export default async function PublicBookingPage({ params, searchParams }: PagePr
     choices = row
       ? openingsOn(data, row, day, org, new Date().getTime()).slice(0, 24).map((o) =>
           o.kind === "day"
-            ? { value: { date: o.date, start_ms: "" }, label: "Any time that day" }
-            : { value: { start_ms: String(o.startMs), date: "" }, label: o.kind === "window" ? `Arrive ${o.label}` : time(o.startMs) },
+            ? { value: { date: o.date, start_ms: "" }, label: t.anyTime }
+            : { value: { start_ms: String(o.startMs), date: "" }, label: o.kind === "window" ? `${t.arrive} ${o.label}` : time(o.startMs) },
         )
       : [];
   }
 
   return (
     <>
-      <Link href={`/b/${slug}`} className="mb-2 inline-flex min-h-10 items-center text-sm font-medium text-brand-700">← {profile.name}</Link>
-      <h1 className="mb-4 text-2xl font-bold">Book with {profile.name}</h1>
+      <div className="mb-2 flex items-center justify-between">
+        <Link href={`/b/${slug}${lang === "es" ? "?lang=es" : ""}`} className="inline-flex min-h-10 items-center text-sm font-medium text-brand-700">← {profile.name}</Link>
+        <Link href={`/b/${slug}/book?${new URLSearchParams({ ...(service ? { service: service.id } : {}), day, ...(lang === "es" ? {} : { lang: "es" }) })}`} className="inline-flex min-h-10 items-center text-sm font-medium text-brand-700">{t.switchTo}</Link>
+      </div>
+      <h1 className="mb-4 text-2xl font-bold">{t.bookWith} {profile.name}</h1>
 
       <form method="get" className="card mb-4 flex flex-col gap-3">
+        {lang === "es" && <input type="hidden" name="lang" value="es" />}
         <div>
-          <label htmlFor="service" className="label">Service</label>
+          <label htmlFor="service" className="label">{t.service}</label>
           <select id="service" name="service" className="input" defaultValue={service?.id ?? ""} required>
-            <option value="" disabled>Pick a service</option>
-            {profile.services.map((s) => <option key={s.id} value={s.id}>{s.name}{priceText(s) ? ` · ${priceText(s)}` : ""}</option>)}
+            <option value="" disabled>{t.pickService}</option>
+            {profile.services.map((s) => <option key={s.id} value={s.id}>{serviceName(s)}{priceText(s) ? ` · ${priceText(s)}` : ""}</option>)}
           </select>
         </div>
         <div>
-          <label htmlFor="day" className="label">Day</label>
+          <label htmlFor="day" className="label">{t.day}</label>
           <input id="day" name="day" type="date" className="input" defaultValue={day} min={today} />
         </div>
-        <button type="submit" className="btn-secondary">See available times</button>
+        <button type="submit" className="btn-secondary">{t.seeTimes}</button>
       </form>
 
       {service && (
         service.booking_mode !== "multi_day_reservation" && choices.length === 0 ? (
-          <p className="card text-slate-600">Nothing open that day. Try another day, or call or text {profile.name}.</p>
+          <p className="card text-slate-600">{t.nothingOpen(profile.name)}</p>
         ) : (
           <section className="card">
-            <h2 className="mb-3 text-lg font-semibold">{service.name}</h2>
+            <h2 className="mb-3 text-lg font-semibold">{serviceName(service)}</h2>
             {service.requires.length > 0 && (
               <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                You&apos;ll need to share up-to-date records ({service.requires.join(", ")}) with {profile.name} before your visit.
+                {t.requiresRecords(profile.name, service.requires.join(", "))}
               </p>
             )}
             <PublicBookingForm
               action={publicBook.bind(null, slug, service.id)}
+              lang={lang}
               choices={choices}
               stay={service.booking_mode === "multi_day_reservation" ? { checkIn: day, checkOut: addDays(day, 1), min: today } : null}
               needsZip={service.booking_mode === "mobile_appointment" && profile.service_zips.length > 0}
-              consentText={bookingConsentText(profile.name)}
+              consentText={bookingConsentText(profile.name, lang)}
             />
           </section>
         )

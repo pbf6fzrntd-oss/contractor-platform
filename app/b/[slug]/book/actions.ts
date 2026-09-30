@@ -45,6 +45,6 @@ export async function publicBook(slug: string, serviceId: string, _prev: FormSta
     channel: "customer_link",
   });
   if (!result.ok) return { error: result.error };
-  const q = new URLSearchParams({ ref: result.reference, status: result.status, when: result.when, texted: result.texted ? "1" : "0" });
+  const q = new URLSearchParams({ ref: result.reference, status: result.status, when: result.when, texted: result.texted ? "1" : "0", ...(lang === "es" ? { lang } : {}) });
   redirect(`/b/${slug}/book/done?${q}`);
 }

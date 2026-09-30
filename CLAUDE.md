@@ -44,7 +44,7 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, ro
 - [x] M20 Approval rules + lead/booking source reporting
 - [x] M21 Editions, add-on modules, Executive & Enterprise plans (Stripe multi-item)
 - [x] M22 Agent Ready: hosted profile + JSON-LD, public booking page, public agent booking MCP
-- [ ] M23 Booking hardening: approval expiry, reminders, reschedule/cancel link, closed dates, YES check for agent bookings, Spanish booking page
+- [x] M23 Booking hardening: approval expiry, reminders, reschedule/cancel link, closed dates, YES check for agent bookings, Spanish booking page
 - [ ] M24 Expiry reminders (licenses, vaccines) + photos texted in (MMS → private storage)
 - [ ] M25 Quality: click-through suite in the repo (Playwright), GitHub Actions checks, daily cleanup, Sentry
 - [ ] M26 Selling: demo business per industry, in-app setup checklist, audit→customer link + re-audit, calendar feed

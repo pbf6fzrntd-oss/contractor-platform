@@ -5,6 +5,7 @@ import { resolveDay } from "@/lib/agent/dates";
 import { getIndustry } from "@/lib/industries";
 import type { PublicAgentToolRegistrar } from "@/lib/modules/types";
 import { formatUSPhone } from "@/lib/phone";
+import { parseBookingSettings } from "@/lib/booking/settings";
 import { priceText } from "@/lib/public/profile";
 import { allowPublicRequest } from "@/lib/public/rate-limit";
 import { loadBookingData, openingsOn } from "@/lib/services/booking";
@@ -46,6 +47,7 @@ export function buildPublicAgentServer(ctx: PublicAgentContext, extensions: Publ
         "You're acting for a customer. Use these tools to answer questions about the business, check open times and request a booking.",
         "Prices are typical ranges, not quotes; say the business confirms the exact price.",
         "Only request a booking after the customer chose a time and agreed to receive texts from the business about it.",
+        "After you request it, the customer gets a text and must reply YES to confirm it's them; tell them to watch for it.",
         "Bookings may need the business's OK; tell the customer they'll get a text when it's confirmed.",
         ...(industry?.voice.never.length ? [`Never do these: ${industry.voice.never.join(" ")}`] : []),
       ].join(" "),
@@ -163,7 +165,12 @@ export function buildPublicAgentServer(ctx: PublicAgentContext, extensions: Publ
         if (!r.ok) return fail(r.error);
         return ok({
           reference: r.reference,
-          status: r.status === "pending_approval" ? "requested: the business will confirm by text" : "confirmed",
+          status:
+            r.status === "awaiting_customer"
+              ? `waiting for the customer: they were just texted and must reply YES within ${Math.round(parseBookingSettings(org.booking_settings).agentVerifyMinutes / 60) || 1} hour(s), or the request is dropped`
+              : r.status === "pending_approval"
+                ? "requested: the business will confirm by text"
+                : "confirmed",
           when: r.when,
         });
       },

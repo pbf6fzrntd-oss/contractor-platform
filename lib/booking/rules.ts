@@ -32,8 +32,11 @@ export function checkOpenTime(input: {
   timeZone: string;
   hours: OpenHours;
   minNoticeHours?: number;
+  /** Holidays and days off (YYYY-MM-DD), on top of the weekly hours. */
+  closedDates?: readonly string[];
 }): RuleResult {
   if (input.startMs < input.nowMs) return { ok: false, reason: "in_past" };
+  if (input.closedDates?.includes(localDateString(new Date(input.startMs), input.timeZone))) return { ok: false, reason: "closed_day" };
   if (input.minNoticeHours && input.startMs - input.nowMs < input.minNoticeHours * 60 * MIN) return { ok: false, reason: "short_notice" };
   const start = zonedParts(new Date(input.startMs), input.timeZone);
   const day = input.hours[start.weekday];
@@ -45,9 +48,9 @@ export function checkOpenTime(input: {
   return ok();
 }
 
-/** Is the business open on this date? */
-export function isOpenDay(date: string, hours: OpenHours): boolean {
-  return Boolean(hours[weekdayOf(date)]);
+/** Is the business open on this date (weekly hours, minus holidays and days off)? */
+export function isOpenDay(date: string, hours: OpenHours, closedDates?: readonly string[]): boolean {
+  return Boolean(hours[weekdayOf(date)]) && !closedDates?.includes(date);
 }
 
 // ---------------------------------------------------------------------------
@@ -57,9 +60,9 @@ export function isOpenDay(date: string, hours: OpenHours): boolean {
 export type Window = { startMs: number; endMs: number; label: string };
 
 /** The arrival windows on a date, e.g. 8–10, 10–12, 12–2, 2–4. */
-export function arrivalWindows(date: string, hours: OpenHours, windowMinutes: number, timeZone: string): Window[] {
+export function arrivalWindows(date: string, hours: OpenHours, windowMinutes: number, timeZone: string, closedDates?: readonly string[]): Window[] {
   const day = hours[weekdayOf(date)];
-  if (!day || windowMinutes <= 0) return [];
+  if (!day || windowMinutes <= 0 || closedDates?.includes(date)) return [];
   const out: Window[] = [];
   const close = zonedTimeToUtc(date, day.close, 0, timeZone).getTime();
   for (let t = zonedTimeToUtc(date, day.open, 0, timeZone).getTime(); t + windowMinutes * MIN <= close; t += windowMinutes * MIN) {
@@ -132,6 +135,8 @@ export function checkStay(input: {
   checkIn: string;
   checkOut: string;
   today: string;
+  /** Drop-off and pick-up can't happen on days the business is closed. */
+  closedDates?: readonly string[];
   unitClass: string | null;
   resources: Resource[];
   existing: ExistingBooking[];
@@ -141,6 +146,7 @@ export function checkStay(input: {
   const nights = stayNights(input.checkIn, input.checkOut);
   if (!nights.length) return { ok: false, reason: "bad_dates" };
   if (input.checkIn < input.today) return { ok: false, reason: "in_past" };
+  if (input.closedDates?.includes(input.checkIn) || input.closedDates?.includes(input.checkOut)) return { ok: false, reason: "closed_day" };
   if (input.minNights && nights.length < input.minNights) return { ok: false, reason: "stay_too_short" };
   if (input.maxNights && nights.length > input.maxNights) return { ok: false, reason: "stay_too_long" };
   const capacity = input.resources.filter((r) => r.active && r.unitClass === input.unitClass).reduce((n, r) => n + r.capacity, 0);
@@ -246,9 +252,10 @@ export function openStartTimes(input: {
   zip?: string | null;
   serviceZips?: string[];
   travel?: TravelFn;
+  closedDates?: readonly string[];
 }): { startMs: number; endMs: number; resourceId: string | null }[] {
   const day = input.hours[weekdayOf(input.date)];
-  if (!day) return [];
+  if (!day || input.closedDates?.includes(input.date)) return [];
   const step = (input.stepMinutes ?? 30) * MIN;
   const duration = input.service.durationMin * MIN;
   const close = zonedTimeToUtc(input.date, day.close, 0, input.timeZone).getTime();

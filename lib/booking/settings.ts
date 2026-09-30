@@ -17,6 +17,14 @@ const schema = z.object({
   stepMinutes: z.number().int().min(15).max(120).default(30),
   /** How far ahead customers can book. */
   maxDaysAhead: z.number().int().min(1).max(365).default(60),
+  /** Holidays, vacations and other days off (YYYY-MM-DD). */
+  closedDates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(200).default([]),
+  /** Text customers a reminder the day before (with a reschedule/cancel link). */
+  remindersEnabled: z.boolean().default(true),
+  /** Requests waiting for the owner's OK longer than this are released. */
+  approvalHoldHours: z.number().int().min(2).max(168).default(24),
+  /** AI-agent bookings: minutes the customer has to reply YES. */
+  agentVerifyMinutes: z.number().int().min(15).max(1440).default(120),
 });
 
 export type BookingSettings = z.infer<typeof schema>;

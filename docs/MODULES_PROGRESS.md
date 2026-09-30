@@ -21,14 +21,14 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M20 Approval rules + source reporting | ✅ done |
 | M21 Editions, add-ons, Executive & Enterprise | ✅ done |
 | M22 Agent Ready | ✅ done |
-| M23 Booking hardening: approval expiry, reminders, reschedule/cancel link, closed dates, YES check for agent bookings, Spanish booking page | not started |
+| M23 Booking hardening: approval expiry, reminders, reschedule/cancel link, closed dates, YES check for agent bookings, Spanish booking page | ✅ done |
 | M24 Expiry reminders (licenses, vaccines) + photos texted in | not started |
 | M25 Quality: click-through suite in the repo, automatic checks on GitHub, daily cleanup, error alerts | not started |
 | M26 Selling: demo business per industry, setup checklist, audit→customer link, calendar feed | not started |
 
 ## Next up
 Founder approved items 1–16 of the post-M22 recommendations (2026-09-30), as M23–M26 above. Module A (Recurring Home Services) moves to M27+.
-Start with M23.
+M23 is done. Next: M24 (license/insurance expiry alerts to the owner, vaccine expiry reminders to customers, texted-in photos saved privately).
 
 ## Milestone notes and "how to test"
 (Added as each milestone finishes.)
@@ -205,3 +205,24 @@ Nothing new to click yet. The configs show up in the sales audit (M17) and on ho
 2. Log out (or use a private window) → open the profile → Book online → pick a time, fill in details, tick the consent box → "Request sent".
 3. Simulator: the customer got "We got your request…" with "Reply STOP to opt out." Schedule → Waiting for you → Confirm. The customer got "You're booked…".
 4. Dashboard → "Where your work came from" shows "Online booking page".
+
+### M23: Booking hardening
+**What changed**
+- **Days off:** Settings → Online booking → "Days off". Pick a date and save; untick to remove. No bookings (page, AI agents, team) on those days; stays can't drop off or pick up on them. Past dates drop off automatically.
+- **Reminder texts:** 5pm (business time) the day before, for confirmed bookings, with the customer's private link. It goes through the outbox and is re-checked right before sending (skipped if the booking was canceled or moved, the customer opted out, or it's "do not auto-text"). The customer can reply **C** (confirm → "✓ Customer confirmed" on the Schedule) or **R** (they get their link; the owner gets a note). C/R only count after a reminder went out and the visit is within 3 days; otherwise they're ordinary messages. On/off switch in settings (default on).
+- **Private reschedule/cancel link** `/m/<token>`: shows only the service, time and status (never notes, address, pets, vehicles). The customer can pick a new day and time (same rules and approvals as online booking) or cancel. The token is the booking id plus a signature (no database storage); a changed link returns "not found". Rate limited like online booking. It's in the confirmation and reminder texts.
+- **Owner approval expiry:** requests waiting for the owner's OK longer than the hold time (default 24 hours, 2 hours–7 days) are released by the every-minute scheduler. The customer is told ("Sorry, we couldn't confirm…"), the owner gets a note, and the approval shows as expired.
+- **"Reply YES" for AI-agent bookings:** a request from a customer's AI agent now holds the time and texts the customer "Reply YES within 2 hours to confirm it was you". YES (or SÍ) sends it on to the owner's approval queue (or confirms it if no rule applies). No YES in time → released quietly (no more texts to a number that may not be theirs). Wait time is set in settings (15 minutes–1 day). The Schedule shows "Waiting for customer's YES" with only a Decline button.
+- **Spanish public pages:** profile, booking, "done" and manage pages have an "Español" switch (`?lang=es`). Spanish service names are used, and Spanish bookings save the customer's language so every later text is in Spanish. The manage page opens in the customer's language.
+- Schedule also shows "Canceled by customer" and "Moved by customer".
+- Migration `20260930010000_m23_booking_hardening.sql` (additive: new nullable columns, widened status lists, `book_slot()` saves the new fields and stays server-only). Rollback in `supabase/rollbacks/`.
+- Tests: `tests/unit/booking-hardening.test.ts` (days off, reminder timing incl. clock change, C/R/YES parsing, expiry, link tampering, outbox re-checks, texts have no STOP line, Spanish word lists complete); DB tests for the new columns and that visitors can't call `book_slot()`.
+
+**How to test**
+1. Settings → Online booking: add a day off (e.g. next Wednesday), set "Hold requests for my OK" to 2 days → Save. Open your booking page for that Wednesday: "Nothing open that day".
+2. Open your profile, tap **Español**, book a time in Spanish. The "done" page and the texts are in Spanish.
+3. Schedule → Confirm it. The "You're booked" text has a link. Open it: you can move or cancel. Move it → the Schedule shows the new time ("Moved by customer") and you get a note. Cancel it → "Canceled by customer".
+4. Reminders: the next day at 5pm the customer gets a reminder. Reply **C** in the Simulator → "✓ Customer confirmed". Reply **R** → the customer gets their link.
+5. AI agents: book through `/api/agent/<slug>` → the customer gets "Reply YES…". The Schedule shows "Waiting for customer's YES". Reply YES in the Simulator → it moves to "Waiting for you".
+6. **Before launch:** in Twilio's Advanced Opt-Out settings, remove **YES** from the opt-in keywords (keep START/UNSTOP). Otherwise Twilio also answers a customer's "YES" with its own re-subscribe message.
+

@@ -31,7 +31,7 @@ export async function changeBookingStatus(bookingId: string, action: keyof typeo
   }
   const { data: b } = await supabase
     .from("bookings")
-    .update({ status: TO[action] })
+    .update({ status: TO[action], ...(action === "cancel" ? { canceled_by: "team" } : {}) })
     .eq("id", bookingId)
     .eq("org_id", ctx.org.id)
     .in("status", ALLOWED[action] ?? [])

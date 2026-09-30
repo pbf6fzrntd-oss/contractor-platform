@@ -10,9 +10,9 @@ import { isWithinWindow, nextTimeInWindow } from "@/lib/time";
  */
 
 export type OutboxItem = {
-  kind: "estimate_followup" | "review_request" | "broadcast";
+  kind: "estimate_followup" | "review_request" | "broadcast" | "booking_reminder";
   category: MessageCategory;
-  context: { estimate_sent_at?: string };
+  context: { estimate_sent_at?: string; booking_id?: string; starts_at?: string };
 };
 
 export type OutboxState = {
@@ -30,6 +30,8 @@ export type OutboxState = {
   lastInboundAt: string | null;
   hasReviewLink: boolean;
   broadcastStatus: string | null;
+  /** For booking reminders: the booking as it is now. */
+  booking?: { status: string; starts_at: string } | null;
 };
 
 export type SkipReason =
@@ -45,7 +47,9 @@ export type SkipReason =
   | "reviews_disabled"
   | "already_requested"
   | "no_review_link"
-  | "broadcast_canceled";
+  | "broadcast_canceled"
+  | "booking_changed"
+  | "booking_passed";
 
 export type OutboxDecision =
   | { action: "send" }
@@ -83,6 +87,14 @@ export function evaluateScheduledMessage(item: OutboxItem, state: OutboxState): 
     if (!state.hasReviewLink) return { action: "skip", reason: "no_review_link" };
   }
 
+  if (item.kind === "booking_reminder") {
+    if (contact.do_not_autotext) return { action: "skip", reason: "do_not_autotext" };
+    const b = state.booking;
+    // Canceled, moved or no longer confirmed since the reminder was queued: don't send.
+    if (!b || b.status !== "confirmed" || ms(b.starts_at) !== ms(item.context.starts_at)) return { action: "skip", reason: "booking_changed" };
+    if (ms(b.starts_at) <= state.now.getTime()) return { action: "skip", reason: "booking_passed" };
+  }
+
   if (item.kind === "broadcast" && state.broadcastStatus === "canceled") {
     return { action: "skip", reason: "broadcast_canceled" };
   }
@@ -113,5 +125,7 @@ export const SKIP_REASON_TEXT: Record<string, string> = {
   already_requested: "Already asked for a review",
   no_review_link: "No Google review link in Settings",
   broadcast_canceled: "Send was canceled",
+  booking_changed: "Booking was canceled or moved",
+  booking_passed: "The visit already started",
   canceled: "Canceled",
 };

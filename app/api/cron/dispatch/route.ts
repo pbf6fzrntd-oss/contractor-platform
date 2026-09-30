@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { serverEnv } from "@/lib/env";
+import { expireStaleBookings } from "@/lib/services/booking-maintenance";
 import { runDispatch } from "@/lib/services/outbox";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -15,8 +16,11 @@ async function handle(request: Request) {
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const summary = await runDispatch(createAdminClient());
-  return NextResponse.json(summary);
+  const db = createAdminClient();
+  const summary = await runDispatch(db);
+  // Release booking requests nobody finished (customer's YES or the owner's OK).
+  const released = await expireStaleBookings(db);
+  return NextResponse.json({ ...summary, released });
 }
 
 export const GET = handle;

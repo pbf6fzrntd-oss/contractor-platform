@@ -9,6 +9,7 @@ import { getIndustry } from "@/lib/industries";
 import { BOOKING_MODES, type BookingMode } from "@/lib/industries/types";
 import { parseDollars } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { localDateString } from "@/lib/time";
 
 const done = () => {
   revalidatePath("/settings/booking");
@@ -19,6 +20,10 @@ export async function saveBookingSettings(_prev: FormState, formData: FormData):
   const { org, plan, modules } = await requireOwner();
   if (!canUse(plan, modules, "booking")) return { error: "Online booking is part of the Executive plan or the Agent Ready add-on." };
   const num = (k: string) => Number(formData.get(k));
+  // Days off: the ones still ticked, plus a new one; past days drop off.
+  const today = localDateString(new Date(), org.timezone);
+  const closed = [...formData.getAll("closedDates").map(String), String(formData.get("addClosedDate") ?? "")]
+    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= today);
   const result = validateBookingSettings({
     openDays: formData.getAll("openDays").map(Number),
     openHour: num("openHour"),
@@ -28,6 +33,10 @@ export async function saveBookingSettings(_prev: FormState, formData: FormData):
     stepMinutes: num("stepMinutes"),
     maxDaysAhead: num("maxDaysAhead"),
     serviceZips: String(formData.get("serviceZips") ?? "").split(/[\s,]+/).filter(Boolean),
+    closedDates: [...new Set(closed)].sort(),
+    remindersEnabled: formData.get("remindersEnabled") === "on",
+    approvalHoldHours: num("approvalHoldHours"),
+    agentVerifyMinutes: num("agentVerifyMinutes"),
   });
   if ("error" in result) return { error: result.error };
   const { error } = await (await createClient())

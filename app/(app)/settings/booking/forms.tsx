@@ -7,6 +7,7 @@ import type { BookingSettings } from "@/lib/booking/settings";
 import { addResource, addService, saveBookingSettings } from "./actions";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const dayOffLabel = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 const hourLabel = (h: number) => (h === 0 || h === 24 ? "12am" : h === 12 ? "12pm" : h < 12 ? `${h}am` : `${h - 12}pm`);
 
 export function BookingSettingsForm({ enabled, settings }: { enabled: boolean; settings: BookingSettings }) {
@@ -70,6 +71,41 @@ export function BookingSettingsForm({ enabled, settings }: { enabled: boolean; s
         <label htmlFor="serviceZips" className="label">ZIP codes you serve <span className="font-normal text-slate-500">(mobile visits; blank = anywhere)</span></label>
         <input id="serviceZips" name="serviceZips" className="input" inputMode="numeric" defaultValue={settings.serviceZips.join(", ")} placeholder="29483, 29485, 29445" />
       </div>
+      <fieldset>
+        <legend className="label">Days off <span className="font-normal text-slate-500">(holidays, vacation: no bookings these days)</span></legend>
+        {settings.closedDates.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {settings.closedDates.map((d) => (
+              <label key={d} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-3 text-sm has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50">
+                <input type="checkbox" name="closedDates" value={d} defaultChecked className="h-4 w-4 accent-brand-600" />
+                {dayOffLabel(d)}
+              </label>
+            ))}
+          </div>
+        )}
+        <label htmlFor="addClosedDate" className="sr-only">Add a day off</label>
+        <input id="addClosedDate" name="addClosedDate" type="date" className="input" />
+        <p className="mt-1 text-xs text-slate-500">Pick a date and save to add it. Untick a date to remove it.</p>
+      </fieldset>
+      <label className="flex min-h-12 items-center gap-3">
+        <input type="checkbox" name="remindersEnabled" defaultChecked={settings.remindersEnabled} className="h-6 w-6 accent-brand-600" />
+        <span>Text customers a reminder the day before <span className="block text-sm text-slate-500">They can reply C to confirm or use their link to move or cancel.</span></span>
+      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="approvalHoldHours" className="label">Hold requests for my OK</label>
+          <select id="approvalHoldHours" name="approvalHoldHours" className="input" defaultValue={settings.approvalHoldHours}>
+            {[4, 12, 24, 48, 72, 168].map((h) => <option key={h} value={h}>{h < 48 ? `${h} hours` : `${h / 24} days`}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="agentVerifyMinutes" className="label">AI-booked: wait for customer&apos;s YES</label>
+          <select id="agentVerifyMinutes" name="agentVerifyMinutes" className="input" defaultValue={settings.agentVerifyMinutes}>
+            {[30, 60, 120, 240, 720, 1440].map((m) => <option key={m} value={m}>{m < 60 ? `${m} min` : m < 1440 ? `${m / 60} hour${m > 60 ? "s" : ""}` : "1 day"}</option>)}
+          </select>
+        </div>
+      </div>
+      <p className="-mt-2 text-xs text-slate-500">After that, the time is released and the customer is told.</p>
       <FormMessage state={state} />
       <SubmitButton>Save booking settings</SubmitButton>
     </form>
