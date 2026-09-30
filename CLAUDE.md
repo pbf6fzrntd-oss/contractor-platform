@@ -48,7 +48,7 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, ro
 - [x] M24 Expiry reminders (licenses, vaccines) + photos texted in (MMS → private storage)
 - [x] Demo-ready (founder request after M24): laptop layout (side menu, two-pane inbox, wider dashboard with money won + weekly chart), "Try it live" demo businesses at /demo (`DEMO_MODE=on`, `lib/demo/`, `lib/services/demo.ts`), live demo buttons. Guide: `docs/DEMO.md`
 - [x] M25 Quality: click-through suite in the repo (Playwright), GitHub Actions checks, daily cleanup, Sentry
-- [ ] M26 Selling: demo business per industry, in-app setup checklist, audit→customer link + re-audit, calendar feed
+- [x] M26 Selling: demo business per industry, in-app setup checklist, audit→customer link + re-audit, calendar feed
 
 Founder decisions (2026-09-29): default phone setup is "keep your number" (conditional forwarding); pilots are billed by hand until M10; LLC/EIN/domain come later, so build and demo without real carrier registration; team roles are owner + office manager only.
 

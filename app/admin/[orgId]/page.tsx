@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
@@ -33,6 +34,7 @@ export default async function AdminOrgPage({ params }: PageProps<"/admin/[orgId]
     db.from("org_modules").select("module, enabled, source").eq("org_id", orgId),
     db.from("addon_catalog").select("key, name, status").order("sort_order"),
   ]);
+  const { data: audits } = await db.from("audit_reports").select("id, score, created_at").eq("org_id", orgId).order("created_at", { ascending: false }).limit(10);
   const moduleKeys = ["home_services", ...(catalog ?? []).map((c) => c.key)];
   const moduleName = (k: string) => (catalog ?? []).find((c) => c.key === k)?.name ?? MODULE_LABELS[k as keyof typeof MODULE_LABELS] ?? k;
   const { data: people } = await db.from("profiles").select("id, full_name, email").in("id", (members ?? []).map((m) => m.user_id));
@@ -44,6 +46,21 @@ export default async function AdminOrgPage({ params }: PageProps<"/admin/[orgId]
       <p className="mb-4 text-sm text-slate-600">
         {org.business_type === "recurring" ? "Lawn care" : "Project trade"} · {(people ?? []).map((p) => `${p.full_name ?? ""} <${p.email}>`).join(", ")}
       </p>
+
+      {(audits ?? []).length > 0 && (
+        <section className="card mb-4">
+          <h2 className="mb-2 font-semibold">Sales audits</h2>
+          <ul className="flex flex-col gap-1 text-sm">
+            {audits!.map((a) => (
+              <li key={a.id}>
+                <Link href={`/admin/audit/${a.id}`} className="text-brand-700 underline">
+                  Score {a.score} · {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" }).format(new Date(a.created_at))}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="card mb-4">
         <h2 className="mb-2 font-semibold">Carrier registration details (copy into Twilio)</h2>

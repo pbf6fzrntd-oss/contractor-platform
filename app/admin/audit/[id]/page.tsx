@@ -6,7 +6,10 @@ import { EMPTY_FINDINGS, type WebsiteFindings } from "@/lib/audit/website";
 import { APP_NAME } from "@/lib/brand";
 import { getIndustry } from "@/lib/industries";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { SubmitButton } from "@/components/submit-button";
+import { linkAuditToBusiness, rerunAudit } from "../actions";
 import { AnswersForm } from "./answers-form";
+import { LinkBusinessForm } from "./link-form";
 import { PrintButton } from "./print-button";
 
 export const metadata: Metadata = { title: "Audit report", robots: { index: false, follow: false } };
@@ -34,8 +37,14 @@ function ItemRow({ item }: { item: AuditItem }) {
 export default async function AuditReportPage({ params }: PageProps<"/admin/audit/[id]">) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
-  const { data: row } = await createAdminClient().from("audit_reports").select("*").eq("id", id).maybeSingle();
+  const db = createAdminClient();
+  const { data: row } = await db.from("audit_reports").select("*").eq("id", id).maybeSingle();
   if (!row) notFound();
+  const [{ data: previous }, { data: businesses }, { data: linked }] = await Promise.all([
+    row.previous_report_id ? db.from("audit_reports").select("id, score, created_at").eq("id", row.previous_report_id).maybeSingle() : Promise.resolve({ data: null }),
+    db.from("organizations").select("id, name").eq("is_demo", false).order("name").limit(1000),
+    row.org_id ? db.from("organizations").select("id, name").eq("id", row.org_id).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
   const findings = { ...EMPTY_FINDINGS, ...(row.findings as Partial<WebsiteFindings>) };
   const report = buildAuditReport({ industry: row.industry, findings, answers: row.answers as CallAnswers });
   const industry = getIndustry(row.industry);
@@ -65,6 +74,13 @@ export default async function AuditReportPage({ params }: PageProps<"/admin/audi
             <p className="text-sm text-slate-600">out of 100: how easily customers and AI assistants can find, trust, reach and book you</p>
           </div>
         </div>
+        {previous && (
+          <p className="mt-3 rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-900">
+            Before: <strong>{previous.score}</strong> ({new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" }).format(new Date(previous.created_at))}) → now <strong>{row.score}</strong>{" "}
+            ({row.score - previous.score >= 0 ? "+" : ""}
+            {row.score - previous.score} points)
+          </p>
+        )}
         {row.fetch_error && <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">Website check: {row.fetch_error}</p>}
       </header>
 
@@ -116,6 +132,19 @@ export default async function AuditReportPage({ params }: PageProps<"/admin/audi
           <p className="mt-2 text-xs text-slate-500">Requirements change; confirm with the licensing agency.</p>
         </section>
       )}
+
+      <section className="card flex flex-col gap-3 print:hidden">
+        <h2 className="text-lg font-semibold">Customer and follow-up (only you see this)</h2>
+        {linked && (
+          <p className="text-sm">
+            Linked to <Link href={`/admin/${linked.id}`} className="font-medium text-brand-700 underline">{linked.name}</Link>
+          </p>
+        )}
+        <LinkBusinessForm action={linkAuditToBusiness.bind(null, row.id)} businesses={businesses ?? []} current={row.org_id} />
+        <form action={rerunAudit.bind(null, row.id)}>
+          <SubmitButton className="btn-primary w-full" pendingText="Checking the website again…">Re-run audit (show before and after)</SubmitButton>
+        </form>
+      </section>
 
       <section className="card print:hidden">
         <h2 className="mb-2 text-lg font-semibold">Update answers (only you see this)</h2>

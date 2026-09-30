@@ -3,12 +3,14 @@ import Link from "next/link";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { PageHeader } from "@/components/page-header";
 import { requireAppContext } from "@/lib/auth/context";
+import { SetupCard } from "../setup-card";
 import { InboxList, parseStageFilter } from "./inbox-list";
 
 export const metadata: Metadata = { title: "Inbox" };
 
 export default async function InboxPage({ searchParams }: PageProps<"/inbox">) {
-  const { org } = await requireAppContext("/inbox");
+  const ctx = await requireAppContext("/inbox");
+  const { org } = ctx;
   const filter = parseStageFilter((await searchParams).stage);
 
   return (
@@ -21,6 +23,7 @@ export default async function InboxPage({ searchParams }: PageProps<"/inbox">) {
             + Add lead
           </Link>
         </div>
+        <SetupCard ctx={ctx} />
         <InboxList org={org} filter={filter} />
       </div>
       {/* Laptops: the right side waits for a conversation to be picked. */}

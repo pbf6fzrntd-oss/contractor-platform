@@ -247,6 +247,8 @@ export type Database = {
           fetch_error: string | null;
           created_by_email: string | null;
           created_at: string;
+          org_id: string | null;
+          previous_report_id: string | null;
         };
         Insert: {
           id?: string;
@@ -261,6 +263,8 @@ export type Database = {
           fetch_error?: string | null;
           created_by_email?: string | null;
           created_at?: string;
+          org_id?: string | null;
+          previous_report_id?: string | null;
         };
         Update: {
           id?: string;
@@ -275,6 +279,8 @@ export type Database = {
           fetch_error?: string | null;
           created_by_email?: string | null;
           created_at?: string;
+          org_id?: string | null;
+          previous_report_id?: string | null;
         };
         Relationships: [];
       };
@@ -1090,6 +1096,8 @@ export type Database = {
           profile: Json;
           is_demo: boolean;
           demo_expires_at: string | null;
+          setup_dismissed_at: string | null;
+          calendar_token: string | null;
         };
         Insert: {
           id?: string;
@@ -1113,6 +1121,8 @@ export type Database = {
           profile?: Json;
           is_demo?: boolean;
           demo_expires_at?: string | null;
+          setup_dismissed_at?: string | null;
+          calendar_token?: string | null;
         };
         Update: {
           id?: string;
@@ -1136,6 +1146,8 @@ export type Database = {
           profile?: Json;
           is_demo?: boolean;
           demo_expires_at?: string | null;
+          setup_dismissed_at?: string | null;
+          calendar_token?: string | null;
         };
         Relationships: [];
       };

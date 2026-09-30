@@ -25,11 +25,11 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M24 Expiry reminders (licenses, vaccines) + photos texted in | ✅ done |
 | Demo-ready UI (founder request) | ✅ done |
 | M25 Quality: click-through suite in the repo, automatic checks on GitHub, daily cleanup, error alerts | ✅ done |
-| M26 Selling: demo business per industry, setup checklist, audit→customer link, calendar feed | not started |
+| M26 Selling: demo business per industry, setup checklist, audit→customer link, calendar feed | ✅ done |
 
 ## Next up
 Founder approved items 1–16 of the post-M22 recommendations (2026-09-30), as M23–M26 above. Module A (Recurring Home Services) moves to M27+.
-M24 is done. Next: M25 (click-through suite in the repo, GitHub checks, daily cleanup, error alerts). Note: founder asked (after M24) for a demo-ready interface for prospects; see "Demo-ready UI" below.
+M23–M26 and the demo-ready UI are done (all of the founder's items 1–16). Next: Module A (Recurring Home Services: house cleaning, pest control, pool service) as M27+, when the founder is ready.
 
 ## Milestone notes and "how to test"
 (Added as each milestone finishes.)
@@ -297,4 +297,35 @@ Nothing new to click yet. The configs show up in the sales audit (M17) and on ho
 1. GitHub → the repository → **Actions**: every push shows "CI" with two checks (green = good). Click a failed run to see which step failed. The click-through step keeps screenshots under "Artifacts".
 2. Locally: run the app with `DEMO_MODE=on` and `DEMO_STARTS_PER_HOUR=500`, then `npm run e2e`.
 3. Error alerts: create a free Sentry project (Next.js), put its DSN in `SENTRY_DSN` on Vercel, redeploy. Visit a page that errors; the alert email arrives within a minute.
+
+### M26: Selling tools
+**What changed**
+- **A demo business per industry (item 12):** covered by "Try it live" (`/demo`, all 12 trades businesses can pick today). See "Demo-ready UI" above and `docs/DEMO.md`.
+- **Setup checklist (item 13):**
+  - New owners see "Finish setting up" at the top of Inbox (trades) or Today (lawn), with a progress bar and the next step.
+  - Settings → **Setup checklist** has the full list:
+    1. business number;
+    2. new-lead alerts;
+    3. forward and test (or try the simulator);
+    4. carrier registration;
+    5. Google review link;
+    6. lawn only: add your customers;
+    7. optional: license & insurance, online booking, public profile, invite your office manager.
+  - Steps tick themselves off from what the business has actually done. The card goes away when the must-do steps are done, or when the owner hides it.
+  - Never shown to office managers or in demo businesses. Rules: `lib/setup/checklist.ts` (pure).
+- **Audit → customer link + re-audit (item 14):**
+  - On an audit report (admin), choose which business the prospect signed up as. The business's admin page lists its audits.
+  - **Re-run audit** checks the website again with the same call answers and shows "Before: 42 → now 78 (+36 points)", good for renewals and case studies.
+  - Demo businesses are left out of the admin business list.
+- **Calendar feed (item 16):**
+  - Settings → **Calendar** → "Create my calendar link", then Add to Google / Apple / Outlook.
+  - The feed has bookings (2 weeks back, 3 months ahead; waiting requests marked "(Waiting)") and, for lawn businesses, an all-day "Route: N customers" for the next 3 weeks.
+  - It shows names, services and addresses only, never notes or gate codes.
+  - The secret address can be replaced or turned off, and only the server sets it (DB test). A wrong address returns "not found" (click-through test).
+- Migration `20260930040000_m26_selling.sql` (additive); rollback included.
+
+**How to test**
+1. Sign up as a new owner: "Finish setting up" appears on the Inbox. Follow "Next" through the steps and watch them tick off. Settings → Setup checklist → Hide.
+2. Settings → Calendar → Create my calendar link → Add to Google Calendar. On a live site, bookings appear within about an hour.
+3. Admin → Sales audits → open one → "Signed up as" → pick the business → Save. Then **Re-run audit**: the new report shows before and after.
 

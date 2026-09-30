@@ -73,3 +73,49 @@ export async function updateAuditAnswers(id: string, _prev: FormState, formData:
   revalidatePath(`/admin/audit/${id}`);
   return { success: `Saved. New score: ${report.score}.` };
 }
+
+/** Links an audit to the business that signed up (or unlinks it). */
+export async function linkAuditToBusiness(id: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  await requirePlatformAdmin();
+  const orgId = String(formData.get("org_id") ?? "");
+  if (orgId && !/^[0-9a-f-]{36}$/.test(orgId)) return { error: "Pick a business." };
+  const db = createAdminClient();
+  if (orgId) {
+    const { data: org } = await db.from("organizations").select("id").eq("id", orgId).eq("is_demo", false).maybeSingle();
+    if (!org) return { error: "Business not found." };
+  }
+  const { error } = await db.from("audit_reports").update({ org_id: orgId || null }).eq("id", id);
+  if (error) return { error: "Couldn't save. Try again." };
+  revalidatePath(`/admin/audit/${id}`);
+  return { success: orgId ? "Linked." : "Unlinked." };
+}
+
+/** Runs the audit again (fresh website check, same call answers) to show before and after. */
+export async function rerunAudit(id: string): Promise<void> {
+  const { email } = await requirePlatformAdmin();
+  const db = createAdminClient();
+  const { data: row } = await db.from("audit_reports").select("*").eq("id", id).maybeSingle();
+  if (!row) redirect("/admin/audit");
+  const { findings, error } = row.website_url ? await auditWebsite(row.website_url) : { findings: EMPTY_FINDINGS, error: "No website given." };
+  const answers = row.answers as CallAnswers;
+  const report = buildAuditReport({ industry: row.industry, findings, answers });
+  const { data } = await db
+    .from("audit_reports")
+    .insert({
+      prospect_name: row.prospect_name,
+      industry: row.industry,
+      website_url: row.website_url,
+      contact_phone: row.contact_phone,
+      findings,
+      answers,
+      score: report.score,
+      notes: row.notes,
+      fetch_error: error ?? null,
+      created_by_email: email,
+      org_id: row.org_id,
+      previous_report_id: row.id,
+    })
+    .select("id")
+    .single();
+  redirect(data ? `/admin/audit/${data.id}` : `/admin/audit/${id}`);
+}

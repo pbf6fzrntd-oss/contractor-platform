@@ -24,6 +24,8 @@ export default async function SettingsPage() {
     { href: "/settings/billing", label: "Billing", detail: `${plan.id === "pilot" ? "Pilot" : plan.id} plan and text usage` },
     ...(role === "owner"
       ? [
+          { href: "/settings/setup", label: "Setup checklist", detail: "What's left to get fully running" },
+          { href: "/settings/calendar", label: "Calendar", detail: "See bookings in Google or Apple Calendar" },
           { href: "/settings/profile", label: "Public profile", detail: org.public_profile_enabled ? `Live at /b/${org.slug}` : "Be found and booked by customers and AI assistants" },
           { href: "/settings/booking", label: "Online booking", detail: bookingOn(org, plan, modules) ? "On" : canUse(plan, modules, "booking") ? "Off: set up services and hours" : "Part of Executive or the Agent Ready add-on" },
           { href: "/settings/approvals", label: "Approval rules", detail: "Which bookings wait for your OK" },

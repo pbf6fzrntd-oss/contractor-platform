@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { PageHeader } from "@/components/page-header";
+import { SetupCard } from "../setup-card";
 import { requireAppContext } from "@/lib/auth/context";
 import { selectNoticeRecipients } from "@/lib/automation/recipients";
 import { isScheduledOn } from "@/lib/automation/schedule";
@@ -14,7 +15,8 @@ import { CompleteDayButton } from "./complete-day";
 export const metadata: Metadata = { title: "Today" };
 
 export default async function TodayPage({ searchParams }: PageProps<"/today">) {
-  const { org } = await requireAppContext("/today");
+  const ctx = await requireAppContext("/today");
+  const { org } = ctx;
   const params = await searchParams;
   const today = localDateString(new Date(), org.timezone);
   const date = typeof params.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : today;
@@ -62,6 +64,7 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
       <div>
       {sentStatus && sentStatus.pending > 0 && <AutoRefresh seconds={4} />}
       <PageHeader title={date === today ? "Today" : title} subtitle={date === today ? title : undefined} />
+      <SetupCard ctx={ctx} />
 
       <nav className="-mt-2 mb-4 flex items-center justify-between gap-2" aria-label="Change day">
         <Link href={`/today?date=${addDays(date, -1)}`} className="btn-secondary min-h-10 px-3 text-sm">← Prev</Link>

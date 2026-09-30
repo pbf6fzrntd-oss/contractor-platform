@@ -696,6 +696,19 @@ describe.skipIf(!url)("row-level security", () => {
     expect((await attempt("insert into public.public_request_log (ip_hash, kind) values ('x', 'demo')")).error).toBeNull();
   });
 
+  it("lets owners hide the setup checklist, but only the server sets the calendar link (Milestone 26)", async () => {
+    await actAs(ownerA);
+    expect((await attempt("update public.organizations set setup_dismissed_at = now() where id = $1", [orgA])).error).toBeNull();
+    expect((await attempt("update public.organizations set calendar_token = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' where id = $1", [orgA])).error).not.toBeNull();
+    expect((await attempt("update public.organizations set setup_dismissed_at = now() where id = $1", [orgB])).rowCount).toBe(0);
+    await actAs(managerA);
+    expect((await attempt("update public.organizations set setup_dismissed_at = null where id = $1", [orgA])).rowCount).toBe(0);
+    await actAsAnonymous();
+    expect((await attempt("select calendar_token from public.organizations")).rowCount).toBe(0);
+    await db.query("reset role");
+    expect((await attempt("update public.organizations set calendar_token = 'short' where id = $1", [orgA])).error).not.toBeNull();
+  });
+
   it("gives logged-out visitors nothing", async () => {
     await actAsAnonymous();
     for (const table of ["organizations", "message_templates", "memberships", "profiles", "plans", "contacts", "leads", "messages", "org_modules", "api_keys"]) {

@@ -9,7 +9,8 @@ export const metadata: Metadata = { title: "Admin" };
 export default async function AdminHome() {
   const db = createAdminClient();
   const [{ data: orgs }, { data: regs }, { data: phones }, { data: subs }] = await Promise.all([
-    db.from("organizations").select("id, name, business_type, plan_id, created_at").order("created_at", { ascending: false }).limit(500),
+    // "Try it live" demo businesses are left out (they delete themselves after a day).
+    db.from("organizations").select("id, name, business_type, plan_id, created_at").eq("is_demo", false).order("created_at", { ascending: false }).limit(500),
     db.from("a2p_registrations").select("org_id, status"),
     db.from("phone_numbers").select("org_id, e164, provider"),
     db.from("subscriptions").select("org_id, status"),

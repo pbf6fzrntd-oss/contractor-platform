@@ -14,6 +14,9 @@ test("a new owner signs up, sets up their business and gets a text-back working"
   await page.locator("#alert_phone").fill("843-555-0188");
   await page.locator("button[type=submit]").click();
   await page.waitForURL(/\/inbox/);
+  // New owners see what's left to set up.
+  await expect(page.getByRole("region", { name: "Finish setting up" })).toBeVisible();
+  await expect(page.getByText("Next: Get your business texting number")).toBeVisible();
 
   // A pretend business number, then a pretend missed call from the simulator.
   await page.goto("/settings/phone");
@@ -24,4 +27,18 @@ test("a new owner signs up, sets up their business and gets a text-back working"
   await expect(page.getByText(/Missed call logged/)).toBeVisible();
   await page.goto("/inbox");
   await expect(page.getByText("(843) 555-0177").first()).toBeVisible();
+
+  // The "test it" step is now done.
+  await page.goto("/settings/setup");
+  await expect(page.getByText(/of 5 must-do steps done/)).toBeVisible();
+
+  // Calendar feed: create the private link and read it like a calendar app would.
+  await page.goto("/settings/calendar");
+  await page.getByRole("button", { name: "Create my calendar link" }).click();
+  const feed = await page.locator("#feed").inputValue();
+  const res = await page.request.get(new URL(feed).pathname);
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toContain("text/calendar");
+  expect(await res.text()).toContain("BEGIN:VCALENDAR");
 });
+
