@@ -1,6 +1,8 @@
 import "server-only";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { isPrivateAddress, normalizeWebsiteUrl } from "@/lib/audit/url";
 import { analyzeHtml, blockedAiCrawlers, EMPTY_FINDINGS, type WebsiteFindings } from "@/lib/audit/website";
 
@@ -11,26 +13,44 @@ const MAX_REDIRECTS = 3;
 /** Only for local testing against a site on this computer; never honored in production. */
 const allowPrivate = () => process.env.NODE_ENV !== "production" && process.env.AUDIT_ALLOW_PRIVATE_HOSTS === "1";
 
-async function assertPublic(url: string): Promise<void> {
-  const host = new URL(url).hostname.replace(/^\[|\]$/g, "");
-  if (allowPrivate()) return;
-  const addresses = isIP(host) ? [{ address: host }] : await lookup(host, { all: true });
-  if (!addresses.length || addresses.some((a) => isPrivateAddress(a.address))) throw new Error("not a public address");
-}
-
-async function readLimited(res: Response): Promise<string> {
-  const reader = res.body?.getReader();
-  if (!reader) return "";
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  while (size < MAX_BYTES) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    size += value.byteLength;
-  }
-  await reader.cancel().catch(() => {});
-  return new TextDecoder().decode(Buffer.concat(chunks).subarray(0, MAX_BYTES));
+/** Resolve once, validate every answer, and pin the connection to a checked IP. */
+async function pinnedGet(url: string): Promise<{ status: number; location?: string; body: string }> {
+  const parsed = new URL(url);
+  const host = parsed.hostname.replace(/^\[|\]$/g, "");
+  const addresses = isIP(host) ? [{ address: host, family: isIP(host) }] : await lookup(host, { all: true });
+  if (!addresses.length || (!allowPrivate() && addresses.some((a) => isPrivateAddress(a.address)))) throw new Error("not a public address");
+  const address = addresses[0];
+  return new Promise((resolve, reject) => {
+    const req = (parsed.protocol === "https:" ? httpsRequest : httpRequest)(parsed, {
+      agent: false,
+      // Host and TLS certificate verification retain the original hostname.
+      lookup: (_host, options, done) => {
+        if (options.all) done(null, [address]);
+        else done(null, address.address, address.family);
+      },
+      headers: { "user-agent": "Mozilla/5.0 (compatible; AgentReadinessAudit/1.0)", accept: "text/html,text/plain;q=0.9,*/*;q=0.5" },
+    }, (res) => {
+      const status = res.statusCode ?? 500;
+      if (status >= 300 && status < 400 && res.headers.location) {
+        resolve({ status, location: res.headers.location, body: "" });
+        res.destroy();
+        return;
+      }
+      const chunks: Buffer[] = [];
+      let size = 0;
+      res.on("data", (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > MAX_BYTES) { req.destroy(new Error("response too large")); return; }
+        chunks.push(chunk);
+      });
+      res.on("error", reject);
+      res.on("end", () => resolve({ status, body: Buffer.concat(chunks).toString("utf8") }));
+    });
+    const timer = setTimeout(() => req.destroy(new Error("request timed out")), TIMEOUT_MS);
+    req.on("close", () => clearTimeout(timer));
+    req.on("error", reject);
+    req.end();
+  });
 }
 
 /** Fetches a public page, re-checking every redirect so it can't be bounced to a private address. */
@@ -39,18 +59,12 @@ async function safeGet(start: string): Promise<{ url: string; status: number; bo
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     const safe = normalizeWebsiteUrl(url);
     if (!safe) return null;
-    await assertPublic(safe);
-    const res = await fetch(safe, {
-      redirect: "manual",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      headers: { "user-agent": "Mozilla/5.0 (compatible; AgentReadinessAudit/1.0)", accept: "text/html,text/plain;q=0.9,*/*;q=0.5" },
-    });
-    if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
-      url = new URL(res.headers.get("location")!, safe).toString();
-      await res.body?.cancel().catch(() => {});
+    const res = await pinnedGet(safe);
+    if (res.location) {
+      url = new URL(res.location, safe).toString();
       continue;
     }
-    return { url: safe, status: res.status, body: await readLimited(res) };
+    return { url: safe, status: res.status, body: res.body };
   }
   return null;
 }

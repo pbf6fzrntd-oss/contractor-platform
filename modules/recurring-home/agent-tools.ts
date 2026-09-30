@@ -157,7 +157,7 @@ export const recurringHomeAgentTools: AgentToolRegistrar = (server, ctx, { logge
           ends_on: a.ends_on,
           renews_automatically: a.auto_renew,
           standing: agreementStanding(a, today).replace(/_/g, " "),
-          renewal_reminder_sent: Boolean(a.ends_on && a.renewal_notice_for === a.ends_on),
+          renewal_reminder_queued: Boolean(a.ends_on && a.renewal_notice_for === a.ends_on),
         };
       });
       return { result: ok({ today, agreements: out }), summary: `Looked at ${out.length} service agreement${out.length === 1 ? "" : "s"}` };

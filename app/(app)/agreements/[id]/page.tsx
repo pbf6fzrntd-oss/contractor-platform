@@ -60,7 +60,7 @@ export default async function AgreementPage({ params, searchParams }: PageProps<
         </p>
         {a.ends_on && a.renewal_notice_days > 0 && (
           <p className="text-sm text-slate-500">
-            {a.renewal_notice_for === a.ends_on ? "✓ Renewal reminder sent." : `Customer gets a reminder ${a.renewal_notice_days} days before.`}
+            {a.renewal_notice_for === a.ends_on ? "✓ Renewal reminder queued; check inbox for delivery." : `Customer gets a reminder ${a.renewal_notice_days} days before.`}
           </p>
         )}
       </section>
@@ -75,7 +75,7 @@ export default async function AgreementPage({ params, searchParams }: PageProps<
           <form action={renewAgreement.bind(null, a.id)}>
             <SubmitButton className="btn-primary w-full">Renew now (next {a.term_months} months)</SubmitButton>
           </form>
-          <ReminderButton action={sendRenewalReminderNow.bind(null, a.id)} label={a.renewal_notice_for === a.ends_on ? "Send the reminder again" : "Text the reminder now"} />
+          <ReminderButton action={sendRenewalReminderNow.bind(null, a.id)} label={a.renewal_notice_for === a.ends_on ? "Reminder already queued" : "Text the reminder now"} />
         </section>
       )}
 

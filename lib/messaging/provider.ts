@@ -12,7 +12,7 @@ export type ProviderMessageStatus = "queued" | "sent" | "delivered" | "failed" |
 
 export type SendSmsResult =
   | { ok: true; sid: string; status: ProviderMessageStatus }
-  | { ok: false; error: string; code?: number };
+  | { ok: false; error: string; code?: number; unknown?: boolean };
 
 export interface SmsProvider {
   name: "simulator" | "twilio";
@@ -41,6 +41,7 @@ async function twilioRequest(path: string, init: { method: "GET" | "POST"; form?
   const url = `https://api.twilio.com/2010-04-01/Accounts/${serverEnv.twilioAccountSid}${path}`;
   const res = await fetch(url, {
     method: init.method,
+    signal: AbortSignal.timeout(15_000),
     headers: {
       Authorization: twilioAuthHeader(),
       ...(init.form ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
@@ -48,7 +49,7 @@ async function twilioRequest(path: string, init: { method: "GET" | "POST"; form?
     body: init.form ? new URLSearchParams(init.form) : undefined,
   });
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  return { ok: res.ok, json };
+  return { ok: res.ok, status: res.status, json };
 }
 
 export function mapTwilioStatus(status: string): ProviderMessageStatus {
@@ -78,10 +79,11 @@ const twilio: SmsProvider = {
     };
     if (messagingServiceSid) form.MessagingServiceSid = messagingServiceSid;
     else form.From = from;
-    const { ok, json } = await twilioRequest("/Messages.json", { method: "POST", form });
+    const { ok, status, json } = await twilioRequest("/Messages.json", { method: "POST", form });
     if (!ok) {
-      return { ok: false, error: String(json.message ?? "Twilio error"), code: Number(json.code) || undefined };
+      return { ok: false, error: String(json.message ?? "Twilio error"), code: Number(json.code) || undefined, unknown: status >= 500 };
     }
+    if (typeof json.sid !== "string" || !json.sid) return { ok: false, error: "Missing provider receipt", unknown: true };
     return { ok: true, sid: String(json.sid), status: mapTwilioStatus(String(json.status)) };
   },
   async buyNumber(areaCode) {

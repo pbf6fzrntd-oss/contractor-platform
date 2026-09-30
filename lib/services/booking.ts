@@ -193,6 +193,7 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
   const today = localDateString(new Date(nowMs), org.timezone);
   const from = req.checkIn ?? req.date ?? (req.startMs ? localDateString(new Date(req.startMs), org.timezone) : today);
   const data = await loadBookingData(db, org, from, req.checkOut ?? from);
+  if (req.rescheduledFrom) data.existing = data.existing.filter((b) => b.id !== req.rescheduledFrom);
   const s = toService(serviceRow, data.settings);
   const hours = openHoursFrom(data.settings);
   const closedDates = data.settings.closedDates;
@@ -286,7 +287,7 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
       db.from("bookings").select("id", { count: "exact", head: true }).eq("package_id", req.packageId).neq("status", "canceled"),
     ]);
     if (!pkg) return { ok: false, error: "Package not found." };
-    const p: Package = { id: pkg.id, sessionsTotal: pkg.sessions_total, sessionsUsed: used ?? 0, expiresOn: pkg.expires_on, serviceId: pkg.service_id };
+    const p: Package = { id: pkg.id, sessionsTotal: pkg.sessions_total, sessionsUsed: Math.max(0, (used ?? 0) - (req.rescheduledFrom ? 1 : 0)), expiresOn: pkg.expires_on, serviceId: pkg.service_id };
     const r = checkPackage(p, s.id, serviceDate);
     if (!r.ok) return fail(r);
   }
@@ -346,10 +347,12 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
     verify_by: hold ? new Date(nowMs + data.settings.agentVerifyMinutes * 60_000).toISOString() : null,
     pending_reasons: hold ? approvalReasons : [],
     rescheduled_from: req.rescheduledFrom ?? null,
+    approval_reasons: approvalReasons,
   };
   const { data: id, error } = await db.rpc("book_slot", { p_booking: row, p_capacity_scope: scope, p_capacity: capacity ?? undefined });
   if (error || !id) {
     const msg = error?.message ?? "";
+    if (/^CHANGED/.test(msg)) return { ok: false, error: "This booking was just changed. Refresh and try again." };
     if (/^FULL/.test(msg)) return { ok: false, error: BLOCK_REASON_TEXT.full };
     if (/^OVERLAP/.test(msg)) return { ok: false, error: "That time was just taken. Pick another." };
     if (/^NO_SESSIONS/.test(msg)) return { ok: false, error: BLOCK_REASON_TEXT.no_sessions_left };
@@ -358,16 +361,6 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
     return { ok: false, error: "Couldn't save the booking. Please try again." };
   }
   if (status === "confirmed") await scheduleBookingReminder(db, org, id, nowMs);
-  if (status === "pending_approval") {
-    await db.from("approval_requests").insert({
-      org_id: org.id,
-      kind: "booking",
-      booking_id: id,
-      lead_id: req.leadId ?? null,
-      contact_id: req.contactId,
-      reasons: approvalReasons,
-    });
-  }
   return { ok: true, bookingId: id, startsAt: row.starts_at, endsAt: row.ends_at, status, approvalReasons };
 }
 

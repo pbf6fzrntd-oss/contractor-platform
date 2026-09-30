@@ -28,11 +28,11 @@ async function readParams(request: Request): Promise<Record<string, string>> {
   return out;
 }
 
-async function issueTokens(db: AdminClient, keyId: string, access: string) {
+async function issueTokens(db: AdminClient, keyId: string, access: string, expectedRefreshHash?: string) {
   const { key, prefix, hash } = generateApiKey();
   const refresh = randomToken("llr_");
   const now = Date.now();
-  await db
+  let update = db
     .from("api_keys")
     .update({
       key_hash: hash,
@@ -41,7 +41,11 @@ async function issueTokens(db: AdminClient, keyId: string, access: string) {
       refresh_hash: sha256(refresh),
       refresh_expires_at: new Date(now + REFRESH_TOKEN_DAYS * 86_400_000).toISOString(),
     })
-    .eq("id", keyId);
+    .eq("id", keyId).is("revoked_at", null);
+  if (expectedRefreshHash) update = update.eq("refresh_hash", expectedRefreshHash).gt("refresh_expires_at", new Date(now).toISOString());
+  const { data: changed, error } = await update.select("id");
+  if (error) return json({ error: "server_error" }, 500);
+  if (changed?.length !== 1) return invalid("invalid_grant", "This connection changed. Connect again.");
   return json({
     access_token: key,
     token_type: "Bearer",
@@ -111,7 +115,7 @@ export async function POST(request: Request) {
       const { data: member } = await db.from("memberships").select("role").eq("org_id", key.org_id).eq("user_id", key.created_by).maybeSingle();
       if (!member) return invalid("invalid_grant", "The person who connected this is no longer on the team.");
     }
-    return issueTokens(db, key.id, key.access);
+    return issueTokens(db, key.id, key.access, sha256(p.refresh_token));
   }
 
   return invalid("unsupported_grant_type", "Use authorization_code or refresh_token.");

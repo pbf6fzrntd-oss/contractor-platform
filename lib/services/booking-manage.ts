@@ -9,9 +9,8 @@ import type { Tables } from "@/lib/database.types";
 
 /**
  * What a customer can do from their private booking link: see it, cancel it,
- * or move it. Moving frees the old time, then books the new one with the same
- * rules, approvals and capacity checks as online booking; if the new time
- * can't be booked, the old booking is put back.
+ * or move it. Moving cancels the old booking and creates its replacement in one database
+ * transaction, with the same rules, approvals and capacity checks as online booking.
  */
 
 export type ManagedBooking = { booking: Tables<"bookings">; org: Org; serviceName: string; contact: Tables<"contacts"> };
@@ -61,15 +60,6 @@ export async function rescheduleByCustomer(
 ): Promise<{ ok: true; bookingId: string; status: string; when: string } | { ok: false; error: string }> {
   if (!canChange(m.booking)) return { ok: false, error: "This booking can't be changed anymore. Please call or text the business." };
   if (!m.booking.service_id) return { ok: false, error: "Please call or text the business to move this booking." };
-  // Free the old time first (so moving 30 minutes later doesn't clash with itself); put it back if the new time fails.
-  const previous = m.booking.status;
-  const { data: released } = await db
-    .from("bookings")
-    .update({ status: "canceled", canceled_by: "customer", notes: "Moved by the customer to a new time." })
-    .eq("id", m.booking.id)
-    .eq("status", previous)
-    .select("id");
-  if (!released?.length) return { ok: false, error: "This booking was just changed. Refresh and try again." };
   const result = await createBooking(db, m.org, {
     serviceId: m.booking.service_id,
     contactId: m.booking.contact_id,
@@ -88,11 +78,7 @@ export async function rescheduleByCustomer(
     source: "customer_link",
     rescheduledFrom: m.booking.id,
   });
-  if (!result.ok) {
-    await db.from("bookings").update({ status: previous, canceled_by: null, notes: m.booking.notes }).eq("id", m.booking.id).eq("status", "canceled");
-    return result;
-  }
-  await db.from("approval_requests").update({ status: "declined", decided_at: new Date().toISOString() }).eq("booking_id", m.booking.id).eq("status", "pending");
+  if (!result.ok) return result;
   const lang = m.contact.preferred_language === "es" ? "es" : "en";
   const { data: fresh } = await db.from("bookings").select("*").eq("id", result.bookingId).single();
   const when = fresh ? bookingWhen(fresh, m.org.timezone, lang) : "";

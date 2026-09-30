@@ -1,7 +1,7 @@
 import "server-only";
 import Stripe from "stripe";
 import { serverEnv } from "@/lib/env";
-import { addonChanges, addonsActive, classifyItems, mapStripeStatus } from "@/lib/billing/rules";
+import { addonsActive, classifyItems, mapStripeStatus } from "@/lib/billing/rules";
 import type { AdminClient } from "@/lib/supabase/admin";
 
 let client: Stripe | null = null;
@@ -14,52 +14,34 @@ export function getStripe(): Stripe | null {
 }
 
 /** Copies a Stripe subscription into our tables and switches the business to the matching plan. */
-export async function syncSubscription(db: AdminClient, sub: Stripe.Subscription): Promise<void> {
+export async function syncSubscription(db: AdminClient, sub: Stripe.Subscription, eventId: string, token: string): Promise<void> {
   const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
   let orgId = (sub.metadata?.org_id as string | undefined) ?? null;
   if (!orgId) {
-    const { data } = await db.from("subscriptions").select("org_id").eq("stripe_customer_id", customerId).maybeSingle();
+    const { data, error } = await db.from("subscriptions").select("org_id").eq("stripe_customer_id", customerId).maybeSingle();
+    if (error) throw error;
     orgId = data?.org_id ?? null;
   }
-  if (!orgId) {
-    console.error("Stripe subscription without a matching business", sub.id);
-    return;
-  }
+  if (!orgId) throw new Error("Stripe subscription has no matching business");
 
   const item = sub.items.data[0];
   const periodEnd = item?.current_period_end ? new Date(item.current_period_end * 1000).toISOString() : null;
   const status = mapStripeStatus(sub.status);
-  await db
-    .from("subscriptions")
-    .upsert({
-      org_id: orgId,
-      stripe_customer_id: customerId,
-      stripe_subscription_id: sub.id,
-      status,
-      current_period_end: periodEnd,
-    });
-
-  // One subscription = the plan + any add-ons (each add-on is its own Stripe product).
-  const [{ data: plans }, { data: catalog }, { data: current }] = await Promise.all([
+  const [planResult, catalogResult] = await Promise.all([
     db.from("plans").select("id, stripe_price_id"),
     db.from("addon_catalog").select("key, stripe_price_id"),
-    db.from("org_modules").select("module, source, enabled").eq("org_id", orgId),
   ]);
+  if (planResult.error) throw planResult.error;
+  if (catalogResult.error) throw catalogResult.error;
   const { planId, addons } = classifyItems(
     sub.items.data.map((i) => ({ itemId: i.id, priceId: i.price?.id })),
-    plans ?? [],
-    catalog ?? [],
+    planResult.data ?? [],
+    catalogResult.data ?? [],
   );
-  if (planId) await db.from("organizations").update({ plan_id: planId }).eq("id", orgId);
-
-  const changes = addonChanges(current ?? [], addons.map((a) => a.key), addonsActive(status));
-  for (const a of addons) {
-    const existing = (current ?? []).find((c) => c.module === a.key);
-    // Never downgrade a module that came with the edition, pilot or admin to a paid add-on row.
-    if (existing && existing.source !== "addon") continue;
-    await db.from("org_modules").upsert({ org_id: orgId, module: a.key, enabled: addonsActive(status), source: "addon", stripe_subscription_item_id: a.itemId });
-  }
-  if (changes.disable.length) {
-    await db.from("org_modules").update({ enabled: false }).eq("org_id", orgId).eq("source", "addon").in("module", changes.disable);
-  }
+  const { data, error } = await db.rpc("apply_billing_snapshot", {
+    p_event_id: eventId, p_token: token,
+    p_snapshot: { org_id: orgId, subscription_id: sub.id, customer_id: customerId,
+      status, period_end: periodEnd, plan_id: planId, addons, active: addonsActive(status) },
+  });
+  if (error || !data) throw error ?? new Error("Billing snapshot was not committed");
 }

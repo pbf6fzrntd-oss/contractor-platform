@@ -65,6 +65,7 @@ export async function sendRenewalReminderNow(id: string): Promise<FormState> {
   const r = await load(id);
   if (!r) return { error: "Agreement not found." };
   if (!r.a.ends_on) return { error: "This agreement has no end date, so there's nothing to renew." };
+  if (r.a.renewal_notice_for === r.a.ends_on) return { success: "Reminder already queued. Check the inbox for its delivery status." };
   const ok = await queueRenewalReminder(createAdminClient(), r.org, r.a);
   revalidatePath(`/agreements/${id}`);
   return ok ? { success: "Reminder queued. It goes out in business hours." } : { error: "Couldn't queue the reminder. Please try again." };

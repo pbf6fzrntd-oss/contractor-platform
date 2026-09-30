@@ -284,6 +284,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      billing_events: {
+        Row: {
+          event_id: string;
+          subscription_id: string;
+          applied_at: string;
+        };
+        Insert: {
+          event_id: string;
+          subscription_id: string;
+          applied_at?: string;
+        };
+        Update: {
+          event_id?: string;
+          subscription_id?: string;
+          applied_at?: string;
+        };
+        Relationships: [];
+      };
+      billing_sync_leases: {
+        Row: {
+          subscription_id: string;
+          token: string;
+          expires_at: string;
+        };
+        Insert: {
+          subscription_id: string;
+          token: string;
+          expires_at: string;
+        };
+        Update: {
+          subscription_id?: string;
+          token?: string;
+          expires_at?: string;
+        };
+        Relationships: [];
+      };
       bookings: {
         Row: {
           id: string;
@@ -1703,6 +1739,66 @@ export type Database = {
         };
         Relationships: [];
       };
+      sms_attempts: {
+        Row: {
+          org_id: string;
+          request_key: string;
+          fingerprint: string;
+          message_id: string;
+          month: string;
+          state: string;
+          created_at: string;
+        };
+        Insert: {
+          org_id: string;
+          request_key: string;
+          fingerprint: string;
+          message_id: string;
+          month: string;
+          state: string;
+          created_at?: string;
+        };
+        Update: {
+          org_id?: string;
+          request_key?: string;
+          fingerprint?: string;
+          message_id?: string;
+          month?: string;
+          state?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      sms_reconciliations: {
+        Row: {
+          id: string;
+          org_id: string;
+          request_key: string;
+          decision: string;
+          evidence: string;
+          actor: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          request_key: string;
+          decision: string;
+          evidence: string;
+          actor: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          request_key?: string;
+          decision?: string;
+          evidence?: string;
+          actor?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       subject_private: {
         Row: {
           subject_id: string;
@@ -1818,16 +1914,23 @@ export type Database = {
     Views: { [_ in never]: never };
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
+      apply_billing_snapshot: { Args: { p_snapshot: Json; p_event_id: string; p_token: string }; Returns: boolean };
       book_slot: { Args: { p_booking: Json; p_capacity_scope: string; p_capacity?: number }; Returns: string };
+      claim_billing_sync: { Args: { p_subscription_id: string; p_event_id: string }; Returns: Json };
       claim_due_scheduled_messages: { Args: { p_now: string; p_limit?: number }; Returns: unknown[] };
       create_organization: { Args: { p_name: string; p_business_type: string; p_default_language: string; p_templates: Json; p_alert_phone?: string; p_google_review_url?: string; p_industry?: string }; Returns: string };
+      finish_sms_attempt: { Args: { p_org_id: string; p_key: string; p_state: string; p_status: string; p_sid?: string; p_error?: string }; Returns: boolean };
       get_invitation: { Args: { p_token: string }; Returns: { org_name: string; role: string; is_valid: boolean }[] };
       has_org_role: { Args: { p_org_id: string; p_role: string }; Returns: boolean };
       increment_sms_usage: { Args: { p_org_id: string; p_month: string; p_count?: number }; Returns: number };
       is_org_member: { Args: { p_org_id: string }; Returns: boolean };
       public_business_profile: { Args: { p_slug: string }; Returns: Json };
       public_profile_org: { Args: { p_slug: string }; Returns: string };
+      queue_agreement_reminder: { Args: { p_org_id: string; p_agreement_id: string; p_expected_end: string; p_context: Json; p_send_at: string }; Returns: boolean };
+      reconcile_sms_attempt: { Args: { p_org_id: string; p_key: string; p_decision: string; p_evidence: string; p_actor: string; p_sid?: string }; Returns: boolean };
       record_consent_event: { Args: { p_org_id: string; p_contact_id: string; p_kind: string; p_method: string; p_evidence?: string }; Returns: undefined };
+      reserve_public_request: { Args: { p_ip_hash: string; p_kind: string; p_per_ip: number; p_window_minutes: number; p_per_org: number; p_per_site: number; p_org_id?: string }; Returns: boolean };
+      reserve_sms_attempt: { Args: { p_message: Json; p_month: string; p_limit: number; p_key: string; p_fingerprint: string }; Returns: Json };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
