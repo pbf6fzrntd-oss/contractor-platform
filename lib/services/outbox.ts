@@ -82,6 +82,8 @@ export type DispatchOptions = {
   dueOnly?: boolean;
   /** Send this bulk send's due texts right now (used right after the owner taps Send). */
   broadcastId?: string;
+  /** Send these scheduled texts right now if they're due (e.g. a "service complete" text just queued). */
+  scheduledIds?: string[];
 };
 
 export async function runDispatch(db: AdminClient, options: DispatchOptions = {}): Promise<DispatchSummary> {
@@ -100,7 +102,16 @@ export async function runDispatch(db: AdminClient, options: DispatchOptions = {}
   }
 
   let items: ScheduledRow[];
-  if (options.broadcastId) {
+  if (options.scheduledIds?.length) {
+    const { data } = await db
+      .from("scheduled_messages")
+      .update({ status: "processing", processed_at: now.toISOString() })
+      .in("id", options.scheduledIds)
+      .eq("status", "pending")
+      .lte("send_at", now.toISOString())
+      .select("*");
+    items = data ?? [];
+  } else if (options.broadcastId) {
     // Claim this send's due texts; anything another run already took is skipped.
     const { data } = await db
       .from("scheduled_messages")

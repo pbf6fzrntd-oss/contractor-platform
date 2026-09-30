@@ -48,7 +48,7 @@ describe("Recurring Home Services: which businesses get it", () => {
     expect(moduleNavEntries(MODULES, ["home_services"])).toEqual([]);
     expect(moduleNavEntries(MODULES, ["home_services", "recurring_home"]).map((n) => n.href)).toEqual(["/agreements"]);
     expect(moduleCustomerPanels(MODULES, ["home_services"])).toHaveLength(0);
-    expect(moduleCustomerPanels(MODULES, ["recurring_home"])).toHaveLength(1);
+    expect(moduleCustomerPanels(MODULES, ["recurring_home"])).toHaveLength(2);
     expect(moduleAgentTools(MODULES, ["home_services"])).toHaveLength(0);
     expect(moduleAgentTools(MODULES, ["recurring_home"])).toHaveLength(1);
     // Daily jobs run for everyone but only touch businesses with the module on.
@@ -178,5 +178,66 @@ describe("module texts in the outbox", () => {
   it("only checks module tables (never core tables like contacts)", () => {
     expect(isModuleTable("rh_agreements")).toBe(true);
     for (const t of ["contacts", "organizations", "subject_private", "rh_", "rh_agreements; drop", "RH_AGREEMENTS"]) expect(isModuleTable(t)).toBe(false);
+  });
+});
+
+import { outOfRange, parseReportValues, reportFields, serviceCompleteText, summarizeReport } from "@/modules/recurring-home/rules/visit-report";
+import { moduleRouteStopLinks } from "@/lib/modules/types";
+
+describe("visit reports", () => {
+  const pool = reportFields("pool_service");
+  const form = (o: Record<string, string>) => ({ get: (k: string) => o[k] ?? null });
+
+  it("has a checklist per trade (readings for pool, activity for pest, rooms for cleaning)", () => {
+    expect(pool.filter((f) => f.type === "number").map((f) => f.key)).toEqual(["chlorine", "ph", "alkalinity"]);
+    expect(reportFields("pest_control").some((f) => f.type === "choice")).toBe(true);
+    expect(reportFields("house_cleaning").map((f) => f.key)).toContain("bathrooms");
+    expect(reportFields("roofing")).toHaveLength(1); // anything else: just "Service completed"
+  });
+
+  it("reads the form: ticks, readings in range, known choices only", () => {
+    expect(parseReportValues(pool, form({ chlorine: "3", ph: "7.45", skimmed: "on", brushed: "", hacked: "on" }))).toEqual({ ok: true, values: { chlorine: 3, ph: 7.5, skimmed: true } });
+    expect(parseReportValues(pool, form({ ph: "14" }))).toMatchObject({ ok: false, error: "pH should be between 6 and 9." });
+    expect(parseReportValues(reportFields("pest_control"), form({ activity: "swarming" }))).toEqual({ ok: true, values: {} });
+  });
+
+  it("flags readings outside the healthy range for the owner", () => {
+    expect(outOfRange(pool, { chlorine: 0.5, ph: 8.2, alkalinity: 100 })).toEqual(["Free chlorine 0.5 ppm is low", "pH 8.2 is high"]);
+    expect(outOfRange(pool, { chlorine: 3 })).toEqual([]);
+  });
+
+  it("writes the customer's summary and 'service complete' text in their language (no private notes, no STOP line)", () => {
+    const values = { chlorine: 3, ph: 7.4, skimmed: true, vacuumed: true };
+    expect(summarizeReport(pool, values, "en")).toBe("Free chlorine 3 ppm, pH 7.4. Done: skimmed, vacuumed");
+    expect(summarizeReport(pool, values, "es")).toBe("Cloro libre 3 ppm, pH 7.4. Hecho: superficie limpia, aspirada");
+    const text = serviceCompleteText("en", "Crystal Coast Pool Care", "Weekly pool service", summarizeReport(pool, values, "en"), "Gate was left open, we closed it.");
+    expect(text).toBe("Crystal Coast Pool Care: Your weekly pool service is done for today. Free chlorine 3 ppm, pH 7.4. Done: skimmed, vacuumed. Gate was left open, we closed it. Thank you!");
+    expect(text).not.toMatch(/STOP/);
+    expect(serviceCompleteText("es", "X", "Limpieza", "", null)).toBe("X: Terminamos su servicio de hoy (Limpieza). ¡Gracias!");
+    const pest = reportFields("pest_control");
+    expect(summarizeReport(pest, { perimeter: true, activity: "light" }, "en")).toBe("Done: treated outside perimeter. Pest activity seen: light");
+  });
+
+  it("adds a Report button to each route stop only for the module's businesses", async () => {
+    const { MODULES } = await import("@/modules/registry");
+    expect(moduleRouteStopLinks(MODULES, ["home_services"])).toHaveLength(0);
+    const [links] = moduleRouteStopLinks(MODULES, ["home_services", "recurring_home"]);
+    expect(links({ recurringServiceId: "s1", date: "2026-10-01", done: false })).toEqual([{ href: "/visits/new?service=s1&date=2026-10-01", label: "Report" }]);
+    expect(links({ recurringServiceId: "s1", date: "2026-10-01", done: true })[0].label).toBe("Report ✓");
+  });
+
+  it("gives AI assistants 'log a visit' only at Read and act, and never crew or access notes", async () => {
+    const { recurringHomeAgentTools } = await import("@/modules/recurring-home/agent-tools");
+    const names = (access: string) => {
+      const tools: string[] = [];
+      const server = { registerTool: (name: string) => tools.push(name) } as never;
+      recurringHomeAgentTools(server, { access, org: { industry: "pool_service" } } as never, { logged: (_t: string, h: unknown) => h, ok: () => ({}) as never, fail: () => ({}) as never } as never);
+      return tools;
+    };
+    expect(names("read")).toEqual(["list_visit_reports", "list_service_agreements"]);
+    expect(names("read_write")).toContain("log_visit_report");
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync("modules/recurring-home/agent-tools.ts", "utf8");
+    expect(src).not.toMatch(/private_note|access_notes|subject_private/);
   });
 });

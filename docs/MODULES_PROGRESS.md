@@ -25,13 +25,13 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M24 Expiry reminders (licenses, vaccines) + photos texted in | ✅ done |
 | Demo-ready UI (founder request) | ✅ done |
 | M27 Module A foundation: industries, agreements + renewals, access notes | ✅ done |
-| M28 Module A visit reports, service-complete text, AI tools, demo trades | not started |
+| M28 Module A visit reports, service-complete text, AI tools, demo trades | ✅ done |
 | M25 Quality: click-through suite in the repo, automatic checks on GitHub, daily cleanup, error alerts | ✅ done |
 | M26 Selling: demo business per industry, setup checklist, audit→customer link, calendar feed | ✅ done |
 
 ## Next up
 Founder approved items 1–16 of the post-M22 recommendations (2026-09-30), as M23–M26 above. Module A (Recurring Home Services) moves to M27+.
-Module A (Recurring Home Services) is in progress: M27 done, next M28 (visit reports with checklists/readings and photos, optional "service complete" text, more AI tools, the three trades in the live demo).
+Module A (Recurring Home Services) is done (M27 + M28). Next: pick the next module from `docs/MODULES_PLAN.md` with the founder. Before launch, have a native speaker review the new Spanish "service complete" texts and checklist words.
 
 ## Milestone notes and "how to test"
 (Added as each milestone finishes.)
@@ -355,3 +355,35 @@ Nothing new to click yet. The configs show up in the sales audit (M17) and on ho
 3. Agreements → + New → pick the customer → **Termite bond** → price → start date about a year ago → Save. It shows "Renewing soon" and the exact reminder text. Tap **Text the reminder now**: the customer gets it in business hours (Simulator).
 4. The next morning the daily job sends reminders for anything inside its notice window and tells you what it did.
 
+### M28: Module A visit reports, "service complete" text, AI tools, demo trades
+**What changed**
+- **Visit reports** (`rh_visit_reports`, one per visit). Every stop on Today has a **Report** link, which turns into **Report ✓** once it's filed. The crew fills in a checklist written for their trade:
+  - pool: free chlorine, pH and alkalinity readings, plus skimmed/brushed/vacuumed/baskets/filter;
+  - pest: inside/outside/eaves/granules/bait stations/mosquito, plus "pest activity seen" (none/light/heavy);
+  - cleaning, lawn and landscaping each have their own lists.
+  Other things they can add:
+  - a note for the customer;
+  - 🔒 crew notes (team only, never texted or shown to AI assistants);
+  - up to 6 photos (private storage, 5-minute links).
+  Saving the report also marks the stop done (the same "job completed" as before, so review requests and metrics work unchanged). Pool readings outside the normal range are flagged in amber on the report ("pH 8.2 is high").
+- **"Service complete" text (optional):** a box ticked by default, with a live preview of the exact text, e.g. "Crystal Coast Pool Care: Your weekly pool service is done for today. Free chlorine 3 ppm, pH 8.2. Done: skimmed, vacuumed. Thank you!" (English or Spanish per customer).
+  - It's informational: business hours, opt-outs, STOP line on the first text, and a re-check right before sending, through the same `module_notice` outbox kind as renewal reminders.
+  - It's sent at most once per visit. If someone unticks the box before it goes out, it's skipped.
+- Each customer's page lists their recent visit reports.
+- **AI assistants:**
+  - `list_visit_reports` (read);
+  - `log_visit_report` (day-to-day access, texts only if asked).
+  Neither ever sees crew notes or photos.
+- **Live demo:** House cleaning, Pest control and Pool service are now on `/demo`. They come with service agreements (some renewing soon), termite bonds for pest, and visit reports with their texts. The demo bar has **📝 Finish a visit**. Fixed along the way: demo businesses for these trades failed to start because of a missing "audience" value on the sample rain-delay text.
+- Migration `20260930060000_m28_visit_reports.sql` (additive: new table, a same-business check, `files.job_id`). **Rollback:** drop `rh_visit_reports` and its check function, and drop `files.job_id` (the notes at the bottom of the migration). Existing businesses are unaffected; nothing changes unless someone files a report.
+- Tests:
+  - unit: fields, reading limits, summaries, texts;
+  - database: another business can't read or change reports, and a report can't point to another business's visit or customer;
+  - click-through: a pool tech files a report and the customer is texted.
+
+**How to test**
+1. Open `/demo` → **Pool service**. The demo bar shows **📝 Finish a visit** (or: Today → a stop → **Report**).
+2. Enter chlorine 3 and pH 8.2, tick Skimmed and Vacuumed, and type a note for the customer. The preview updates as you type; crew notes don't appear in it.
+3. Save. The report shows "✓ Visit saved", an amber "pH 8.2 is high", and says whether the text went out now or waits for business hours. The Simulator (📱) shows the customer's text.
+4. Back on Today the stop shows **Report ✓**. The customer's page lists the report.
+5. Try **Pest control** and **House cleaning** on `/demo`: their checklists are different, and Agreements already has sample plans.

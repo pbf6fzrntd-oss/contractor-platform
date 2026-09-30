@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Try it live", robots: { index: false
 export const dynamic = "force-dynamic";
 
 const ICONS: Record<string, string> = {
-  lawn_care: "🌱", landscaping: "🌳", roofing: "🏠", hvac: "❄️", plumbing: "🚿", electrical: "💡",
+  lawn_care: "🌱", landscaping: "🌳", pest_control: "🐜", pool_service: "🏊", house_cleaning: "🧽", roofing: "🏠", hvac: "❄️", plumbing: "🚿", electrical: "💡",
   remodeling: "🔨", painting: "🎨", gutters: "🌧", fencing: "🚧", tree_service: "🪓", handyman: "🧰",
 };
 

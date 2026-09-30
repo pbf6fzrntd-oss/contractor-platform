@@ -8,7 +8,8 @@ There are two ways to demo. Both use the real app, not slides or mockups.
 2. Pick the prospect's trade. In about a second they're inside their **own private demo business**:
    - about three months of history: missed calls, texts, estimates, won and lost jobs, review requests;
    - for trades: a week of booked visits;
-   - for lawn and landscaping: 26 recurring customers, today's route, last week's rain delay and a seasonal campaign.
+   - for lawn and landscaping: 26 recurring customers, today's route, last week's rain delay and a seasonal campaign;
+   - for house cleaning, pest control and pool service: the same route setup, plus service agreements (some up for renewal) and finished visit reports. Tap **📝 Finish a visit** in the demo bar to file one and text the customer.
 3. The yellow **🎬 Demo** bar at the top has **▶ Try it** buttons that play the customer's side.
 
 Each visitor gets a separate business, so you can send the link to a prospect after the call and they can click around on their own. Demo businesses:
@@ -44,6 +45,7 @@ Share your screen on a laptop; the app has a side menu and the inbox sits next t
 6. **Their world (2 min).**
    - Trades: **Schedule**, and **🗓 Book online as a customer**. The prospect books a visit on their own booking page, and it shows up in "Waiting for you".
    - Lawn: **Today** → **🌧 Rain delay**: "Rain? Two taps and your whole route knows, in English or Spanish."
+   - Pool, pest, cleaning: **📝 Finish a visit**: "Your tech ticks what they did, enters the readings, and the customer gets a 'service complete' text with them." Then **Agreements**: "Renewals text themselves."
 7. **Spanish (30 sec).** ▶ Try it → **…in Spanish**. "Spanish-speaking customers get Spanish texts automatically."
 8. **Close.** "Want me to set this up with your real number? You keep your number; missed calls just forward to us." Then send them the /demo link so they can play with it tonight.
 

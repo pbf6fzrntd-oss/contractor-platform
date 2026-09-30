@@ -55,7 +55,20 @@ export type ModuleManifest = {
   dailyJobs?: ModuleDailyJob[];
   /** Extra sections on a recurring customer's page (team-only screen). */
   customerPanels?: CustomerPanel[];
+  /**
+   * Fills a freshly built "Try it live" demo business with the module's own
+   * records (e.g. agreements and visit reports), from its customers and visits.
+   */
+  seedDemo?: (db: AdminClient, org: { id: string; name: string; industry: string | null; timezone: string }, now: Date) => Promise<void>;
+  /** Buttons on each stop of Today's route (e.g. "Report"). Pure: data in, links out. */
+  routeStopLinks?: RouteStopLinks;
 };
+
+export type RouteStopLinks = (stop: { recurringServiceId: string; date: string; done: boolean }) => { href: string; label: string }[];
+
+export function moduleRouteStopLinks(all: readonly ModuleManifest[], enabled: readonly string[]): RouteStopLinks[] {
+  return activeModules(all, enabled).flatMap((m) => (m.routeStopLinks ? [m.routeStopLinks] : []));
+}
 
 export type ModuleDailyJob = { name: string; run: (db: AdminClient, now: Date) => Promise<Json> };
 

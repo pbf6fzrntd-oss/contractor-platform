@@ -264,6 +264,61 @@ const T: Record<string, DemoTrade> = {
       { what: "Paver patio + lighting", from: 8500, to: 16000 },
     ],
   },
+  house_cleaning: {
+    business: "Sweet Tea Cleaning Co",
+    owner: "Monique Legare",
+    asks: [
+      "Looking for someone to clean every other week, 3 bed 2 bath in Nexton",
+      "Do you do move-out cleans? Lease ends the 30th",
+      "Need a deep clean before my in-laws visit next weekend",
+      "We have a vacation rental on Folly, need turnovers every Saturday",
+      "How much for a weekly clean? We have two dogs",
+    ],
+    asksEs: ["Busco limpieza cada dos semanas, casa de 3 habitaciones", "¿Hacen limpieza de mudanza?"],
+    reply: ["Hi {first}! We'd love to help. Can I stop by Tuesday for a quick walk-through and quote?", "Thanks {first}! How many bedrooms and bathrooms, and any pets?"],
+    jobs: [
+      { what: "Deep clean", from: 280, to: 480 },
+      { what: "Move-out clean", from: 320, to: 560 },
+      { what: "Vacation rental turnover", from: 120, to: 220 },
+    ],
+  },
+  pest_control: {
+    business: "Palmetto Pest Pros",
+    owner: "Travis Drayton",
+    asks: [
+      "Seeing roaches in the kitchen at night, the big palmetto bugs. Can you come out?",
+      "Need a termite inspection for a closing next week",
+      "Mosquitoes are terrible in the backyard, do you do monthly spraying?",
+      "Ants all over the bathroom counter",
+      "Our termite bond is up for renewal with another company, what do you charge?",
+      "Heard something in the attic, think it's squirrels or rats",
+    ],
+    asksEs: ["Tengo cucarachas en la cocina", "¿Cuánto cuesta el tratamiento de mosquitos?"],
+    reply: ["Hi {first}, sorry to hear that! We can treat Thursday. Want to start on our quarterly plan?", "Happy to help {first}. I can get a tech out tomorrow morning."],
+    jobs: [
+      { what: "Initial pest treatment", from: 150, to: 250 },
+      { what: "Termite inspection + bond", from: 350, to: 650 },
+      { what: "Rodent exclusion", from: 400, to: 1200 },
+    ],
+  },
+  pool_service: {
+    business: "Crystal Coast Pool Care",
+    owner: "Sam Ravenel",
+    asks: [
+      "Pool turned green after the storm, can you help?",
+      "Looking for weekly pool service, in-ground saltwater",
+      "Need someone to open our pool for the season",
+      "Pump is making a grinding noise",
+      "Just bought a house with a pool and have no idea what I'm doing",
+    ],
+    asksEs: ["La piscina se puso verde", "Busco servicio semanal para mi piscina"],
+    reply: ["Hi {first}! We can get it back to blue. I'll stop by tomorrow to take a look.", "Welcome {first}! Weekly service starts at $45 a visit. Want me to come see it?"],
+    jobs: [
+      { what: "Green-to-clean", from: 250, to: 650 },
+      { what: "Pool opening", from: 180, to: 300 },
+      { what: "Pump repair", from: 250, to: 900 },
+    ],
+  },
 };
 
 /** Recurring service offerings for lawn businesses: [service, frequency, price in dollars]. */
@@ -273,6 +328,20 @@ export const RECURRING_OFFERS: Record<string, [string, "weekly" | "biweekly" | "
     ["Full service", "weekly", 65],
     ["Mowing", "biweekly", 40],
     ["Fert & weed control", "every_4_weeks", 75],
+  ],
+  house_cleaning: [
+    ["Recurring clean", "biweekly", 150],
+    ["Recurring clean", "weekly", 130],
+    ["Recurring clean", "every_4_weeks", 180],
+  ],
+  pest_control: [
+    ["Quarterly pest service", "every_4_weeks", 55],
+    ["Mosquito treatment", "every_4_weeks", 75],
+  ],
+  pool_service: [
+    ["Weekly pool service", "weekly", 45],
+    ["Weekly pool service (salt)", "weekly", 50],
+    ["Every other week pool check", "biweekly", 55],
   ],
   landscaping: [
     ["Weekly maintenance", "weekly", 85],

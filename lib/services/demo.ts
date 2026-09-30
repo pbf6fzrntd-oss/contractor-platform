@@ -16,7 +16,7 @@ export const DEMO_PLAN = "executive";
 
 /** Trades a prospect can pick (the ones businesses can sign up for today). */
 export function demoIndustries() {
-  return ["lawn_care", "landscaping", "roofing", "hvac", "plumbing", "electrical", "remodeling", "painting", "gutters", "fencing", "tree_service", "handyman"]
+  return ["lawn_care", "landscaping", "pest_control", "pool_service", "house_cleaning", "roofing", "hvac", "plumbing", "electrical", "remodeling", "painting", "gutters", "fencing", "tree_service", "handyman"]
     .map((key) => getIndustry(key))
     .filter((i): i is NonNullable<typeof i> => Boolean(i && i.status === "available"));
 }
@@ -40,7 +40,9 @@ async function pretendNumber(db: AdminClient): Promise<string> {
 export type DemoLogin = { email: string; password: string; orgId: string };
 
 /** Creates a demo business for one visitor and returns the login to sign them in with. */
-export async function createDemoBusiness(db: AdminClient, industryKey: string, now = new Date()): Promise<DemoLogin> {
+export type DemoModule = { id: string; industries: string[]; seedDemo?: (db: AdminClient, org: { id: string; name: string; industry: string | null; timezone: string }, now: Date) => Promise<void> };
+
+export async function createDemoBusiness(db: AdminClient, industryKey: string, now = new Date(), modules: readonly DemoModule[] = []): Promise<DemoLogin> {
   const industry = getIndustry(industryKey);
   if (!industry || !demoIndustries().some((i) => i.key === industryKey)) throw new Error("demo: unknown trade");
   const s = buildDemoScenario(industryKey, now, randomBytes(4).readUInt32BE(0));
@@ -54,6 +56,13 @@ export async function createDemoBusiness(db: AdminClient, industryKey: string, n
 
   try {
     const orgId = await loadScenario(db, s, userId, now, tag);
+    // The industry's module (e.g. pest control → Recurring Home Services) is on, with its own demo records.
+    const mod = modules.find((m) => m.id !== "home_services" && m.industries.includes(industryKey));
+    if (mod) {
+      await db.from("org_modules").upsert({ org_id: orgId, module: mod.id, enabled: true, source: "edition" }, { onConflict: "org_id,module" });
+      await db.from("organizations").update({ edition: mod.id }).eq("id", orgId);
+      await mod.seedDemo?.(db, { id: orgId, name: s.business.name, industry: industryKey, timezone: "America/New_York" }, now);
+    }
     return { email, password, orgId };
   } catch (e) {
     // Don't leave half a demo behind.
@@ -132,7 +141,7 @@ async function loadScenario(db: AdminClient, s: DemoScenario, userId: string, no
           status: "sent",
           recipient_count: b.recipientCount,
           created_by: userId,
-          ...(b.kind === "campaign" ? { audience: { statuses: ["active"], serviceTypes: [] } } : {}),
+          audience: b.kind === "campaign" ? { statuses: ["active"], serviceTypes: [] } : {},
         })),
       ),
       "broadcasts",

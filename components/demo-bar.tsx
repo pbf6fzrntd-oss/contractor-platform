@@ -42,12 +42,15 @@ export function DemoBar({
   businessName,
   hoursLeft,
   recurring,
+  visitReports = false,
   bookingPath,
   actions,
 }: {
   businessName: string;
   hoursLeft: number;
   recurring: boolean;
+  /** Recurring Home Services demos: link to finishing a visit report. */
+  visitReports?: boolean;
   bookingPath: string | null;
   actions: { missedCall: Action; text: Action; textEs: Action; skipAhead: Action };
 }) {
@@ -90,6 +93,12 @@ export function DemoBar({
               <span className="text-2xl leading-none" aria-hidden="true">📱</span>
               <span><span className="block font-semibold text-slate-900">See the customer&apos;s phone</span><span className="block text-sm text-slate-600">Text the business as a customer and watch replies arrive.</span></span>
             </Link>
+            {visitReports && (
+              <Link href="/today" className={linkClass}>
+                <span className="text-2xl leading-none" aria-hidden="true">📝</span>
+                <span><span className="block font-semibold text-slate-900">Finish a visit</span><span className="block text-sm text-slate-600">Tap &quot;Report&quot; on a stop: checklist, readings, photos, and a &quot;service complete&quot; text.</span></span>
+              </Link>
+            )}
             {recurring ? (
               <Link href="/today" className={linkClass}>
                 <span className="text-2xl leading-none" aria-hidden="true">🌧</span>

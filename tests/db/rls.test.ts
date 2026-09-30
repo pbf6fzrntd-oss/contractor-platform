@@ -513,6 +513,42 @@ describe.skipIf(!url)("row-level security", () => {
     });
   });
 
+  describe("visit reports (Milestone 28, Recurring Home Services)", () => {
+    let jobA = "";
+    let jobB = "";
+    let contactA = "";
+    beforeAll(async () => {
+      await db.query("reset role");
+      contactA = (await db.query("insert into public.contacts (org_id, phone) values ($1, '+18435550281') returning id", [orgA])).rows[0].id;
+      const contactB = (await db.query("insert into public.contacts (org_id, phone) values ($1, '+18435550282') returning id", [orgB])).rows[0].id;
+      jobA = (await db.query("insert into public.jobs (org_id, contact_id, completed_on) values ($1, $2, '2026-10-01') returning id", [orgA, contactA])).rows[0].id;
+      jobB = (await db.query("insert into public.jobs (org_id, contact_id, completed_on) values ($1, $2, '2026-10-01') returning id", [orgB, contactB])).rows[0].id;
+      await db.query("insert into public.rh_visit_reports (org_id, job_id, contact_id, report, private_note) values ($1, $2, $3, '{\"ph\": 7.4}', 'Lockbox 1234')", [orgB, jobB, contactB]);
+    });
+
+    it("lets the team record a visit for their own customer, once per visit", async () => {
+      await actAs(managerA);
+      expect((await attempt("insert into public.rh_visit_reports (org_id, job_id, contact_id, report) values ($1, $2, $3, '{\"skimmed\": true}')", [orgA, jobA, contactA])).error).toBeNull();
+      expect((await attempt("insert into public.rh_visit_reports (org_id, job_id, contact_id) values ($1, $2, $3)", [orgA, jobA, contactA])).error).not.toBeNull();
+      expect((await attempt("delete from public.rh_visit_reports where job_id = $1", [jobA])).rowCount).toBe(0); // owners only
+    });
+
+    it("keeps another business's reports and crew notes out of reach", async () => {
+      await actAs(ownerA);
+      expect((await attempt("select * from public.rh_visit_reports where job_id = $1", [jobB])).rowCount).toBe(0);
+      expect((await attempt("update public.rh_visit_reports set private_note = 'x' where job_id = $1", [jobB])).rowCount).toBe(0);
+      // Another business's visit, even one without a report yet: refused.
+      await db.query("reset role");
+      const contactB2 = (await db.query("insert into public.contacts (org_id, phone) values ($1, '+18435550283') returning id", [orgB])).rows[0].id;
+      const jobB2 = (await db.query("insert into public.jobs (org_id, contact_id, completed_on) values ($1, $2, '2026-10-02') returning id", [orgB, contactB2])).rows[0].id;
+      await actAs(ownerA);
+      const cross = await attempt("insert into public.rh_visit_reports (org_id, job_id, contact_id) values ($1, $2, $3)", [orgA, jobB2, contactA]);
+      expect(cross.error?.message).toMatch(/different business/);
+      await actAsAnonymous();
+      expect((await attempt("select * from public.rh_visit_reports")).rowCount).toBe(0);
+    });
+  });
+
   describe("bookings (Milestone 19)", () => {
     let contactA = "";
     let serviceA = "";

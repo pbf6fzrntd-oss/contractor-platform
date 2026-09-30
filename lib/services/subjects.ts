@@ -89,7 +89,7 @@ export async function saveSubject(
  */
 export async function storeUpload(
   db: AdminClient,
-  input: { orgId: string; contactId: string | null; subjectId: string | null; kind: FileKind; file: File; userId: string; documentType?: string | null; expiresOn?: string | null },
+  input: { orgId: string; contactId: string | null; subjectId: string | null; kind: FileKind; file: File; userId: string | null; documentType?: string | null; expiresOn?: string | null; jobId?: string | null },
 ): Promise<{ ok: true; fileId: string } | { ok: false; error: string }> {
   const bytes = new Uint8Array(await input.file.arrayBuffer());
   const check = validateUpload({ kind: input.kind, size: bytes.byteLength, head: bytes.subarray(0, 16) });
@@ -107,6 +107,7 @@ export async function storeUpload(
     org_id: input.orgId,
     contact_id: input.contactId,
     subject_id: input.subjectId,
+    job_id: input.jobId ?? null,
     // "Photo or file" uploads are filed as photos when they turn out to be images.
     kind: input.kind === "document" && check.type.startsWith("image/") ? "photo" : input.kind,
     document_type: input.documentType ?? null,
@@ -115,7 +116,7 @@ export async function storeUpload(
     content_type: check.type,
     size_bytes: bytes.byteLength,
     original_name: cleanFileName(input.file.name),
-    uploaded_by: input.userId,
+    uploaded_by: input.userId || null,
   });
   if (error) return { ok: false, error: "Couldn't save the file. Please try again." };
   return { ok: true, fileId };

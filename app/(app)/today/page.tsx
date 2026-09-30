@@ -4,6 +4,8 @@ import { AutoRefresh } from "@/components/auto-refresh";
 import { PageHeader } from "@/components/page-header";
 import { SetupCard } from "../setup-card";
 import { requireAppContext } from "@/lib/auth/context";
+import { moduleRouteStopLinks } from "@/lib/modules/types";
+import { MODULES } from "@/modules/registry";
 import { selectNoticeRecipients } from "@/lib/automation/recipients";
 import { isScheduledOn } from "@/lib/automation/schedule";
 import { loadRecipientData } from "@/lib/services/broadcasts";
@@ -41,6 +43,7 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
       .order("created_at", { ascending: false }),
   ]);
   const doneIds = new Set((visits ?? []).map((v) => v.recurring_service_id));
+  const stopLinks = moduleRouteStopLinks(MODULES, ctx.modules);
   // Private access notes (gate codes, lockboxes) for today's stops: team-only screen.
   const { data: properties } = scheduled.length
     ? await supabase.from("subjects").select("id, contact_id").eq("org_id", org.id).eq("kind", "property").is("archived_at", null).in("contact_id", scheduled.map((s) => s.contact_id))
@@ -128,8 +131,8 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
               const c = contactById.get(s.contact_id);
               const done = doneIds.has(s.id);
               return (
-                <li key={s.id}>
-                  <Link href={`/customers/${s.id}`} className="flex items-center gap-3 px-4 py-3">
+                <li key={s.id} className="flex items-stretch">
+                  <Link href={`/customers/${s.id}`} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3">
                     <span className={`text-lg ${done ? "text-emerald-600" : "text-slate-300"}`} aria-label={done ? "Done" : "Not done"}>
                       {done ? "✓" : "○"}
                     </span>
@@ -147,6 +150,11 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
                       {c?.opted_out_at && "no texts"}
                     </span>
                   </Link>
+                  {stopLinks.flatMap((f) => f({ recurringServiceId: s.id, date, done })).map((l) => (
+                    <Link key={l.href} href={l.href} className={`flex shrink-0 items-center border-l border-slate-100 px-3 text-sm font-medium ${done ? "text-emerald-700" : "text-brand-700"}`}>
+                      {l.label}
+                    </Link>
+                  ))}
                 </li>
               );
             })}

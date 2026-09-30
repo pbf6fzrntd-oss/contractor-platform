@@ -456,7 +456,7 @@ export function buildDemoScenario(industryKey: string, now: Date, seed = 1): Dem
         const won = i === 0;
         const dollars = won ? 420 : 360;
         const msgs: DemoMessage[] = [
-          { contactKey: c.key, leadKey: key, direction: "inbound", at: t, body: c.language === "es" ? "Sí, me interesa. ¿Cuánto cuesta?" : "YES! Front beds and around the oak tree please", auto: false, category: null },
+          { contactKey: c.key, leadKey: key, direction: "inbound", at: t, body: c.language === "es" ? "Sí, me interesa. ¿Cuánto cuesta?" : ["lawn_care", "landscaping"].includes(industryKey) ? "YES! Front beds and around the oak tree please" : "YES! Please get me on the schedule", auto: false, category: null },
           { contactKey: c.key, leadKey: key, direction: "outbound", at: plus(t, 18), body: c.language === "es" ? `¡Hola ${firstName(c)}! Son $${dollars}, instalado.` : `Great ${firstName(c)}! That's $${dollars} installed. We can do it with your next visit.`, auto: false, category: "conversational" },
         ];
         if (won) msgs.push({ contactKey: c.key, leadKey: key, direction: "inbound", at: plus(t, 60 * 20), body: "Perfect, book it", auto: false, category: null });

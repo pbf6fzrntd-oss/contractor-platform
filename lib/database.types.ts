@@ -644,6 +644,7 @@ export type Database = {
           deleted_at: string | null;
           message_id: string | null;
           reminder_sent_at: string | null;
+          job_id: string | null;
         };
         Insert: {
           id?: string;
@@ -662,6 +663,7 @@ export type Database = {
           deleted_at?: string | null;
           message_id?: string | null;
           reminder_sent_at?: string | null;
+          job_id?: string | null;
         };
         Update: {
           id?: string;
@@ -680,6 +682,7 @@ export type Database = {
           deleted_at?: string | null;
           message_id?: string | null;
           reminder_sent_at?: string | null;
+          job_id?: string | null;
         };
         Relationships: [];
       };
@@ -1481,6 +1484,54 @@ export type Database = {
           renewal_notice_days?: number;
           renewal_notice_for?: string | null;
           notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      rh_visit_reports: {
+        Row: {
+          id: string;
+          org_id: string;
+          job_id: string;
+          contact_id: string;
+          recurring_service_id: string | null;
+          report: Json;
+          customer_note: string | null;
+          private_note: string | null;
+          text_customer: boolean;
+          texted_at: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          job_id: string;
+          contact_id: string;
+          recurring_service_id?: string | null;
+          report?: Json;
+          customer_note?: string | null;
+          private_note?: string | null;
+          text_customer?: boolean;
+          texted_at?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          job_id?: string;
+          contact_id?: string;
+          recurring_service_id?: string | null;
+          report?: Json;
+          customer_note?: string | null;
+          private_note?: string | null;
+          text_customer?: boolean;
+          texted_at?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;

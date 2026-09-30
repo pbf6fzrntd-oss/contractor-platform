@@ -9,6 +9,7 @@ import { createDemoBusiness, demoIndustries } from "@/lib/services/demo";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getIndustry } from "@/lib/industries";
+import { MODULES } from "@/modules/registry";
 
 /** Makes a private demo business for this visitor and signs them into it. */
 export async function startDemo(industry: string): Promise<FormState> {
@@ -20,7 +21,7 @@ export async function startDemo(industry: string): Promise<FormState> {
   }
   let login;
   try {
-    login = await createDemoBusiness(db, industry);
+    login = await createDemoBusiness(db, industry, new Date(), MODULES);
   } catch (e) {
     console.error("demo setup failed", e);
     return { error: "Couldn't set up the demo. Please try again." };

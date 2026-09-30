@@ -52,7 +52,7 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, ro
 
 **Module A: Recurring Home Services** (`modules/recurring-home/`):
 - [x] M27 Foundation: cleaning, pest control, pool service can sign up (module switched on by industry), service agreements + automatic renewal reminders, access notes on customer page and Today
-- [ ] M28 Visit reports (checklists/readings, photos, "service complete" text), AI tools, demo trades
+- [x] M28 Visit reports (checklists/readings, photos, "service complete" text), AI tools, demo trades
 
 Founder decisions (2026-09-29): default phone setup is "keep your number" (conditional forwarding); pilots are billed by hand until M10; LLC/EIN/domain come later, so build and demo without real carrier registration; team roles are owner + office manager only.
 

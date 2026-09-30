@@ -47,6 +47,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
                 businessName={org.name}
                 hoursLeft={Math.max(1, Math.round((Date.parse(org.demo_expires_at ?? "") - new Date().getTime()) / 3_600_000) || 24)}
                 recurring={org.business_type === "recurring"}
+                visitReports={modules.includes("recurring_home")}
                 bookingPath={org.booking_enabled && org.slug ? `/b/${org.slug}/book` : null}
                 actions={{ missedCall: tryMissedCall, text: tryInboundText.bind(null, false), textEs: tryInboundText.bind(null, true), skipAhead: trySkipAhead }}
               />
