@@ -10,7 +10,7 @@ const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const dayOffLabel = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 const hourLabel = (h: number) => (h === 0 || h === 24 ? "12am" : h === 12 ? "12pm" : h < 12 ? `${h}am` : `${h - 12}pm`);
 
-export function BookingSettingsForm({ enabled, settings }: { enabled: boolean; settings: BookingSettings }) {
+export function BookingSettingsForm({ enabled, settings, pets = false }: { enabled: boolean; settings: BookingSettings; pets?: boolean }) {
   const [state, action] = useActionState(saveBookingSettings, undefined);
   return (
     <form action={action} className="card flex flex-col gap-4">
@@ -91,6 +91,13 @@ export function BookingSettingsForm({ enabled, settings }: { enabled: boolean; s
         <input type="checkbox" name="remindersEnabled" defaultChecked={settings.remindersEnabled} className="h-6 w-6 accent-brand-600" />
         <span>Text customers a reminder the day before <span className="block text-sm text-slate-500">They can reply C to confirm or use their link to move or cancel.</span></span>
       </label>
+      {pets && (
+        <label className="flex min-h-12 items-center gap-3">
+          <input type="hidden" name="vaccineRemindersShown" value="1" />
+          <input type="checkbox" name="vaccineReminders" defaultChecked={settings.vaccineReminders} className="h-6 w-6 accent-brand-600" />
+          <span>Remind customers when a vaccine record on file is about to expire <span className="block text-sm text-slate-500">2 weeks before. They can reply with a photo of the new one.</span></span>
+        </label>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="approvalHoldHours" className="label">Hold requests for my OK</label>

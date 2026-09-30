@@ -467,6 +467,8 @@ export type Database = {
           show_on_profile: boolean;
           created_at: string;
           updated_at: string;
+          expiry_alert_stage: string | null;
+          expiry_alert_for: string | null;
         };
         Insert: {
           id?: string;
@@ -479,6 +481,8 @@ export type Database = {
           show_on_profile?: boolean;
           created_at?: string;
           updated_at?: string;
+          expiry_alert_stage?: string | null;
+          expiry_alert_for?: string | null;
         };
         Update: {
           id?: string;
@@ -491,6 +495,8 @@ export type Database = {
           show_on_profile?: boolean;
           created_at?: string;
           updated_at?: string;
+          expiry_alert_stage?: string | null;
+          expiry_alert_for?: string | null;
         };
         Relationships: [];
       };
@@ -630,6 +636,8 @@ export type Database = {
           uploaded_by: string | null;
           created_at: string;
           deleted_at: string | null;
+          message_id: string | null;
+          reminder_sent_at: string | null;
         };
         Insert: {
           id?: string;
@@ -646,6 +654,8 @@ export type Database = {
           uploaded_by?: string | null;
           created_at?: string;
           deleted_at?: string | null;
+          message_id?: string | null;
+          reminder_sent_at?: string | null;
         };
         Update: {
           id?: string;
@@ -662,6 +672,8 @@ export type Database = {
           uploaded_by?: string | null;
           created_at?: string;
           deleted_at?: string | null;
+          message_id?: string | null;
+          reminder_sent_at?: string | null;
         };
         Relationships: [];
       };
@@ -698,6 +710,27 @@ export type Database = {
           accepted_at?: string | null;
           accepted_by?: string | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      job_runs: {
+        Row: {
+          job: string;
+          run_on: string;
+          ran_at: string;
+          result: Json | null;
+        };
+        Insert: {
+          job: string;
+          run_on: string;
+          ran_at?: string;
+          result?: Json | null;
+        };
+        Update: {
+          job?: string;
+          run_on?: string;
+          ran_at?: string;
+          result?: Json | null;
         };
         Relationships: [];
       };

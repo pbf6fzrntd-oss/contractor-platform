@@ -22,13 +22,13 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M21 Editions, add-ons, Executive & Enterprise | ✅ done |
 | M22 Agent Ready | ✅ done |
 | M23 Booking hardening: approval expiry, reminders, reschedule/cancel link, closed dates, YES check for agent bookings, Spanish booking page | ✅ done |
-| M24 Expiry reminders (licenses, vaccines) + photos texted in | not started |
+| M24 Expiry reminders (licenses, vaccines) + photos texted in | ✅ done |
 | M25 Quality: click-through suite in the repo, automatic checks on GitHub, daily cleanup, error alerts | not started |
 | M26 Selling: demo business per industry, setup checklist, audit→customer link, calendar feed | not started |
 
 ## Next up
 Founder approved items 1–16 of the post-M22 recommendations (2026-09-30), as M23–M26 above. Module A (Recurring Home Services) moves to M27+.
-M23 is done. Next: M24 (license/insurance expiry alerts to the owner, vaccine expiry reminders to customers, texted-in photos saved privately).
+M24 is done. Next: M25 (click-through suite in the repo, GitHub checks, daily cleanup, error alerts). Note: founder asked (after M24) for a demo-ready interface for prospects; see "Demo-ready UI" below.
 
 ## Milestone notes and "how to test"
 (Added as each milestone finishes.)
@@ -225,4 +225,18 @@ Nothing new to click yet. The configs show up in the sales audit (M17) and on ho
 4. Reminders: the next day at 5pm the customer gets a reminder. Reply **C** in the Simulator → "✓ Customer confirmed". Reply **R** → the customer gets their link.
 5. AI agents: book through `/api/agent/<slug>` → the customer gets "Reply YES…". The Schedule shows "Waiting for customer's YES". Reply YES in the Simulator → it moves to "Waiting for you".
 6. **Before launch:** in Twilio's Advanced Opt-Out settings, remove **YES** from the opt-in keywords (keep START/UNSTOP). Otherwise Twilio also answers a customer's "YES" with its own re-subscribe message.
+
+### M24: Expiry alerts + photos texted in
+**What changed**
+- **Once-a-day jobs** run from the existing every-minute scheduler (first call after 12:00 UTC, about 7–8am in Charleston), so nothing new needs setting up. The `job_runs` table makes each job run once per day. Later milestones add jobs with `addDailyJob` (`lib/services/daily.ts`).
+- **License & insurance alerts to the owner:** 30 days before, 7 days before, and when expired (in-app notice plus the owner's alert text if set). Each is sent once per expiry date; entering a renewed date starts over. Expired items already drop off the public profile.
+- **Vaccine records:** a pet's card on the lead page now has "💉 Add vaccine record" (vaccine type and expiry date). Two weeks before a record expires, the customer gets a text asking for a photo of the new one. It goes through the outbox, in business hours, and is skipped if a newer record was added, the record was deleted, or the customer opted out. There's an on/off switch in Settings → Online booking (pet businesses only; default on).
+- **Photos texted in (MMS):** saved to private storage and shown in the conversation. Downloads come only from Twilio's own media address, with the Twilio login, a 10-second timeout and the 4 MB cap. The real file type is checked from its first bytes (photos and PDFs only). A photo-only text shows as "📷 Photo". On the lead page, "Texted in, not filed yet" lets the team file a photo under a pet/property/vehicle, optionally as a vaccine record with its expiry date. AI assistants never see photos or file links (a test checks this).
+- The Simulator can attach a photo to a pretend text.
+- Migration `20260930020000_m24_expiry_and_photos.sql` (additive); rollback included.
+
+**How to test**
+1. Simulator → type a message, attach a photo → Send. Open the lead: the photo shows in the conversation. Try attaching a non-photo file: "The photo wasn't saved".
+2. Pet business (industry "Pet care"): open a customer → add a pet → "💉 Add vaccine record" → rabies, expiring in 10 days. The next morning (or after 12:00 UTC with the scheduler running) the customer gets the reminder in the Simulator. Reply with a photo → file it under the pet as a new rabies record.
+3. Settings → Licenses: add one expiring in 20 days. The next morning there's a notice: "Your … expires in 20 days".
 

@@ -46,7 +46,7 @@ export default async function BookingSettingsPage() {
         subtitle="Set what customers can book and when. The same rules apply when you, your team, an AI assistant or (soon) customers book."
         backHref="/settings"
       />
-      <BookingSettingsForm enabled={org.booking_enabled} settings={parseBookingSettings(org.booking_settings)} />
+      <BookingSettingsForm enabled={org.booking_enabled} settings={parseBookingSettings(org.booking_settings)} pets={getIndustry(org.industry)?.subjectType === "pet"} />
 
       <h2 className="mb-2 mt-6 text-lg font-semibold">Services</h2>
       {industry && (

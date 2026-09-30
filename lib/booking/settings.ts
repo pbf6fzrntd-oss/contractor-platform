@@ -25,6 +25,8 @@ const schema = z.object({
   approvalHoldHours: z.number().int().min(2).max(168).default(24),
   /** AI-agent bookings: minutes the customer has to reply YES. */
   agentVerifyMinutes: z.number().int().min(15).max(1440).default(120),
+  /** Remind customers 2 weeks before a pet's vaccine record on file expires. */
+  vaccineReminders: z.boolean().default(true),
 });
 
 export type BookingSettings = z.infer<typeof schema>;

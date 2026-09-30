@@ -16,6 +16,7 @@ import {
   notifyOwner,
   type Contact,
 } from "@/lib/services/conversations";
+import { mediaOnlyBody } from "@/lib/files/mms";
 import { parseSettings } from "@/lib/settings";
 import type { AdminClient } from "@/lib/supabase/admin";
 import { renderTemplate } from "@/lib/templates/render";
@@ -142,8 +143,8 @@ export async function handleMissedCall(
 export async function handleInboundSms(
   db: AdminClient,
   line: BusinessLine,
-  input: { from: string; body: string; messageSid: string; now?: Date },
-): Promise<{ leadId: string | null; kind: string }> {
+  input: { from: string; body: string; messageSid: string; now?: Date; mediaCount?: number },
+): Promise<{ leadId: string | null; kind: string; messageId?: string; contactId?: string }> {
   const now = input.now ?? new Date();
   const orgId = line.org.id;
 
@@ -174,17 +175,18 @@ export async function handleInboundSms(
     });
   }
 
-  await db.from("messages").insert({
+  const { data: saved } = await db.from("messages").insert({
     org_id: orgId,
     contact_id: contact.id,
     lead_id: lead?.id ?? null,
     direction: "inbound",
-    body: input.body,
+    // A photo with no words still shows up in the conversation.
+    body: input.body.trim() || (input.mediaCount ? mediaOnlyBody(input.mediaCount) : input.body),
     sender_type: "contact",
     provider_sid: input.messageSid,
     status: "received",
     flag: classification.flag ?? null,
-  });
+  }).select("id").single();
 
   if (lead) {
     const leadFlag =
@@ -248,7 +250,7 @@ export async function handleInboundSms(
     await handleBookingReply(db, toOrg(line.org), contact, input.body, now);
   }
 
-  return { leadId: lead?.id ?? null, kind: classification.kind };
+  return { leadId: lead?.id ?? null, kind: classification.kind, messageId: saved?.id, contactId: contact.id };
 }
 
 /** Twilio tells us whether a text was delivered. */

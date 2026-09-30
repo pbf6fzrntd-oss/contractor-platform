@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { FormState } from "@/components/form-message";
-import { validateBookingSettings } from "@/lib/booking/settings";
+import { parseBookingSettings, validateBookingSettings } from "@/lib/booking/settings";
 import { requireOwner } from "@/lib/auth/context";
 import { canUse } from "@/lib/entitlements";
 import { getIndustry } from "@/lib/industries";
@@ -37,6 +37,8 @@ export async function saveBookingSettings(_prev: FormState, formData: FormData):
     remindersEnabled: formData.get("remindersEnabled") === "on",
     approvalHoldHours: num("approvalHoldHours"),
     agentVerifyMinutes: num("agentVerifyMinutes"),
+    // Only pet businesses see this switch; everyone else keeps the saved value.
+    vaccineReminders: formData.get("vaccineRemindersShown") ? formData.get("vaccineReminders") === "on" : parseBookingSettings(org.booking_settings).vaccineReminders,
   });
   if ("error" in result) return { error: result.error };
   const { error } = await (await createClient())

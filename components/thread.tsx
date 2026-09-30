@@ -11,6 +11,8 @@ export type ThreadItem =
       error: string | null;
       sender_type: string;
       flag: string | null;
+      /** Photos/PDFs the customer texted in (private links that expire in 5 minutes). */
+      photos?: { id: string; contentType: string; url: string | null }[];
     }
   | { type: "call"; id: string; created_at: string; status: string; text_back_sent: boolean };
 
@@ -75,6 +77,22 @@ export function Thread({
             >
               {item.body}
             </div>
+            {item.photos && item.photos.length > 0 && (
+              <div className="mt-1 flex max-w-[85%] flex-wrap gap-2">
+                {item.photos.map((p) =>
+                  !p.url ? null : p.contentType.startsWith("image/") && p.contentType !== "image/heic" ? (
+                    <a key={p.id} href={p.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl ring-1 ring-slate-200">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- private, short-lived signed link */}
+                      <img src={p.url} alt="Photo from the customer" className="h-32 w-32 object-cover" />
+                    </a>
+                  ) : (
+                    <a key={p.id} href={p.url} target="_blank" rel="noopener noreferrer" className="btn-secondary min-h-11 px-3 text-sm">
+                      {p.contentType === "application/pdf" ? "📄 Open PDF" : "📷 Open photo"}
+                    </a>
+                  ),
+                )}
+              </div>
+            )}
             <p className="mt-0.5 px-1 text-xs text-slate-500">
               {time(item.created_at, timeZone)}
               {fromBusiness && item.sender_type === "automation" ? " · automatic" : ""}

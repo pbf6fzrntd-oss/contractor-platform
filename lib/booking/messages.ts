@@ -36,6 +36,18 @@ export function agentBookingVerifyText(lang: Language, business: string, when: s
     : `${business}: An AI assistant requested a booking for this number: ${when}. Reply YES within ${hours} to confirm it was you. Otherwise, ignore this text.`;
 }
 
+/** A pet's vaccine record on file is about to expire (or just did). They can reply with a photo of the new one. */
+export function vaccineReminderText(lang: Language, business: string, pet: string, vaccine: string, date: string, expired: boolean): string {
+  if (lang === "es") {
+    return expired
+      ? `${business}: El registro de ${vaccine} de ${pet} que tenemos venció el ${date}. Puede responder con una foto del registro nuevo.`
+      : `${business}: El registro de ${vaccine} de ${pet} que tenemos vence el ${date}. Puede responder con una foto del registro nuevo.`;
+  }
+  return expired
+    ? `${business}: The ${vaccine} record we have for ${pet} expired on ${date}. You can reply with a photo of the new one.`
+    : `${business}: The ${vaccine} record we have for ${pet} expires on ${date}. You can reply with a photo of the new one.`;
+}
+
 /** Customer canceled (from their link). */
 export function bookingCanceledText(lang: Language, business: string, when: string): string {
   return lang === "es" ? `${business}: Cancelamos su cita de ${when}. Responda aquí si quiere otra fecha.` : `${business}: Your booking for ${when} is canceled. Reply here if you'd like another time.`;

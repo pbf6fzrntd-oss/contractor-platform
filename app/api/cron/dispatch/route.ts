@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { serverEnv } from "@/lib/env";
 import { expireStaleBookings } from "@/lib/services/booking-maintenance";
+import { runDailyJobs } from "@/lib/services/daily";
 import { runDispatch } from "@/lib/services/outbox";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -20,7 +21,9 @@ async function handle(request: Request) {
   const summary = await runDispatch(db);
   // Release booking requests nobody finished (customer's YES or the owner's OK).
   const released = await expireStaleBookings(db);
-  return NextResponse.json({ ...summary, released });
+  // Once a day (the first call after 12:00 UTC): expiry alerts and reminders.
+  const daily = await runDailyJobs(db);
+  return NextResponse.json({ ...summary, released, ...(Object.keys(daily).length ? { daily } : {}) });
 }
 
 export const GET = handle;

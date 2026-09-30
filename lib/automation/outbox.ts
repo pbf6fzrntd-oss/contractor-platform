@@ -10,9 +10,9 @@ import { isWithinWindow, nextTimeInWindow } from "@/lib/time";
  */
 
 export type OutboxItem = {
-  kind: "estimate_followup" | "review_request" | "broadcast" | "booking_reminder";
+  kind: "estimate_followup" | "review_request" | "broadcast" | "booking_reminder" | "vaccine_reminder";
   category: MessageCategory;
-  context: { estimate_sent_at?: string; booking_id?: string; starts_at?: string };
+  context: { estimate_sent_at?: string; booking_id?: string; starts_at?: string; file_id?: string };
 };
 
 export type OutboxState = {
@@ -32,6 +32,8 @@ export type OutboxState = {
   broadcastStatus: string | null;
   /** For booking reminders: the booking as it is now. */
   booking?: { status: string; starts_at: string } | null;
+  /** For vaccine reminders: is the record still the latest one on file (not deleted or replaced)? */
+  documentCurrent?: boolean;
 };
 
 export type SkipReason =
@@ -49,7 +51,8 @@ export type SkipReason =
   | "no_review_link"
   | "broadcast_canceled"
   | "booking_changed"
-  | "booking_passed";
+  | "booking_passed"
+  | "record_updated";
 
 export type OutboxDecision =
   | { action: "send" }
@@ -95,6 +98,12 @@ export function evaluateScheduledMessage(item: OutboxItem, state: OutboxState): 
     if (ms(b.starts_at) <= state.now.getTime()) return { action: "skip", reason: "booking_passed" };
   }
 
+  if (item.kind === "vaccine_reminder") {
+    if (contact.do_not_autotext) return { action: "skip", reason: "do_not_autotext" };
+    // The customer already sent a new record (or it was removed): nothing to remind about.
+    if (!state.documentCurrent) return { action: "skip", reason: "record_updated" };
+  }
+
   if (item.kind === "broadcast" && state.broadcastStatus === "canceled") {
     return { action: "skip", reason: "broadcast_canceled" };
   }
@@ -127,5 +136,6 @@ export const SKIP_REASON_TEXT: Record<string, string> = {
   broadcast_canceled: "Send was canceled",
   booking_changed: "Booking was canceled or moved",
   booking_passed: "The visit already started",
+  record_updated: "A newer record is on file",
   canceled: "Canceled",
 };

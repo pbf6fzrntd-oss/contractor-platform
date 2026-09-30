@@ -4,14 +4,15 @@ import { evaluateScheduledMessage, type OutboxItem } from "@/lib/automation/outb
 import type { Tables } from "@/lib/database.types";
 import { loadSendingContext, sendToContact, type SendingContext } from "@/lib/messaging/send";
 import { manageUrl } from "@/lib/booking/manage-link";
-import { bookingReminderText } from "@/lib/booking/messages";
+import { bookingReminderText, vaccineReminderText } from "@/lib/booking/messages";
+import { documentLabel } from "@/lib/automation/expiry";
 import { formatUSPhone } from "@/lib/phone";
 import { bookingWhen } from "@/lib/services/booking";
 import { getTemplateBody } from "@/lib/services/conversations";
 import { parseSettings, type OrgSettings } from "@/lib/settings";
 import type { AdminClient } from "@/lib/supabase/admin";
 import { renderTemplate, type TemplateValues } from "@/lib/templates/render";
-import { DAY_NAMES, weekdayOf } from "@/lib/time";
+import { DAY_NAMES, localDateString, weekdayOf } from "@/lib/time";
 
 /**
  * The outbox: schedule texts for later, and send them when they're due.
@@ -161,6 +162,26 @@ export async function runDispatch(db: AdminClient, options: DispatchOptions = {}
   return summary;
 }
 
+/** A vaccine record for a reminder, and whether it's still the latest one on file for that pet. */
+async function loadVaccineRecord(db: AdminClient, orgId: string, fileId: string) {
+  const { data: f } = await db.from("files").select("id, subject_id, document_type, expires_on, deleted_at, created_at").eq("id", fileId).eq("org_id", orgId).maybeSingle();
+  if (!f || !f.expires_on) return null;
+  let newerQuery = db
+    .from("files")
+    .select("id", { count: "exact", head: true })
+    .eq("org_id", orgId)
+    .eq("kind", "vaccination_record")
+    .is("deleted_at", null)
+    .gt("expires_on", f.expires_on);
+  newerQuery = f.subject_id ? newerQuery.eq("subject_id", f.subject_id) : newerQuery.is("subject_id", null);
+  newerQuery = f.document_type ? newerQuery.eq("document_type", f.document_type) : newerQuery.is("document_type", null);
+  const [{ count: newer }, { data: subject }] = await Promise.all([
+    newerQuery,
+    f.subject_id ? db.from("subjects").select("label").eq("id", f.subject_id).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
+  return { current: !f.deleted_at && !newer, expiresOn: f.expires_on, documentType: f.document_type, pet: subject?.label ?? "your pet" };
+}
+
 async function processItem(
   db: AdminClient,
   item: ScheduledRow,
@@ -169,7 +190,8 @@ async function processItem(
   fastForward: boolean,
 ): Promise<keyof DispatchSummary> {
   const bookingId = item.kind === "booking_reminder" ? ((item.context ?? {}) as { booking_id?: string }).booking_id : undefined;
-  const [{ data: contact }, { data: lead }, { data: lastInbound }, broadcast, { data: booking }] = await Promise.all([
+  const fileId = item.kind === "vaccine_reminder" ? ((item.context ?? {}) as { file_id?: string }).file_id : undefined;
+  const [{ data: contact }, { data: lead }, { data: lastInbound }, broadcast, { data: booking }, record] = await Promise.all([
     db.from("contacts").select("*").eq("id", item.contact_id).maybeSingle(),
     item.lead_id
       ? db.from("leads").select("stage, estimate_sent_at").eq("id", item.lead_id).maybeSingle()
@@ -186,6 +208,7 @@ async function processItem(
     bookingId
       ? db.from("bookings").select("*").eq("id", bookingId).eq("org_id", item.org_id).maybeSingle()
       : Promise.resolve({ data: null }),
+    fileId ? loadVaccineRecord(db, item.org_id, fileId) : Promise.resolve(null),
   ]);
 
   const outboxItem: OutboxItem = {
@@ -203,6 +226,7 @@ async function processItem(
     hasReviewLink: Boolean(b.org.google_review_url),
     broadcastStatus: broadcast?.status ?? null,
     booking: booking ? { status: booking.status, starts_at: booking.starts_at } : null,
+    documentCurrent: record?.current ?? false,
   });
 
   // In fast-forward, jump straight to when the window opens instead of waiting.
@@ -242,6 +266,10 @@ async function processItem(
     body = language === "es" && broadcast.body_es ? broadcast.body_es : broadcast.body_en;
   } else if (item.kind === "booking_reminder" && booking) {
     body = bookingReminderText(language, b.org.name, bookingWhen(booking, b.org.timezone, language), manageUrl(booking.id));
+  } else if (item.kind === "vaccine_reminder" && record) {
+    const date = new Date(`${record.expiresOn}T12:00:00Z`).toLocaleDateString(language === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    const expired = record.expiresOn < localDateString(now, b.org.timezone);
+    body = vaccineReminderText(language, b.org.name, record.pet, documentLabel(record.documentType, language), date, expired);
   } else if (item.template_key) {
     body = (await getTemplateBody(db, b.org.id, item.template_key, language))?.body ?? null;
   }

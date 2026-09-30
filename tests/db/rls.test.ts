@@ -658,6 +658,36 @@ describe.skipIf(!url)("row-level security", () => {
     expect((await attempt("select * from public.audit_reports")).error).not.toBeNull();
   });
 
+  it("keeps once-a-day job records server-only and alert stages valid (Milestone 24)", async () => {
+    await db.query("reset role");
+    await db.query("insert into public.job_runs (job, run_on) values ('credential_expiry', '2026-10-01') on conflict do nothing");
+    for (const who of [ownerA, managerA]) {
+      await actAs(who);
+      expect((await attempt("select * from public.job_runs")).error, "read").not.toBeNull();
+      expect((await attempt("insert into public.job_runs (job, run_on) values ('x', '2026-10-02')")).error, "insert").not.toBeNull();
+    }
+    await actAsAnonymous();
+    expect((await attempt("select * from public.job_runs")).error).not.toBeNull();
+    await db.query("reset role");
+    expect((await attempt("insert into public.job_runs (job, run_on) values ('credential_expiry', '2026-10-01')")).error, "once per day").not.toBeNull();
+    expect((await attempt("insert into public.business_credentials (org_id, kind, label, expiry_alert_stage) values ($1, 'license', 'x', 'soon')", [orgA])).error).not.toBeNull();
+  });
+
+  it("keeps photos texted in to one business away from another (Milestone 24)", async () => {
+    await db.query("reset role");
+    const contact = (await db.query("insert into public.contacts (org_id, phone) values ($1, '+18435550424') returning id", [orgB])).rows[0].id;
+    const msg = (await db.query("insert into public.messages (org_id, contact_id, direction, body, sender_type, status) values ($1, $2, 'inbound', '📷 Photo', 'contact', 'received') returning id", [orgB, contact])).rows[0].id;
+    await db.query(
+      "insert into public.files (org_id, contact_id, message_id, kind, storage_path, content_type, size_bytes) values ($1, $2, $3, 'photo', $4, 'image/jpeg', 10)",
+      [orgB, contact, msg, `${orgB}/2026/texted-in.jpg`],
+    );
+    await actAs(ownerA);
+    expect((await attempt("select * from public.files where message_id = $1", [msg])).rowCount).toBe(0);
+    expect((await attempt("update public.files set subject_id = null where message_id = $1", [msg])).error).not.toBeNull();
+    await actAs(ownerB);
+    expect((await attempt("select id from public.files where message_id = $1", [msg])).rowCount).toBe(1);
+  });
+
   it("gives logged-out visitors nothing", async () => {
     await actAsAnonymous();
     for (const table of ["organizations", "message_templates", "memberships", "profiles", "plans", "contacts", "leads", "messages", "org_modules", "api_keys"]) {

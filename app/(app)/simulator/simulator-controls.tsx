@@ -70,6 +70,10 @@ export function SimulatorControls({ from }: { from: string }) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
         />
+        <label className="text-sm text-slate-600">
+          Attach a photo <span className="text-slate-500">(optional, like a picture message)</span>
+          <input type="file" name="photo" accept="image/*,application/pdf" className="mt-1 block w-full text-sm" />
+        </label>
         <SubmitButton className="btn-primary w-full" pendingText="Sending…">
           Send text
         </SubmitButton>

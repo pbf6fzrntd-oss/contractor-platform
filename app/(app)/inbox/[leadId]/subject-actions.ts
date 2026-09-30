@@ -49,6 +49,9 @@ export async function uploadSubjectFile(leadId: string, subjectId: string, _prev
   if (!(file instanceof File) || file.size === 0) return { error: "Pick a photo or file first." };
   const kind = formData.get("kind") === "vaccination_record" ? "vaccination_record" : formData.get("kind") === "document" ? "document" : "photo";
   const expires = String(formData.get("expires_on") ?? "");
+  if (kind === "vaccination_record" && (!/^\d{4}-\d{2}-\d{2}$/.test(expires) || !formData.get("document_type"))) {
+    return { error: "Pick the vaccine and the date it expires." };
+  }
   const result = await storeUpload(createAdminClient(), {
     orgId: ctx.org.id,
     contactId: loaded.contact.id,
@@ -62,6 +65,32 @@ export async function uploadSubjectFile(leadId: string, subjectId: string, _prev
   if (!result.ok) return { error: result.error };
   revalidatePath(`/inbox/${leadId}`);
   return { success: "Uploaded." };
+}
+
+/** Files a photo the customer texted in under one of their records (optionally as a vaccine record with an expiry date). */
+export async function fileTextedPhoto(leadId: string, fileId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const ctx = await requireAppContext();
+  const loaded = await loadLeadForUser(ctx, leadId);
+  if (!loaded) return { error: "Lead not found." };
+  const subjectId = String(formData.get("subject_id") ?? "");
+  const { data: subject } = await loaded.supabase.from("subjects").select("id").eq("id", subjectId).eq("contact_id", loaded.contact.id).maybeSingle();
+  if (!subject) return { error: "Pick which record it belongs to." };
+  const type = String(formData.get("document_type") ?? "").replace(/[^a-z0-9_]/g, "").slice(0, 40);
+  const expires = String(formData.get("expires_on") ?? "");
+  const asVaccine = Boolean(type);
+  if (asVaccine && !/^\d{4}-\d{2}-\d{2}$/.test(expires)) return { error: "Add the date the vaccine expires." };
+  const { data } = await createAdminClient()
+    .from("files")
+    .update(asVaccine ? { subject_id: subject.id, kind: "vaccination_record", document_type: type, expires_on: expires } : { subject_id: subject.id })
+    .eq("id", fileId)
+    .eq("org_id", ctx.org.id)
+    .eq("contact_id", loaded.contact.id)
+    .not("message_id", "is", null)
+    .is("deleted_at", null)
+    .select("id");
+  if (!data?.length) return { error: "Couldn't file that photo. Refresh and try again." };
+  revalidatePath(`/inbox/${leadId}`);
+  return { success: "Filed." };
 }
 
 export async function deleteSubjectFile(leadId: string, fileId: string): Promise<void> {

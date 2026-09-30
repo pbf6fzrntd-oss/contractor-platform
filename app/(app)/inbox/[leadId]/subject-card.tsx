@@ -5,7 +5,10 @@ import { getIndustry } from "@/lib/industries";
 import { loadSubjectsForTeam } from "@/lib/services/subjects";
 import { PRIVATE_FIELDS, SUBJECT_FIELDS, SUBJECT_LABELS } from "@/lib/subjects/fields";
 import { createClient } from "@/lib/supabase/server";
-import { deleteSubjectFile, uploadSubjectFile } from "./subject-actions";
+import { documentLabel, VACCINE_TYPES } from "@/lib/automation/expiry";
+import { signedUrl } from "@/lib/files/storage";
+import { deleteSubjectFile, fileTextedPhoto, uploadSubjectFile } from "./subject-actions";
+import { FilePhotoForm } from "./texted-photos";
 import { SubjectForm } from "./subject-form";
 
 /**
@@ -16,6 +19,19 @@ export async function SubjectCard({ ctx, leadId, contactId }: { ctx: AppContext;
   const kind = getIndustry(ctx.org.industry)?.subjectType ?? "property";
   const subjects = await loadSubjectsForTeam(await createClient(), ctx.org.id, contactId);
   const words = SUBJECT_LABELS[kind];
+  const vaccines = kind === "pet" ? VACCINE_TYPES.map((v) => ({ value: v, label: documentLabel(v, "en") })) : null;
+  // Photos the customer texted in that aren't filed under a record yet.
+  const { data: loose } = await (await createClient())
+    .from("files")
+    .select("id, content_type, storage_path, created_at")
+    .eq("org_id", ctx.org.id)
+    .eq("contact_id", contactId)
+    .not("message_id", "is", null)
+    .is("subject_id", null)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(12);
+  const texted = await Promise.all((loose ?? []).map(async (f) => ({ ...f, url: await signedUrl(f.storage_path) })));
 
   return (
     <details className="card mb-4" open={subjects.length > 0 && kind !== "property"}>
@@ -54,14 +70,19 @@ export async function SubjectCard({ ctx, leadId, contactId }: { ctx: AppContext;
                   {s.files.map((f) => (
                     <li key={f.id} className="relative">
                       {f.url && f.content_type.startsWith("image/") && f.content_type !== "image/heic" ? (
+                        <>
                         <a href={f.url} target="_blank" rel="noreferrer">
                           {/* Signed, short-lived private links: next/image can't cache them. */}
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={f.url} alt={f.original_name ?? "Photo"} className="aspect-square w-full rounded-lg object-cover" />
                         </a>
+                        {f.kind === "vaccination_record" && (
+                          <span className="mt-0.5 block text-xs text-slate-600">💉 {documentLabel(f.document_type, "en")}{f.expires_on ? ` · exp. ${f.expires_on}` : ""}</span>
+                        )}
+                        </>
                       ) : (
                         <a href={f.url ?? "#"} target="_blank" rel="noreferrer" className="flex aspect-square items-center justify-center rounded-lg bg-slate-100 p-1 text-center text-xs">
-                          📄 {f.original_name ?? "File"}
+                          📄 {f.kind === "vaccination_record" && f.document_type ? documentLabel(f.document_type, "en") : (f.original_name ?? "File")}
                           {f.expires_on ? ` · exp. ${f.expires_on}` : ""}
                         </a>
                       )}
@@ -75,6 +96,23 @@ export async function SubjectCard({ ctx, leadId, contactId }: { ctx: AppContext;
               <FileUpload action={uploadSubjectFile.bind(null, leadId, s.id)} accept="image/*,application/pdf" label="📷 Add photo or file">
                 <input type="hidden" name="kind" value="document" />
               </FileUpload>
+              {vaccines && s.kind === "pet" && (
+                <details>
+                  <summary className="cursor-pointer text-sm font-medium text-brand-700">💉 Add vaccine record</summary>
+                  <div className="mt-2">
+                    <FileUpload action={uploadSubjectFile.bind(null, leadId, s.id)} accept="image/*,application/pdf" label="Choose the record (photo or PDF)">
+                      <input type="hidden" name="kind" value="vaccination_record" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <select name="document_type" className="input" required defaultValue="">
+                          <option value="" disabled>Vaccine</option>
+                          {vaccines.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
+                        </select>
+                        <input type="date" name="expires_on" className="input" required aria-label="Expires" />
+                      </div>
+                    </FileUpload>
+                  </div>
+                </details>
+              )}
               <details>
                 <summary className="cursor-pointer text-sm font-medium text-brand-700">Edit details</summary>
                 <div className="mt-2">
@@ -91,6 +129,26 @@ export async function SubjectCard({ ctx, leadId, contactId }: { ctx: AppContext;
               <SubjectForm leadId={leadId} subjectId={null} kind={kind} />
             </div>
           </details>
+        )}
+        {texted.length > 0 && subjects.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <h3 className="font-semibold">Texted in, not filed yet</h3>
+            <ul className="grid grid-cols-2 gap-3">
+              {texted.map((f) => (
+                <li key={f.id}>
+                  {f.url && f.content_type.startsWith("image/") && f.content_type !== "image/heic" ? (
+                    <a href={f.url} target="_blank" rel="noreferrer">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={f.url} alt="Texted-in photo" className="aspect-square w-full rounded-lg object-cover" />
+                    </a>
+                  ) : (
+                    <a href={f.url ?? "#"} target="_blank" rel="noreferrer" className="flex aspect-square items-center justify-center rounded-lg bg-slate-100 text-sm">📄 Open</a>
+                  )}
+                  <FilePhotoForm action={fileTextedPhoto.bind(null, leadId, f.id)} subjects={subjects.map((s) => ({ value: s.id, label: s.label }))} vaccines={vaccines} />
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
         <p className="text-xs text-slate-500">Photos and 🔒 notes are private to your team. They&apos;re never texted, shared with AI assistants or shown publicly.</p>
       </div>

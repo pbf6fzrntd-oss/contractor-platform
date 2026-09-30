@@ -6,6 +6,7 @@ import type { FormState } from "@/components/form-message";
 import { requireAppContext } from "@/lib/auth/context";
 import { normalizeUSPhone } from "@/lib/phone";
 import { handleInboundSms, handleMissedCall, type BusinessLine } from "@/lib/services/inbound";
+import { saveInboundMedia } from "@/lib/services/inbound-media";
 import { runDispatch } from "@/lib/services/outbox";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -47,12 +48,21 @@ export async function simulateInboundText(_prev: FormState, formData: FormData):
   if ("error" in line) return { error: line.error };
   const from = callerPhone(formData);
   const body = String(formData.get("body") ?? "").trim();
+  const photo = formData.get("photo");
+  const hasPhoto = photo instanceof File && photo.size > 0;
   if (!from) return { error: "Enter a valid customer phone number." };
-  if (!body) return { error: "Type a message." };
+  if (!body && !hasPhoto) return { error: "Type a message or attach a photo." };
 
-  await handleInboundSms(createAdminClient(), line, { from, body, messageSid: `SIMSM${randomUUID()}` });
+  const db = createAdminClient();
+  const result = await handleInboundSms(db, line, { from, body, messageSid: `SIMSM${randomUUID()}`, mediaCount: hasPhoto ? 1 : 0 });
+  let note = "";
+  if (hasPhoto && result.messageId && result.contactId) {
+    const bytes = new Uint8Array(await photo.arrayBuffer());
+    const media = await saveInboundMedia(db, { orgId: line.org.id, contactId: result.contactId, messageId: result.messageId, media: [{ bytes, contentType: photo.type }] });
+    note = media.saved ? " Photo saved privately." : " The photo wasn't saved (only photos and PDFs up to 4 MB).";
+  }
   revalidatePath("/simulator");
-  return { success: "Text received." };
+  return { success: `Text received.${note}` };
 }
 
 /** Sends this business's scheduled texts now. `skipAhead` also sends ones scheduled for later. */
