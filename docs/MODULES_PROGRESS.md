@@ -17,13 +17,13 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M16 Industry configs for every industry | ✅ done |
 | M17 Sales audit tool (admin only) | ✅ done |
 | M18 Customer records, private data, files, licenses | ✅ done |
-| M19 Booking engine | not started |
+| M19 Booking engine | ✅ done |
 | M20 Approval rules + source reporting | not started |
 | M21 Editions, add-ons, Executive & Enterprise | not started |
 | M22 Agent Ready | not started |
 
 ## Next up
-M19: booking engine. Pure rules in `lib/booking/` for all 7 modes + document requirements (vaccines); tables `service_catalog`, `resources`, `capacity_rules`, `bookings`, `packages`, `package_redemptions`; `book_slot()` capacity lock; Schedule screen behind a `booking` switch (off for existing businesses).
+M20: approval rules (pure evaluators in `lib/approvals/`, `approval_rules` + `approval_requests`), bookings from outside channels go to "Needs your OK", customer texts on approve/decline, and a "Where leads and bookings came from" report on the dashboard.
 
 ## Milestone notes and "how to test"
 (Added as each milestone finishes.)
@@ -102,3 +102,30 @@ Nothing new to click yet. The configs show up in the sales audit (M17) and on ho
 3. Settings → Licenses & insurance → tap a suggestion → add number and expiry.
 4. Log in as the office manager: you see and edit property notes, but can't change licenses.
 5. **Before real customers:** in Supabase → Storage, confirm the `private-files` bucket exists and is **not public**.
+
+### M19: Booking engine
+**What changed**
+- One engine, 7 modes, all pure rules in `lib/booking/rules.ts`:
+  - **arrival windows** (8–10am…, N visits per window);
+  - **set-time appointments** on a groomer, bay or technician (no overlaps);
+  - **whole-day jobs** (N per day, e.g. moves);
+  - **overnight stays** (every night checked against kennel capacity by size);
+  - **repeat routes** (a daily cap);
+  - **visits at the customer's place** (service ZIPs plus travel time between stops, before *and* after);
+  - **package sessions** (count down, stop at zero, expiry).
+- **Required records**: a service can require documents (e.g. `rabies`). They must be on file for the pet or vehicle and valid through the last day of the visit (the check-out day for stays).
+- Database: `service_catalog`, `resources`, `packages`, `bookings` (+ `booking_enabled`, `booking_settings` on organizations). Only `book_slot()` can create bookings. It locks per business and re-checks capacity, and a database constraint makes overlapping visits on the same resource impossible. A test with two real connections racing for the last spot proves only one wins.
+- Screens (only after the owner turns booking on; off for everyone by default):
+  - **Settings → Online booking**: days, hours, arrival windows, ZIPs, services (one tap adds the industry's usual ones), and people/bays/kennels.
+  - **Schedule** in the menu: the next 2 weeks, "Waiting for you", and Confirm/Done/No-show/Cancel. "Done" records the job and review request, like the lead page.
+  - **Book a visit** on each lead.
+- The business's AI assistant gets `list_bookings`, `find_open_times` and `book_visit` (only when booking is on), using the same rules.
+- Migration `20260929190000_m19_booking.sql` (additive; enables `btree_gist`); rollback included. The type generator now skips extension functions.
+- Click-through tested (roofer): turned booking on, added "Roof inspection", booked 8–10am Monday from a lead. The full window vanished for the next lead. The AI assistant booked 10–12 and was refused a full window. The schedule showed both, and "Done" recorded the job.
+
+**How to test**
+1. Settings → Online booking → check "Take bookings in the app", set hours → Save → "+ Add the usual … services".
+2. The menu now shows **Schedule**. Open a lead → "Book a visit" → pick the service and day → See times → tap a time.
+3. Set "Visits per window" to 1 and try the same window on another lead: it's gone.
+4. Schedule → Done on a visit → the lead shows the job and a review request.
+5. A business that never turns booking on sees no change anywhere.

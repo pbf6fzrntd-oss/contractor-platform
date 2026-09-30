@@ -40,7 +40,7 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, ro
 - [x] M16 Industry configs for every industry (catalog, stages, EN/ES templates, voice, schema.org, licenses, audit checks)
 - [x] M17 Sales audit tool (admin only, never public)
 - [x] M18 Customer records (property/pet/vehicle), private fields, private files, licenses & insurance
-- [ ] M19 Booking engine (7 modes, `book_slot()` capacity lock)
+- [x] M19 Booking engine (7 modes, `book_slot()` capacity lock)
 - [ ] M20 Approval rules + lead/booking source reporting
 - [ ] M21 Editions, add-on modules, Executive & Enterprise plans (Stripe multi-item)
 - [ ] M22 Agent Ready: hosted profile + JSON-LD, public booking page, public agent booking MCP

@@ -65,6 +65,8 @@ const { rows: functions } = await client.query(`
   where n.nspname = 'public'
     and p.prorettype <> 'trigger'::regtype
     and p.proname not in ('set_updated_at')
+    -- Skip functions that belong to extensions (e.g. btree_gist).
+    and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
   order by p.proname`);
 
 await client.end();

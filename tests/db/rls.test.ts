@@ -471,6 +471,71 @@ describe.skipIf(!url)("row-level security", () => {
     });
   });
 
+  describe("bookings (Milestone 19)", () => {
+    let contactA = "";
+    let serviceA = "";
+    let groomer = "";
+    const book = (extra: Record<string, unknown>, scope: string, cap: number | null = null) =>
+      attempt("select public.book_slot($1::jsonb, $2, $3) as id", [JSON.stringify({ org_id: orgA, contact_id: contactA, service_id: serviceA, ...extra }), scope, cap]);
+
+    beforeAll(async () => {
+      await actAs(ownerA);
+      contactA = (await db.query("insert into public.contacts (org_id, phone) values ($1, '+18435550400') returning id", [orgA])).rows[0].id;
+      serviceA = (await db.query("insert into public.service_catalog (org_id, name, booking_mode) values ($1, 'Estimate', 'arrival_window') returning id", [orgA])).rows[0].id;
+      groomer = (await db.query("insert into public.resources (org_id, name, kind) values ($1, 'Sam', 'groomer') returning id", [orgA])).rows[0].id;
+      await db.query("reset role"); // book_slot runs on the server
+    });
+
+    it("fills an arrival window to capacity, then refuses", async () => {
+      await db.query("reset role");
+      const w = { mode: "arrival_window", starts_at: "2026-10-05T12:00:00Z", ends_at: "2026-10-05T14:00:00Z", service_date: "2026-10-05" };
+      expect((await book(w, "window", 2)).error).toBeNull();
+      expect((await book({ ...w, status: "pending_approval" }, "window", 2)).error).toBeNull();
+      expect((await book(w, "window", 2)).error?.message).toMatch(/^FULL/);
+    });
+
+    it("never double-books a groomer, even with travel buffers", async () => {
+      await db.query("reset role");
+      const appt = { mode: "fixed_appointment", resource_id: groomer, starts_at: "2026-10-06T13:00:00Z", ends_at: "2026-10-06T14:00:00Z", service_date: "2026-10-06" };
+      expect((await book(appt, "resource")).error).toBeNull();
+      expect((await book({ ...appt, starts_at: "2026-10-06T13:30:00Z", ends_at: "2026-10-06T14:30:00Z" }, "resource")).error?.message).toMatch(/^OVERLAP/);
+      expect((await book({ ...appt, starts_at: "2026-10-06T14:00:00Z", ends_at: "2026-10-06T15:00:00Z" }, "resource")).error).toBeNull(); // back-to-back is fine
+      const withTravel = { ...appt, starts_at: "2026-10-06T15:10:00Z", ends_at: "2026-10-06T16:00:00Z", travel_before_minutes: 20 };
+      expect((await book(withTravel, "resource")).error?.message).toMatch(/^OVERLAP/);
+    });
+
+    it("checks every night of a stay", async () => {
+      await db.query("reset role");
+      const stay = (ci: string, co: string) => ({ mode: "multi_day_reservation", unit_class: "large", check_in: ci, check_out: co, service_date: ci, starts_at: `${ci}T12:00:00Z`, ends_at: `${co}T12:00:00Z` });
+      expect((await book(stay("2026-11-24", "2026-11-27"), "nights", 1)).error).toBeNull();
+      expect((await book(stay("2026-11-26", "2026-11-28"), "nights", 1)).error?.message).toMatch(/^FULL: 2026-11-26/);
+      expect((await book(stay("2026-11-27", "2026-11-29"), "nights", 1)).error).toBeNull(); // arrives the day the other leaves
+    });
+
+    it("stops a package at zero sessions", async () => {
+      await db.query("reset role");
+      const pkg = (await db.query("insert into public.packages (org_id, contact_id, name, sessions_total) values ($1, $2, '2 lessons', 2) returning id", [orgA, contactA])).rows[0].id;
+      const lesson = (h: number) => ({ mode: "package_sessions", package_id: pkg, starts_at: `2026-10-07T${h}:00:00Z`, ends_at: `2026-10-07T${h}:45:00Z`, service_date: "2026-10-07" });
+      expect((await book(lesson(13), "none")).error).toBeNull();
+      expect((await book(lesson(14), "none")).error).toBeNull();
+      expect((await book(lesson(15), "none")).error?.message).toMatch(/^NO_SESSIONS/);
+    });
+
+    it("keeps bookings private, and lets the team change only status and notes", async () => {
+      await actAs(ownerB);
+      expect((await db.query("select * from public.bookings where org_id = $1", [orgA])).rowCount).toBe(0);
+      for (const t of ["service_catalog", "resources", "packages"]) expect((await db.query(`select * from public.${t} where org_id = $1`, [orgA])).rowCount, t).toBe(0);
+      expect((await attempt("select public.book_slot('{}'::jsonb, 'none', null)")).error).not.toBeNull();
+      await actAs(managerA);
+      expect((await attempt("update public.bookings set status = 'completed' where org_id = $1 and mode = 'arrival_window'", [orgA])).error).toBeNull();
+      expect((await attempt("update public.bookings set starts_at = now() where org_id = $1", [orgA])).error).not.toBeNull();
+      expect((await attempt("insert into public.bookings (org_id, contact_id, mode, starts_at, ends_at, service_date) values ($1, $2, 'fixed_appointment', now(), now() + interval '1 hour', current_date)", [orgA, contactA])).error).not.toBeNull();
+      expect((await attempt("insert into public.service_catalog (org_id, name, booking_mode) values ($1, 'x', 'day_capacity')", [orgA])).error).not.toBeNull();
+      await actAsAnonymous();
+      for (const t of ["bookings", "service_catalog", "resources", "packages"]) expect((await attempt(`select * from public.${t}`)).rowCount, t).toBe(0);
+    });
+  });
+
   it("keeps sales audits completely server-only (Milestone 17)", async () => {
     await db.query("reset role");
     await db.query("insert into public.audit_reports (prospect_name, score) values ('Prospect Roofing', 42)");

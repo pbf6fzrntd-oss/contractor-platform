@@ -8,7 +8,9 @@ import { createClient } from "@/lib/supabase/server";
 /** Shell for every logged-in page: content on top, navigation bar at the bottom. */
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const { org, plan, modules } = await requireAppContext();
-  const nav = buildNavigation(org.business_type, plan, moduleNavEntries(MODULES, modules));
+  // "Schedule" appears only for businesses that turned on booking (off for everyone by default).
+  const extra = [...(org.booking_enabled ? [{ href: "/schedule", label: "Schedule", icon: "schedule" as const }] : []), ...moduleNavEntries(MODULES, modules)];
+  const nav = buildNavigation(org.business_type, plan, extra);
   const supabase = await createClient();
   const { count: unread } = await supabase
     .from("leads")

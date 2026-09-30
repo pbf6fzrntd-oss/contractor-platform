@@ -23,6 +23,7 @@ export default async function SettingsPage() {
     { href: "/settings/billing", label: "Billing", detail: `${plan.id === "pilot" ? "Pilot" : plan.id} plan and text usage` },
     ...(role === "owner"
       ? [
+          { href: "/settings/booking", label: "Online booking", detail: org.booking_enabled ? "On" : "Off: set up services and hours" },
           { href: "/settings/registration", label: "Carrier registration", detail: "Required before texting real customers" },
           { href: "/settings/assistants", label: "AI assistants", detail: "Let Claude, ChatGPT and others help run your inbox" },
         ]

@@ -37,7 +37,8 @@ import { runDispatch } from "@/lib/services/outbox";
 import type { AdminClient } from "@/lib/supabase/admin";
 import { shareableSubject } from "@/lib/subjects/fields";
 import { renderTemplate } from "@/lib/templates/render";
-import { DAY_NAMES, isWithinWindow, localDateString, weekdayOf } from "@/lib/time";
+import { addDays, DAY_NAMES, isWithinWindow, localDateString, weekdayOf } from "@/lib/time";
+import { bookingWhen, createBooking, loadBookingData, openingsOn } from "@/lib/services/booking";
 
 /**
  * The AI assistant (MCP) server for ONE business. Built fresh for every
@@ -434,6 +435,68 @@ export function buildAgentServer(ctx: AgentContext, extensions: AgentToolRegistr
   }
 
 
+  if (org.booking_enabled) {
+    server.registerTool(
+      "list_bookings",
+      {
+        title: "Upcoming bookings",
+        description: "Booked visits for the next days (default 7), including ones waiting for the owner's OK.",
+        inputSchema: { days: z.number().int().min(1).max(31).optional() },
+        annotations: { readOnlyHint: true },
+      },
+      logged("list_bookings", async ({ days = 7 }) => {
+        const { data } = await db
+          .from("bookings")
+          .select("id, lead_id, contact_id, service_id, mode, status, source, starts_at, ends_at, check_in, check_out, service_date")
+          .eq("org_id", org.id)
+          .gte("service_date", today())
+          .lte("service_date", addDays(today(), days))
+          .in("status", ["requested", "pending_approval", "confirmed", "in_progress"])
+          .order("starts_at")
+          .limit(100);
+        const ids = [...new Set((data ?? []).map((b) => b.contact_id))];
+        const [{ data: contacts }, { data: services }] = await Promise.all([
+          db.from("contacts").select("id, name, phone").in("id", ids),
+          db.from("service_catalog").select("id, name").eq("org_id", org.id),
+        ]);
+        const rows = (data ?? []).map((b) => {
+          const c = contacts?.find((x) => x.id === b.contact_id);
+          return {
+            booking_id: b.id,
+            lead_id: b.lead_id,
+            when: bookingWhen(b, org.timezone),
+            service: services?.find((s) => s.id === b.service_id)?.name ?? "Visit",
+            customer: c?.name ?? (c ? formatUSPhone(c.phone) : null),
+            status: b.status.replace(/_/g, " "),
+          };
+        });
+        return { result: ok(rows.length ? rows : "Nothing booked."), summary: `Looked at ${rows.length} booking(s)` };
+      }),
+    );
+
+    server.registerTool(
+      "find_open_times",
+      {
+        title: "Find open times",
+        description: "Open arrival windows, appointment times or days for a service on a date. Get service_id from the list in the result when you don't know it.",
+        inputSchema: { service_id: z.string().uuid().optional(), date: z.string().optional().describe('"today", "tomorrow", a weekday or YYYY-MM-DD') },
+        annotations: { readOnlyHint: true },
+      },
+      logged("find_open_times", async ({ service_id, date }) => {
+        const day = resolveDay(date, today());
+        if (!day) return { result: fail(`Couldn't understand the date "${date}".`), summary: "Bad date" };
+        const data = await loadBookingData(db, org, day, addDays(day, 1));
+        const services = data.services.filter((s) => s.booking_mode !== "recurring");
+        const svc = services.find((s) => s.id === service_id);
+        if (!svc) return { result: ok({ pick_a_service: services.map((s) => ({ service_id: s.id, name: s.name })) }), summary: "Listed services" };
+        const openings = openingsOn(data, svc, day, org, Date.now()).map((o) =>
+          o.kind === "day" ? { book_with: { date: o.date }, spots_left: o.left } : { book_with: { start: new Date(o.startMs).toISOString() }, time: when(new Date(o.startMs).toISOString()), ...(o.kind === "window" ? { arrival_window: o.label } : {}) },
+        );
+        return { result: ok({ service: svc.name, date: day, openings: openings.slice(0, 30) }), summary: `Checked open times for ${svc.name} on ${nice(day)}` };
+      }),
+    );
+  }
+
   const lawnCampaigns = isLawn && hasFeature(plan, "campaigns");
 
   server.registerTool(
@@ -704,6 +767,44 @@ export function buildAgentServer(ctx: AgentContext, extensions: AgentToolRegistr
     );
   }
 
+
+  if (org.booking_enabled) {
+    server.registerTool(
+      "book_visit",
+      {
+        title: "Book a visit",
+        description:
+          "Book a lead's customer for a service. Use find_open_times first and pass its book_with values. Confirm the time with the owner before booking. Doesn't text the customer.",
+        inputSchema: {
+          lead_id: z.string().uuid(),
+          service_id: z.string().uuid(),
+          start: z.string().datetime().optional().describe("From find_open_times (appointments and arrival windows)."),
+          date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("From find_open_times (whole-day services)."),
+          check_in: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+          check_out: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false },
+      },
+      logged("book_visit", async (a) => {
+        const loaded = await loadLead(db, org.id, a.lead_id);
+        if (!loaded) return { result: fail("No lead with that id in this business."), summary: "Lead not found" };
+        const r = await createBooking(db, org, {
+          serviceId: a.service_id,
+          contactId: loaded.contact.id,
+          leadId: a.lead_id,
+          startMs: a.start ? Date.parse(a.start) : undefined,
+          date: a.date,
+          checkIn: a.check_in,
+          checkOut: a.check_out,
+          address: loaded.contact.address,
+          source: "ai_assistant",
+          userId: ctx.userId,
+        });
+        if (!r.ok) return { result: fail(r.error), summary: `Booking not made: ${r.error}` };
+        return { result: ok({ booking_id: r.bookingId, message: `Booked for ${when(r.startsAt)}.` }), summary: `Booked a visit for ${loaded.contact.name ?? formatUSPhone(loaded.contact.phone)} on ${when(r.startsAt)}` };
+      }),
+    );
+  }
 
   server.registerTool(
     "update_contact",

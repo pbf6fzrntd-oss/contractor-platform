@@ -14,6 +14,7 @@ import { loadThread } from "@/lib/services/thread";
 import { confirmOptOut, dismissFlag } from "./actions";
 import { Composer, ContactForm, StagePicker } from "./lead-forms";
 import { LeadExtras } from "./lead-extras";
+import { BookingCard } from "./booking-card";
 import { SubjectCard } from "./subject-card";
 
 export const metadata: Metadata = { title: "Conversation" };
@@ -25,9 +26,11 @@ const SOURCE: Record<string, string> = {
   manual: "Added by hand",
 };
 
-export default async function LeadPage({ params }: PageProps<"/inbox/[leadId]">) {
+export default async function LeadPage({ params, searchParams }: PageProps<"/inbox/[leadId]">) {
   const ctx = await requireAppContext("/inbox");
   const { leadId } = await params;
+  const sp = await searchParams;
+  const param = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
   const loaded = await loadLeadForUser(ctx, leadId);
   if (!loaded) notFound();
   const { lead, contact, supabase } = loaded;
@@ -114,6 +117,10 @@ export default async function LeadPage({ params }: PageProps<"/inbox/[leadId]">)
       )}
 
       <SubjectCard ctx={ctx} leadId={lead.id} contactId={contact.id} />
+
+      {org.booking_enabled && (
+        <BookingCard ctx={ctx} leadId={lead.id} contactId={contact.id} service={param("book")} day={param("day")} booked={param("booked") === "1"} />
+      )}
 
       <LeadExtras ctx={ctx} lead={lead} contact={contact} />
 

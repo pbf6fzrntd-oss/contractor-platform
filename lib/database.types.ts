@@ -203,6 +203,102 @@ export type Database = {
         };
         Relationships: [];
       };
+      bookings: {
+        Row: {
+          id: string;
+          org_id: string;
+          contact_id: string;
+          lead_id: string | null;
+          subject_id: string | null;
+          service_id: string | null;
+          package_id: string | null;
+          resource_id: string | null;
+          mode: string;
+          status: string;
+          source: string;
+          starts_at: string;
+          ends_at: string;
+          service_date: string;
+          check_in: string | null;
+          check_out: string | null;
+          unit_class: string | null;
+          travel_before_minutes: number;
+          travel_after_minutes: number;
+          blocked_from: string | null;
+          blocked_until: string | null;
+          service_zip: string | null;
+          address: string | null;
+          price_cents: number | null;
+          customer_notes: string | null;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          contact_id: string;
+          lead_id?: string | null;
+          subject_id?: string | null;
+          service_id?: string | null;
+          package_id?: string | null;
+          resource_id?: string | null;
+          mode: string;
+          status?: string;
+          source?: string;
+          starts_at: string;
+          ends_at: string;
+          service_date: string;
+          check_in?: string | null;
+          check_out?: string | null;
+          unit_class?: string | null;
+          travel_before_minutes?: number;
+          travel_after_minutes?: number;
+          blocked_from?: string | null;
+          blocked_until?: string | null;
+          service_zip?: string | null;
+          address?: string | null;
+          price_cents?: number | null;
+          customer_notes?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          contact_id?: string;
+          lead_id?: string | null;
+          subject_id?: string | null;
+          service_id?: string | null;
+          package_id?: string | null;
+          resource_id?: string | null;
+          mode?: string;
+          status?: string;
+          source?: string;
+          starts_at?: string;
+          ends_at?: string;
+          service_date?: string;
+          check_in?: string | null;
+          check_out?: string | null;
+          unit_class?: string | null;
+          travel_before_minutes?: number;
+          travel_after_minutes?: number;
+          blocked_from?: string | null;
+          blocked_until?: string | null;
+          service_zip?: string | null;
+          address?: string | null;
+          price_cents?: number | null;
+          customer_notes?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       broadcasts: {
         Row: {
           id: string;
@@ -853,6 +949,8 @@ export type Database = {
           created_at: string;
           updated_at: string;
           industry: string | null;
+          booking_enabled: boolean;
+          booking_settings: Json;
         };
         Insert: {
           id?: string;
@@ -867,6 +965,8 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           industry?: string | null;
+          booking_enabled?: boolean;
+          booking_settings?: Json;
         };
         Update: {
           id?: string;
@@ -881,6 +981,44 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           industry?: string | null;
+          booking_enabled?: boolean;
+          booking_settings?: Json;
+        };
+        Relationships: [];
+      };
+      packages: {
+        Row: {
+          id: string;
+          org_id: string;
+          contact_id: string;
+          subject_id: string | null;
+          service_id: string | null;
+          name: string;
+          sessions_total: number;
+          expires_on: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          contact_id: string;
+          subject_id?: string | null;
+          service_id?: string | null;
+          name: string;
+          sessions_total: number;
+          expires_on?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          contact_id?: string;
+          subject_id?: string | null;
+          service_id?: string | null;
+          name?: string;
+          sessions_total?: number;
+          expires_on?: string | null;
+          created_at?: string;
         };
         Relationships: [];
       };
@@ -1046,6 +1184,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      resources: {
+        Row: {
+          id: string;
+          org_id: string;
+          name: string;
+          kind: string;
+          unit_class: string | null;
+          capacity: number;
+          active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          name: string;
+          kind: string;
+          unit_class?: string | null;
+          capacity?: number;
+          active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          name?: string;
+          kind?: string;
+          unit_class?: string | null;
+          capacity?: number;
+          active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       scheduled_messages: {
         Row: {
           id: string;
@@ -1103,6 +1274,81 @@ export type Database = {
           attempts?: number;
           created_at?: string;
           processed_at?: string | null;
+        };
+        Relationships: [];
+      };
+      service_catalog: {
+        Row: {
+          id: string;
+          org_id: string;
+          key: string | null;
+          name: string;
+          name_es: string | null;
+          booking_mode: string;
+          duration_minutes: number;
+          daily_capacity: number | null;
+          resource_kind: string | null;
+          unit_class: string | null;
+          price_from_cents: number | null;
+          price_to_cents: number | null;
+          price_unit: string | null;
+          required_documents: string[];
+          min_notice_hours: number;
+          min_nights: number | null;
+          max_nights: number | null;
+          public: boolean;
+          active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          key?: string | null;
+          name: string;
+          name_es?: string | null;
+          booking_mode: string;
+          duration_minutes?: number;
+          daily_capacity?: number | null;
+          resource_kind?: string | null;
+          unit_class?: string | null;
+          price_from_cents?: number | null;
+          price_to_cents?: number | null;
+          price_unit?: string | null;
+          required_documents?: string[];
+          min_notice_hours?: number;
+          min_nights?: number | null;
+          max_nights?: number | null;
+          public?: boolean;
+          active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          key?: string | null;
+          name?: string;
+          name_es?: string | null;
+          booking_mode?: string;
+          duration_minutes?: number;
+          daily_capacity?: number | null;
+          resource_kind?: string | null;
+          unit_class?: string | null;
+          price_from_cents?: number | null;
+          price_to_cents?: number | null;
+          price_unit?: string | null;
+          required_documents?: string[];
+          min_notice_hours?: number;
+          min_nights?: number | null;
+          max_nights?: number | null;
+          public?: boolean;
+          active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -1251,6 +1497,7 @@ export type Database = {
     Views: { [_ in never]: never };
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
+      book_slot: { Args: { p_booking: Json; p_capacity_scope: string; p_capacity?: number }; Returns: string };
       claim_due_scheduled_messages: { Args: { p_now: string; p_limit?: number }; Returns: unknown[] };
       create_organization: { Args: { p_name: string; p_business_type: string; p_default_language: string; p_templates: Json; p_alert_phone?: string; p_google_review_url?: string; p_industry?: string }; Returns: string };
       get_invitation: { Args: { p_token: string }; Returns: { org_name: string; role: string; is_valid: boolean }[] };
