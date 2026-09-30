@@ -5,7 +5,7 @@ import { FormMessage } from "@/components/form-message";
 import { SubmitButton } from "@/components/submit-button";
 import { MARKETING_CONSENT_METHODS } from "@/lib/consent";
 import { ServiceFields } from "../customer-fields";
-import { cancelService, pauseService, recordMarketingConsent, updateService } from "./actions";
+import { cancelService, pauseService, recordMarketingConsent, saveAccessNotes, updateService } from "./actions";
 
 export function EditServiceForm({
   id,
@@ -77,6 +77,18 @@ export function MarketingConsentForm({ id }: { id: string }) {
       <input name="marketing_evidence" className="input" placeholder="Note (e.g. signed 3/2026 agreement)" />
       <SubmitButton className="btn-secondary w-full">Record marketing consent</SubmitButton>
       <FormMessage state={state} />
+    </form>
+  );
+}
+
+export function AccessNotesForm({ id, notes }: { id: string; notes: string }) {
+  const [state, action] = useActionState(saveAccessNotes.bind(null, id), undefined);
+  return (
+    <form action={action} className="flex flex-col gap-2">
+      <label htmlFor="access_notes" className="sr-only">Access notes</label>
+      <textarea id="access_notes" name="access_notes" className="input min-h-20" maxLength={2000} defaultValue={notes} placeholder="Gate 4821#, lockbox on back door, dog in the yard" />
+      <FormMessage state={state} />
+      <SubmitButton className="btn-secondary w-full">Save access notes</SubmitButton>
     </form>
   );
 }

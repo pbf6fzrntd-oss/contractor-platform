@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/components/form-message";
 import { getAppContext, getUserId } from "@/lib/auth/context";
 import { defaultTemplatesFor } from "@/lib/templates/defaults";
+import { enableModuleForIndustry } from "@/lib/services/editions";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { parseBusinessForm } from "@/lib/validation/business";
 
@@ -16,7 +18,7 @@ export async function createBusiness(_prev: FormState, formData: FormData): Prom
   const input = parsed.data;
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("create_organization", {
+  const { data: orgId, error } = await supabase.rpc("create_organization", {
     p_name: input.name,
     p_business_type: input.business_type,
     p_default_language: input.default_language,
@@ -29,6 +31,8 @@ export async function createBusiness(_prev: FormState, formData: FormData): Prom
     console.error("create_organization failed", error);
     return { error: "Something went wrong saving your business. Please try again." };
   }
+  // e.g. pest control, pool service or house cleaning → Recurring Home Services.
+  if (orgId && input.industry) await enableModuleForIndustry(createAdminClient(), orgId, input.industry);
 
   redirect("/home");
 }

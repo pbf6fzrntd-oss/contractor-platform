@@ -1421,6 +1421,72 @@ export type Database = {
         };
         Relationships: [];
       };
+      rh_agreements: {
+        Row: {
+          id: string;
+          org_id: string;
+          contact_id: string;
+          recurring_service_id: string | null;
+          name: string;
+          kind: string;
+          price_cents: number | null;
+          billing: string;
+          starts_on: string;
+          ends_on: string | null;
+          term_months: number;
+          auto_renew: boolean;
+          status: string;
+          renewal_notice_days: number;
+          renewal_notice_for: string | null;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          contact_id: string;
+          recurring_service_id?: string | null;
+          name: string;
+          kind?: string;
+          price_cents?: number | null;
+          billing?: string;
+          starts_on: string;
+          ends_on?: string | null;
+          term_months?: number;
+          auto_renew?: boolean;
+          status?: string;
+          renewal_notice_days?: number;
+          renewal_notice_for?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          contact_id?: string;
+          recurring_service_id?: string | null;
+          name?: string;
+          kind?: string;
+          price_cents?: number | null;
+          billing?: string;
+          starts_on?: string;
+          ends_on?: string | null;
+          term_months?: number;
+          auto_renew?: boolean;
+          status?: string;
+          renewal_notice_days?: number;
+          renewal_notice_for?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       scheduled_messages: {
         Row: {
           id: string;

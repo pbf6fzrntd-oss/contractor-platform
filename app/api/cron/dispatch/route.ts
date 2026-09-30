@@ -3,6 +3,8 @@ import { serverEnv } from "@/lib/env";
 import { expireStaleBookings } from "@/lib/services/booking-maintenance";
 import { runDailyJobs } from "@/lib/services/daily";
 import { deleteExpiredDemos } from "@/lib/services/demo";
+import { moduleDailyJobs } from "@/lib/modules/types";
+import { MODULES } from "@/modules/registry";
 import { runDispatch } from "@/lib/services/outbox";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -23,7 +25,7 @@ async function handle(request: Request) {
   // Release booking requests nobody finished (customer's YES or the owner's OK).
   const released = await expireStaleBookings(db);
   // Once a day (the first call after 12:00 UTC): expiry alerts and reminders.
-  const daily = await runDailyJobs(db);
+  const daily = await runDailyJobs(db, new Date(), moduleDailyJobs(MODULES));
   // "Try it live" demo businesses are deleted when their 24 hours are up.
   const demosDeleted = await deleteExpiredDemos(db);
   return NextResponse.json({ ...summary, released, ...(Object.keys(daily).length ? { daily } : {}), ...(demosDeleted ? { demosDeleted } : {}) });

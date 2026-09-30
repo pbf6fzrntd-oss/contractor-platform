@@ -471,6 +471,48 @@ describe.skipIf(!url)("row-level security", () => {
     });
   });
 
+  describe("service agreements (Milestone 27, Recurring Home Services)", () => {
+    let contactA = "";
+    let contactB = "";
+    let agreementB = "";
+    beforeAll(async () => {
+      await db.query("reset role");
+      contactA = (await db.query("insert into public.contacts (org_id, phone) values ($1, '+18435550271') returning id", [orgA])).rows[0].id;
+      contactB = (await db.query("insert into public.contacts (org_id, phone) values ($1, '+18435550272') returning id", [orgB])).rows[0].id;
+      agreementB = (await db.query("insert into public.rh_agreements (org_id, contact_id, name, starts_on, ends_on) values ($1, $2, 'Termite bond', '2026-01-01', '2026-12-31') returning id", [orgB, contactB])).rows[0].id;
+    });
+
+    it("lets the team add and update agreements for their own customers", async () => {
+      await actAs(managerA);
+      const ins = await attempt("insert into public.rh_agreements (org_id, contact_id, name, starts_on) values ($1, $2, 'Quarterly pest plan', '2026-10-01') returning id", [orgA, contactA]);
+      expect(ins.error).toBeNull();
+      expect((await attempt("update public.rh_agreements set price_cents = 12900 where id = $1", [ins.rows[0].id])).rowCount).toBe(1);
+      // Office managers can end or cancel, but only owners delete.
+      expect((await attempt("delete from public.rh_agreements where id = $1", [ins.rows[0].id])).rowCount).toBe(0);
+      await actAs(ownerA);
+      expect((await attempt("delete from public.rh_agreements where id = $1", [ins.rows[0].id])).rowCount).toBe(1);
+    });
+
+    it("keeps another business's agreements invisible and untouchable", async () => {
+      await actAs(ownerA);
+      expect((await attempt("select * from public.rh_agreements where id = $1", [agreementB])).rowCount).toBe(0);
+      expect((await attempt("update public.rh_agreements set price_cents = 1 where id = $1", [agreementB])).rowCount).toBe(0);
+      expect((await attempt("delete from public.rh_agreements where id = $1", [agreementB])).rowCount).toBe(0);
+      // Can't attach an agreement to another business's customer, or put one in their business.
+      expect((await attempt("insert into public.rh_agreements (org_id, contact_id, name, starts_on) values ($1, $2, 'x', '2026-10-01')", [orgA, contactB])).error).not.toBeNull();
+      expect((await attempt("insert into public.rh_agreements (org_id, contact_id, name, starts_on) values ($1, $2, 'x', '2026-10-01')", [orgB, contactB])).error).not.toBeNull();
+      await actAsAnonymous();
+      expect((await attempt("select * from public.rh_agreements")).rowCount).toBe(0);
+    });
+
+    it("rejects nonsense (end before start, unknown kinds)", async () => {
+      await db.query("reset role");
+      expect((await attempt("insert into public.rh_agreements (org_id, contact_id, name, starts_on, ends_on) values ($1, $2, 'x', '2026-10-01', '2026-01-01')", [orgA, contactA])).error).not.toBeNull();
+      expect((await attempt("insert into public.rh_agreements (org_id, contact_id, name, kind, starts_on) values ($1, $2, 'x', 'hack', '2026-10-01')", [orgA, contactA])).error).not.toBeNull();
+      expect((await attempt("insert into public.scheduled_messages (org_id, contact_id, kind, category, send_at) values ($1, $2, 'module_notice', 'informational', now())", [orgA, contactA])).error).toBeNull();
+    });
+  });
+
   describe("bookings (Milestone 19)", () => {
     let contactA = "";
     let serviceA = "";

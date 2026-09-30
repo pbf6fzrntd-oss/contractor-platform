@@ -24,12 +24,14 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M23 Booking hardening: approval expiry, reminders, reschedule/cancel link, closed dates, YES check for agent bookings, Spanish booking page | ✅ done |
 | M24 Expiry reminders (licenses, vaccines) + photos texted in | ✅ done |
 | Demo-ready UI (founder request) | ✅ done |
+| M27 Module A foundation: industries, agreements + renewals, access notes | ✅ done |
+| M28 Module A visit reports, service-complete text, AI tools, demo trades | not started |
 | M25 Quality: click-through suite in the repo, automatic checks on GitHub, daily cleanup, error alerts | ✅ done |
 | M26 Selling: demo business per industry, setup checklist, audit→customer link, calendar feed | ✅ done |
 
 ## Next up
 Founder approved items 1–16 of the post-M22 recommendations (2026-09-30), as M23–M26 above. Module A (Recurring Home Services) moves to M27+.
-M23–M26 and the demo-ready UI are done (all of the founder's items 1–16). Next: Module A (Recurring Home Services: house cleaning, pest control, pool service) as M27+, when the founder is ready.
+Module A (Recurring Home Services) is in progress: M27 done, next M28 (visit reports with checklists/readings and photos, optional "service complete" text, more AI tools, the three trades in the live demo).
 
 ## Milestone notes and "how to test"
 (Added as each milestone finishes.)
@@ -328,4 +330,28 @@ Nothing new to click yet. The configs show up in the sales audit (M17) and on ho
 1. Sign up as a new owner: "Finish setting up" appears on the Inbox. Follow "Next" through the steps and watch them tick off. Settings → Setup checklist → Hide.
 2. Settings → Calendar → Create my calendar link → Add to Google Calendar. On a live site, bookings appear within about an hour.
 3. Admin → Sales audits → open one → "Signed up as" → pick the business → Save. Then **Re-run audit**: the new report shows before and after.
+
+### M27: Module A (Recurring Home Services) foundation
+**What changed**
+- **House cleaning, pest control and pool service can sign up.** They're route businesses like lawn care: routes, Today, rain delays, bulk texts, campaigns, recurring metrics. Picking one of them at sign-up (or later in Settings → Business details) switches on the Recurring Home Services module (`lib/services/editions.ts`). Home Services stays on too. Lawn companies can get the module as an add-on (now "available" in the catalog), e.g. to sell mosquito plans.
+- **Service agreements** (`rh_agreements`, menu **Agreements**):
+  - quarterly pest plans, termite bonds, mosquito and pool seasons, cleaning plans, with a price, how it's charged, the term, end date and "renews on its own";
+  - quick picks per trade;
+  - the list shows what's coming up, what's active, and what it's all worth per year;
+  - each customer's page shows their agreements with "+ Add".
+- **Automatic renewal reminders:** a once-a-day job (the module's `dailyJobs`) does three things:
+  - texts the customer N days before the end date (default 30). The text is "Your "Termite bond" renews on October 31…", or "…ends on… Reply YES to renew";
+  - rolls auto-renewing agreements forward once the date passes, and ends the others;
+  - sends the owner a summary.
+  Reminders use a new general outbox kind, `module_notice`, so they get the same business hours, opt-outs, STOP line and last-moment re-check as every other text. The reminder is skipped if the agreement's end date changes before it goes out. There's also a "Text the reminder now" button and "Renew now".
+- **Access notes** (gate code, lockbox, alarm, dogs): edit them on the customer page. They show with a 🔑 on Today's route for the crew. They're kept in the private property record, never texted or shared with AI assistants. Shown for all route businesses (lawn included); display only, behavior unchanged.
+- AI assistants: new read-only tool `list_service_agreements` (no access notes).
+- Module plug-in points added to the framework: `dailyJobs`, `customerPanels`.
+- Migration `20260930050000_m27_recurring_home.sql` (additive); rollback included. Tests: agreement rules, form, texts, outbox module notices, module wiring (unit); isolation and permissions for agreements (DB); a pest control company end to end (click-through).
+
+**How to test**
+1. Sign up choosing **Pest control**. You land on Today; the menu (More) has **Agreements**.
+2. Customers → Add (due today). On their page, type access notes → Save. **Today** shows 🔑 with the notes.
+3. Agreements → + New → pick the customer → **Termite bond** → price → start date about a year ago → Save. It shows "Renewing soon" and the exact reminder text. Tap **Text the reminder now**: the customer gets it in business hours (Simulator).
+4. The next morning the daily job sends reminders for anything inside its notice window and tells you what it did.
 

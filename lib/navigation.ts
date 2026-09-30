@@ -1,7 +1,7 @@
 import type { BusinessType } from "@/lib/business-types";
 import { hasFeature, type Plan, type PlanFeature } from "@/lib/entitlements";
 
-export type NavIcon = "today" | "inbox" | "customers" | "campaigns" | "dashboard" | "settings" | "more" | "schedule";
+export type NavIcon = "today" | "inbox" | "customers" | "campaigns" | "dashboard" | "settings" | "more" | "schedule" | "agreements";
 
 export type NavItem = {
   href: string;

@@ -10,9 +10,18 @@ import { isWithinWindow, nextTimeInWindow } from "@/lib/time";
  */
 
 export type OutboxItem = {
-  kind: "estimate_followup" | "review_request" | "broadcast" | "booking_reminder" | "vaccine_reminder";
+  kind: "estimate_followup" | "review_request" | "broadcast" | "booking_reminder" | "vaccine_reminder" | "module_notice";
   category: MessageCategory;
-  context: { estimate_sent_at?: string; booking_id?: string; starts_at?: string; file_id?: string };
+  context: {
+    estimate_sent_at?: string;
+    booking_id?: string;
+    starts_at?: string;
+    file_id?: string;
+    /** module_notice: the text to send, and what must still be true right before sending. */
+    body_en?: string;
+    body_es?: string;
+    guard?: ModuleNoticeGuard;
+  };
 };
 
 export type OutboxState = {
@@ -34,7 +43,20 @@ export type OutboxState = {
   booking?: { status: string; starts_at: string } | null;
   /** For vaccine reminders: is the record still the latest one on file (not deleted or replaced)? */
   documentCurrent?: boolean;
+  /** For module notices: is the guard condition still true? */
+  guardOk?: boolean;
 };
+
+/**
+ * A module text's condition: row `id` in the module's table still has
+ * `column` = `equals` (e.g. an agreement's end date hasn't changed).
+ */
+export type ModuleNoticeGuard = { table: string; id: string; column: string; equals: string | number | boolean };
+
+/** Module tables start with a short module prefix (rh_, pc_, au_, pq_). Anything else is refused. */
+export function isModuleTable(name: string): boolean {
+  return /^(rh|pc|au|pq)_[a-z_]{2,40}$/.test(name);
+}
 
 export type SkipReason =
   | "contact_missing"
@@ -52,7 +74,8 @@ export type SkipReason =
   | "broadcast_canceled"
   | "booking_changed"
   | "booking_passed"
-  | "record_updated";
+  | "record_updated"
+  | "no_longer_needed";
 
 export type OutboxDecision =
   | { action: "send" }
@@ -98,6 +121,12 @@ export function evaluateScheduledMessage(item: OutboxItem, state: OutboxState): 
     if (ms(b.starts_at) <= state.now.getTime()) return { action: "skip", reason: "booking_passed" };
   }
 
+  if (item.kind === "module_notice") {
+    if (contact.do_not_autotext) return { action: "skip", reason: "do_not_autotext" };
+    if (!item.context.body_en) return { action: "skip", reason: "no_longer_needed" };
+    if (item.context.guard && !state.guardOk) return { action: "skip", reason: "no_longer_needed" };
+  }
+
   if (item.kind === "vaccine_reminder") {
     if (contact.do_not_autotext) return { action: "skip", reason: "do_not_autotext" };
     // The customer already sent a new record (or it was removed): nothing to remind about.
@@ -137,5 +166,6 @@ export const SKIP_REASON_TEXT: Record<string, string> = {
   booking_changed: "Booking was canceled or moved",
   booking_passed: "The visit already started",
   record_updated: "A newer record is on file",
+  no_longer_needed: "No longer needed (it was changed or canceled)",
   canceled: "Canceled",
 };

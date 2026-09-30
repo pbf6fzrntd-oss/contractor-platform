@@ -23,16 +23,12 @@ const JOBS: Record<string, DailyJob> = {
   cleanup: cleanUpOldRecords,
 };
 
-/** Registers another daily job (used by later milestones, e.g. cleanup). */
-export function addDailyJob(name: string, job: DailyJob) {
-  JOBS[name] = job;
-}
-
-export async function runDailyJobs(db: AdminClient, now = new Date()): Promise<Record<string, Json>> {
+export async function runDailyJobs(db: AdminClient, now = new Date(), moduleJobs: { name: string; run: DailyJob }[] = []): Promise<Record<string, Json>> {
   if (now.getUTCHours() < DAILY_START_HOUR_UTC) return {};
   const today = now.toISOString().slice(0, 10);
   const results: Record<string, Json> = {};
-  for (const [name, job] of Object.entries(JOBS)) {
+  const all: [string, DailyJob][] = [...Object.entries(JOBS), ...moduleJobs.map((j) => [j.name, j.run] as [string, DailyJob])];
+  for (const [name, job] of all) {
     // Claim today's run; if another scheduler call already did, skip.
     const { data: claimed } = await db.from("job_runs").upsert({ job: name, run_on: today }, { onConflict: "job,run_on", ignoreDuplicates: true }).select("job");
     if (!claimed?.length) continue;

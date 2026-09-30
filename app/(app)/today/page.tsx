@@ -41,6 +41,18 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
       .order("created_at", { ascending: false }),
   ]);
   const doneIds = new Set((visits ?? []).map((v) => v.recurring_service_id));
+  // Private access notes (gate codes, lockboxes) for today's stops: team-only screen.
+  const { data: properties } = scheduled.length
+    ? await supabase.from("subjects").select("id, contact_id").eq("org_id", org.id).eq("kind", "property").is("archived_at", null).in("contact_id", scheduled.map((s) => s.contact_id))
+    : { data: [] };
+  const { data: privates } = (properties ?? []).length
+    ? await supabase.from("subject_private").select("subject_id, access_notes").in("subject_id", properties!.map((p) => p.id)).not("access_notes", "is", null)
+    : { data: [] };
+  const accessNotes = new Map<string, string>();
+  for (const p of privates ?? []) {
+    const contactId = properties?.find((x) => x.id === p.subject_id)?.contact_id;
+    if (contactId && p.access_notes && !accessNotes.has(contactId)) accessNotes.set(contactId, p.access_notes);
+  }
   const remaining = scheduled.filter((s) => !doneIds.has(s.id)).length;
 
   let sentStatus: { sent: number; pending: number; total: number } | null = null;
@@ -127,6 +139,7 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
                         {s.service_type}
                         {c?.address ? ` · ${c.address}` : ""}
                       </span>
+                      {accessNotes.get(s.contact_id) && <span className="block truncate text-sm text-amber-800">🔑 {accessNotes.get(s.contact_id)}</span>}
                     </span>
                     <span className="shrink-0 text-xs text-slate-500">
                       {movedIn.has(s.id) && "moved here "}

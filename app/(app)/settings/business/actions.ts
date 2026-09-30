@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import type { FormState } from "@/components/form-message";
 import { requireOwner } from "@/lib/auth/context";
 import { defaultTemplatesFor } from "@/lib/templates/defaults";
+import { enableModuleForIndustry } from "@/lib/services/editions";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { parseBusinessForm } from "@/lib/validation/business";
 
@@ -24,6 +26,11 @@ export async function updateBusiness(_prev: FormState, formData: FormData): Prom
   if (parsed.data.business_type !== org.business_type) {
     const rows = defaultTemplatesFor(parsed.data.business_type, parsed.data.industry).map((t) => ({ ...t, org_id: org.id }));
     await supabase.from("message_templates").upsert(rows, { onConflict: "org_id,key,language", ignoreDuplicates: true });
+  }
+
+  // Picking an industry served by a module (e.g. pest control) switches that module on.
+  if ("industry" in parsed.data && parsed.data.industry !== org.industry) {
+    await enableModuleForIndustry(createAdminClient(), org.id, parsed.data.industry ?? null);
   }
 
   revalidatePath("/", "layout");

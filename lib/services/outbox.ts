@@ -1,6 +1,6 @@
 import "server-only";
 import { planFollowUps } from "@/lib/automation/followups";
-import { evaluateScheduledMessage, type OutboxItem } from "@/lib/automation/outbox";
+import { evaluateScheduledMessage, isModuleTable, type ModuleNoticeGuard, type OutboxItem } from "@/lib/automation/outbox";
 import type { Tables } from "@/lib/database.types";
 import { loadSendingContext, sendToContact, type SendingContext } from "@/lib/messaging/send";
 import { manageUrl } from "@/lib/booking/manage-link";
@@ -162,6 +162,19 @@ export async function runDispatch(db: AdminClient, options: DispatchOptions = {}
   return summary;
 }
 
+/** Is a module notice's condition still true? Only module tables, only this business's rows. */
+async function checkGuard(db: AdminClient, orgId: string, guard: ModuleNoticeGuard): Promise<boolean> {
+  if (!isModuleTable(guard.table) || !/^[a-z_]{1,40}$/.test(guard.column)) return false;
+  // Module tables aren't known to the core's types, so the query is built by name (checked above).
+  const { data } = await (db as unknown as { from: (t: string) => { select: (c: string) => { eq: (k: string, v: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: Record<string, unknown> | null }> } } } } })
+    .from(guard.table)
+    .select(guard.column)
+    .eq("id", guard.id)
+    .eq("org_id", orgId)
+    .maybeSingle();
+  return data != null && String(data[guard.column]) === String(guard.equals);
+}
+
 /** A vaccine record for a reminder, and whether it's still the latest one on file for that pet. */
 async function loadVaccineRecord(db: AdminClient, orgId: string, fileId: string) {
   const { data: f } = await db.from("files").select("id, subject_id, document_type, expires_on, deleted_at, created_at").eq("id", fileId).eq("org_id", orgId).maybeSingle();
@@ -191,6 +204,7 @@ async function processItem(
 ): Promise<keyof DispatchSummary> {
   const bookingId = item.kind === "booking_reminder" ? ((item.context ?? {}) as { booking_id?: string }).booking_id : undefined;
   const fileId = item.kind === "vaccine_reminder" ? ((item.context ?? {}) as { file_id?: string }).file_id : undefined;
+  const guard = item.kind === "module_notice" ? ((item.context ?? {}) as { guard?: ModuleNoticeGuard }).guard : undefined;
   const [{ data: contact }, { data: lead }, { data: lastInbound }, broadcast, { data: booking }, record] = await Promise.all([
     db.from("contacts").select("*").eq("id", item.contact_id).maybeSingle(),
     item.lead_id
@@ -210,6 +224,7 @@ async function processItem(
       : Promise.resolve({ data: null }),
     fileId ? loadVaccineRecord(db, item.org_id, fileId) : Promise.resolve(null),
   ]);
+  const guardOk = guard ? await checkGuard(db, item.org_id, guard) : undefined;
 
   const outboxItem: OutboxItem = {
     kind: item.kind as OutboxItem["kind"],
@@ -227,6 +242,7 @@ async function processItem(
     broadcastStatus: broadcast?.status ?? null,
     booking: booking ? { status: booking.status, starts_at: booking.starts_at } : null,
     documentCurrent: record?.current ?? false,
+    guardOk,
   });
 
   // In fast-forward, jump straight to when the window opens instead of waiting.
@@ -266,6 +282,9 @@ async function processItem(
     body = language === "es" && broadcast.body_es ? broadcast.body_es : broadcast.body_en;
   } else if (item.kind === "booking_reminder" && booking) {
     body = bookingReminderText(language, b.org.name, bookingWhen(booking, b.org.timezone, language), manageUrl(booking.id));
+  } else if (item.kind === "module_notice") {
+    const context = (item.context ?? {}) as { body_en?: string; body_es?: string };
+    body = (language === "es" && context.body_es) || context.body_en || null;
   } else if (item.kind === "vaccine_reminder" && record) {
     const date = new Date(`${record.expiresOn}T12:00:00Z`).toLocaleDateString(language === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" });
     const expired = record.expiresOn < localDateString(now, b.org.timezone);

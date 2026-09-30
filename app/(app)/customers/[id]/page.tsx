@@ -10,7 +10,9 @@ import { createClient } from "@/lib/supabase/server";
 import { DAY_NAMES, localDateString } from "@/lib/time";
 import { openConversation, resumeService, revokeMarketingConsent } from "./actions";
 import { serviceSuggestions } from "../customer-fields";
-import { EditServiceForm, MarketingConsentForm, PauseCancelForms } from "./forms";
+import { AccessNotesForm, EditServiceForm, MarketingConsentForm, PauseCancelForms } from "./forms";
+import { moduleCustomerPanels } from "@/lib/modules/types";
+import { MODULES } from "@/modules/registry";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -21,7 +23,8 @@ const STATUS_STYLE = {
 };
 
 export default async function CustomerPage({ params }: PageProps<"/customers/[id]">) {
-  const { org } = await requireAppContext("/customers");
+  const ctx = await requireAppContext("/customers");
+  const { org } = ctx;
   const { id } = await params;
   const supabase = await createClient();
   const { data: service } = await supabase.from("recurring_services").select("*").eq("id", id).eq("org_id", org.id).maybeSingle();
@@ -39,6 +42,19 @@ export default async function CustomerPage({ params }: PageProps<"/customers/[id
       .limit(10),
   ]);
   if (!contact) notFound();
+  // Private access notes live on the customer's property record (team-only; never texted or shared).
+  const { data: property } = await supabase
+    .from("subjects")
+    .select("id")
+    .eq("org_id", org.id)
+    .eq("contact_id", contact.id)
+    .eq("kind", "property")
+    .is("archived_at", null)
+    .order("created_at")
+    .limit(1)
+    .maybeSingle();
+  const { data: priv } = property ? await supabase.from("subject_private").select("access_notes").eq("subject_id", property.id).maybeSingle() : { data: null };
+  const panels = moduleCustomerPanels(MODULES, ctx.modules);
 
   const today = localDateString(new Date(), org.timezone);
   const status = effectiveStatus(service, today);
@@ -79,6 +95,14 @@ export default async function CustomerPage({ params }: PageProps<"/customers/[id
           </p>
         )}
       </section>
+
+      <section className="card mb-4">
+        <h2 className="mb-1 font-semibold">🔑 Access notes</h2>
+        <p className="mb-2 text-xs text-slate-500">Gate codes, lockbox, alarm, pets. Only your team sees these; they&apos;re never texted or shared with AI assistants.</p>
+        <AccessNotesForm id={id} notes={priv?.access_notes ?? ""} />
+      </section>
+
+      {await Promise.all(panels.map(async (Panel, i) => <div key={i}>{await Panel({ ctx, contactId: contact.id, recurringServiceId: id })}</div>))}
 
       <section className="card mb-4">
         {status === "active" && <PauseCancelForms id={id} canPause />}

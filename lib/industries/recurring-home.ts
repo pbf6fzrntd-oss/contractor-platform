@@ -3,8 +3,8 @@ import type { IndustryConfig } from "@/lib/industries/types";
 
 /**
  * Module A: Recurring Home Services (cleaning, pest control, pool service).
- * Route-based, repeat visits like lawn care. Coming soon: the configs are
- * here so the sales audit and demos work before the module ships.
+ * Route-based, repeat visits like lawn care (same routes, Today screen, rain
+ * delays and campaigns), plus the module's service agreements and visit reports.
  */
 export const RECURRING_HOME_INDUSTRIES: IndustryConfig[] = [
   {
@@ -12,7 +12,7 @@ export const RECURRING_HOME_INDUSTRIES: IndustryConfig[] = [
     label: "House cleaning",
     hint: "Recurring cleans, deep cleans, move-outs, vacation rentals",
     module: "recurring_home",
-    status: "coming_soon",
+    status: "available",
     businessType: "recurring",
     schemaOrg: { type: "HomeAndConstructionBusiness" },
     subjectType: "property",
@@ -62,7 +62,7 @@ export const RECURRING_HOME_INDUSTRIES: IndustryConfig[] = [
     label: "Pest control",
     hint: "Quarterly service, termites, mosquitoes",
     module: "recurring_home",
-    status: "coming_soon",
+    status: "available",
     businessType: "recurring",
     schemaOrg: { type: "HomeAndConstructionBusiness" },
     subjectType: "property",
@@ -113,7 +113,7 @@ export const RECURRING_HOME_INDUSTRIES: IndustryConfig[] = [
     label: "Pool service",
     hint: "Weekly cleaning, chemicals, repairs, openings",
     module: "recurring_home",
-    status: "coming_soon",
+    status: "available",
     businessType: "recurring",
     schemaOrg: { type: "HomeAndConstructionBusiness" },
     subjectType: "property",

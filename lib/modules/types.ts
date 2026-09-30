@@ -1,4 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ReactNode } from "react";
+import type { AppContext } from "@/lib/auth/context";
+import type { Json } from "@/lib/database.types";
 import type { AgentContext } from "@/lib/agent/server";
 import type { ModuleId } from "@/lib/industries/types";
 import type { NavEntry } from "@/lib/navigation";
@@ -48,7 +51,24 @@ export type ModuleManifest = {
    * only public facts: never customers, private notes, codes, VINs or files.
    */
   publicAgentTools?: PublicAgentToolRegistrar;
+  /** Jobs that run once a day from the scheduler (e.g. renewal reminders). They must only touch the module's own businesses. */
+  dailyJobs?: ModuleDailyJob[];
+  /** Extra sections on a recurring customer's page (team-only screen). */
+  customerPanels?: CustomerPanel[];
 };
+
+export type ModuleDailyJob = { name: string; run: (db: AdminClient, now: Date) => Promise<Json> };
+
+export type CustomerPanel = (props: { ctx: AppContext; contactId: string; recurringServiceId: string | null }) => Promise<ReactNode>;
+
+/** Every module's daily jobs (each job itself only acts on businesses using the module). */
+export function moduleDailyJobs(all: readonly ModuleManifest[]): ModuleDailyJob[] {
+  return all.flatMap((m) => (m.dailyJobs ?? []).map((j) => ({ ...j, name: `${m.id}_${j.name}` })));
+}
+
+export function moduleCustomerPanels(all: readonly ModuleManifest[], enabled: readonly string[]): CustomerPanel[] {
+  return activeModules(all, enabled).flatMap((m) => m.customerPanels ?? []);
+}
 
 /** The modules a business has switched on, in registry order. */
 export function activeModules(all: readonly ModuleManifest[], enabled: readonly string[]): ModuleManifest[] {

@@ -1,4 +1,5 @@
 import { homeServices } from "@/modules/home-services";
+import { recurringHome } from "@/modules/recurring-home";
 import type { ModuleManifest } from "@/lib/modules/types";
 
 /**
@@ -7,4 +8,4 @@ import type { ModuleManifest } from "@/lib/modules/types";
  * Add a module here once it's built; a business still only gets it when its
  * org_modules row is enabled.
  */
-export const MODULES: readonly ModuleManifest[] = [homeServices];
+export const MODULES: readonly ModuleManifest[] = [homeServices, recurringHome];

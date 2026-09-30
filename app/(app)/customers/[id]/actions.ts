@@ -8,6 +8,7 @@ import { FREQUENCIES } from "@/lib/automation/schedule";
 import { parseDollars } from "@/lib/format";
 import { MARKETING_CONSENT_METHODS } from "@/lib/consent";
 import { cancelService as cancelSvc, pauseService as pauseSvc, resumeService as resumeSvc } from "@/lib/services/customer-actions";
+import { saveSubject } from "@/lib/services/subjects";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { localDateString } from "@/lib/time";
@@ -136,4 +137,41 @@ export async function openConversation(id: string): Promise<void> {
     .select("id")
     .single();
   redirect(`/inbox/${lead!.id}`);
+}
+
+/** Saves the customer's private access notes (gate code, lockbox, alarm, dogs) on their property record. */
+export async function saveAccessNotes(id: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const loaded = await loadService(id);
+  if (!loaded) return { error: "Customer not found." };
+  const notes = String(formData.get("access_notes") ?? "").trim().slice(0, 2000) || null;
+  const { supabase, service, ctx } = loaded;
+  const { data: existing } = await supabase
+    .from("subjects")
+    .select("id, label")
+    .eq("org_id", ctx.org.id)
+    .eq("contact_id", service.contact_id)
+    .eq("kind", "property")
+    .is("archived_at", null)
+    .order("created_at")
+    .limit(1)
+    .maybeSingle();
+  if (existing) {
+    // Only the private notes change; the property's other details stay as they are.
+    const { error } = await supabase.from("subject_private").upsert({ subject_id: existing.id, org_id: ctx.org.id, access_notes: notes }, { onConflict: "subject_id" });
+    if (error) return { error: "Couldn't save. Please try again." };
+    done(id);
+    return { success: "Saved." };
+  }
+  const { data: contact } = await supabase.from("contacts").select("address").eq("id", service.contact_id).single();
+  const subjectId = await saveSubject(supabase, ctx.org.id, {
+    subjectId: null,
+    contactId: service.contact_id,
+    kind: "property",
+    label: contact?.address ?? "Home",
+    attributes: {},
+    privateFields: { access_notes: notes },
+  });
+  if (!subjectId) return { error: "Couldn't save. Please try again." };
+  done(id);
+  return { success: "Saved." };
 }

@@ -192,7 +192,9 @@ describe("every industry in every module (Milestone 16)", () => {
 
   it("keeps coming-soon industries out of the sign-up picker", () => {
     const values = industryGroups().flatMap((g) => g.choices.map((c) => c.value));
-    for (const key of EXPECTED) expect(values).not.toContain(key);
+    for (const i of INDUSTRIES.filter((x) => x.status === "coming_soon")) expect(values).not.toContain(i.key);
+    // Module A (Recurring Home Services, Milestone 27) is built: its industries can sign up.
+    for (const key of ["house_cleaning", "pest_control", "pool_service"]) expect(values).toContain(key);
     // ...unless the business already has one (set by the platform admin for a pilot).
     expect(industryGroups("pet_grooming").flatMap((g) => g.choices.map((c) => c.value))).toContain("pet_grooming");
   });
