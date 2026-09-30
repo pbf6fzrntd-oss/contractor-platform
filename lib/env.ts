@@ -53,6 +53,18 @@ export const serverEnv = {
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean);
   },
+  /**
+   * Where private files (photos, vaccine records) are kept: "supabase" (default,
+   * the private storage bucket) or "local" (a folder on this computer, for
+   * demos and tests only; never on Vercel).
+   */
+  get fileStorage(): "supabase" | "local" {
+    return process.env.FILE_STORAGE === "local" ? "local" : "supabase";
+  },
+  /** Secret used to sign links to files in "local" storage mode. */
+  get fileSigningSecret() {
+    return process.env.FILE_SIGNING_SECRET || required("SUPABASE_SECRET_KEY");
+  },
   get stripeSecretKey() {
     return process.env.STRIPE_SECRET_KEY ?? "";
   },

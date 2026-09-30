@@ -14,6 +14,7 @@ import { loadThread } from "@/lib/services/thread";
 import { confirmOptOut, dismissFlag } from "./actions";
 import { Composer, ContactForm, StagePicker } from "./lead-forms";
 import { LeadExtras } from "./lead-extras";
+import { SubjectCard } from "./subject-card";
 
 export const metadata: Metadata = { title: "Conversation" };
 
@@ -111,6 +112,8 @@ export default async function LeadPage({ params }: PageProps<"/inbox/[leadId]">)
           </ul>
         </details>
       )}
+
+      <SubjectCard ctx={ctx} leadId={lead.id} contactId={contact.id} />
 
       <LeadExtras ctx={ctx} lead={lead} contact={contact} />
 

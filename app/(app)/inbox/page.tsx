@@ -29,7 +29,7 @@ export default async function InboxPage({ searchParams }: PageProps<"/inbox">) {
   const list = leads ?? [];
 
   const contactIds = [...new Set(list.map((l) => l.contact_id))];
-  const [{ data: contacts }, { data: recent }] = await Promise.all([
+  const [{ data: contacts }, { data: recent }, { data: subjects }] = await Promise.all([
     supabase.from("contacts").select("id, name, phone, opted_out_at").in("id", contactIds),
     supabase
       .from("messages")
@@ -40,7 +40,11 @@ export default async function InboxPage({ searchParams }: PageProps<"/inbox">) {
       )
       .order("created_at", { ascending: false })
       .limit(400),
+    // Pets and vehicles show on the list (a property's address is on the lead page).
+    supabase.from("subjects").select("contact_id, kind, label").in("contact_id", contactIds).in("kind", ["pet", "vehicle"]).is("archived_at", null),
   ]);
+  const subjectsByContact = new Map<string, string[]>();
+  for (const s of subjects ?? []) subjectsByContact.set(s.contact_id, [...(subjectsByContact.get(s.contact_id) ?? []), `${s.kind === "pet" ? "🐾" : "🚗"} ${s.label}`]);
   const contactById = new Map((contacts ?? []).map((c) => [c.id, c]));
   const lastMessage = new Map<string, { body: string; direction: string }>();
   for (const m of recent ?? []) if (m.lead_id && !lastMessage.has(m.lead_id)) lastMessage.set(m.lead_id, m);
@@ -109,6 +113,9 @@ export default async function InboxPage({ searchParams }: PageProps<"/inbox">) {
                       {stageLabel(org.business_type, lead.stage as LeadStage, org.industry)}
                       {contact?.opted_out_at ? " · opted out" : ""}
                     </span>
+                    {subjectsByContact.get(lead.contact_id) && (
+                      <span className="ml-2 text-xs text-slate-600">{subjectsByContact.get(lead.contact_id)!.join(" · ")}</span>
+                    )}
                   </span>
                 </Link>
               </li>

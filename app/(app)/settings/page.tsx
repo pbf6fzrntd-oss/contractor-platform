@@ -16,6 +16,7 @@ export default async function SettingsPage() {
     { href: "/settings/business", label: "Business details", detail: industryLabel(org) },
     { href: "/settings/team", label: "Team", detail: role === "owner" ? "Invite office managers" : "See your team" },
     { href: "/settings/templates", label: "Message templates", detail: "English and Spanish" },
+    { href: "/settings/licenses", label: "Licenses & insurance", detail: "Shown to customers on your profile" },
     { href: "/settings/phone", label: "Phone number", detail: "Your business number and call forwarding" },
     { href: "/simulator", label: "Simulator", detail: "Fake calls and texts to test everything" },
     { href: "/settings/automations", label: "Automations", detail: "Follow-ups, review requests, business hours" },

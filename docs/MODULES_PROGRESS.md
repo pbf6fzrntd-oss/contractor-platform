@@ -16,14 +16,14 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M15 Module framework + industry picker | ✅ done |
 | M16 Industry configs for every industry | ✅ done |
 | M17 Sales audit tool (admin only) | ✅ done |
-| M18 Customer records, private data, files, licenses | not started |
+| M18 Customer records, private data, files, licenses | ✅ done |
 | M19 Booking engine | not started |
 | M20 Approval rules + source reporting | not started |
 | M21 Editions, add-ons, Executive & Enterprise | not started |
 | M22 Agent Ready | not started |
 
 ## Next up
-M18: `subjects` + `subject_private` + `files` (private bucket, signed links, limits in `lib/files/validate.ts`) + `business_credentials`; property card on leads; Settings → Licenses & insurance.
+M19: booking engine. Pure rules in `lib/booking/` for all 7 modes + document requirements (vaccines); tables `service_catalog`, `resources`, `capacity_rules`, `bookings`, `packages`, `package_redemptions`; `book_slot()` capacity lock; Schedule screen behind a `booking` switch (off for existing businesses).
 
 ## Milestone notes and "how to test"
 (Added as each milestone finishes.)
@@ -85,3 +85,20 @@ Nothing new to click yet. The configs show up in the sales audit (M17) and on ho
 2. Enter a real local business (e.g. a roofer's website), pick the industry, answer what you know → Run audit.
 3. Read the report, then "Print / save as PDF". Change an answer at the bottom and save to see the score update.
 4. Log in as a non-admin: /admin/audit shows "not found".
+
+### M18: Customer records, private data, files, licenses
+**What changed**
+- Each lead now has a card for the customer's **property** (trades, lawn, cleaning…), **pets** (pet care) or **vehicles** (automotive), set by the industry. Property is the default for generic businesses; the card starts closed, so nothing else on the lead page moves.
+- Private details are in a separate table (`subject_private`): gate/lockbox/alarm codes and access notes, VINs, and pet behavior and care notes. Only the business's own team sees them in the app. They're never in texts, AI assistant answers or public pages. A test plants a secret value in every private field and proves the shareable view drops it.
+- Photos and documents go to **private storage** (Supabase bucket `private-files`, created by the migration). The file type is checked from the file's own bytes (JPG/PNG/WebP/HEIC/PDF only; SVG/HTML/programs refused). Max 4 MB, because Vercel caps uploads at 4.5 MB, and phones shrink photos before uploading. Links expire after 5 minutes. `FILE_STORAGE=local` keeps files in a local folder for demos and tests, like the texting simulator.
+- Settings → **Licenses & insurance**: industry suggestions with one tap, number, issuer and expiry. Items expiring within 30 days are flagged. Checked items will show on the public profile (M22); expired ones won't.
+- The inbox list shows pets and vehicles next to each lead. The AI assistant's conversation view includes records (shareable fields only).
+- Migration `20260929180000_m18_subjects_files_credentials.sql` (additive); rollback script included.
+- Click-through tested: a roofer added a property with a gate code and a photo. A fake "photo" (HTML) was refused. The signed link worked, and tampered or expired links got 403. The AI assistant saw "house, 2 stories" but not the gate code. A license was added from a suggestion and flagged as expiring soon.
+
+**How to test**
+1. Open a lead → "Add property details" → address, type, gate code → Save. The card shows the 🔒 note.
+2. "Add photo or file" → pick a phone photo; it uploads and shows as a thumbnail. Tap it: it opens. Copy the link and try it again in 10 minutes: it no longer works.
+3. Settings → Licenses & insurance → tap a suggestion → add number and expiry.
+4. Log in as the office manager: you see and edit property notes, but can't change licenses.
+5. **Before real customers:** in Supabase → Storage, confirm the `private-files` bucket exists and is **not public**.

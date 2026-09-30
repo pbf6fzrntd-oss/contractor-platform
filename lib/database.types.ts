@@ -266,6 +266,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      business_credentials: {
+        Row: {
+          id: string;
+          org_id: string;
+          kind: string;
+          label: string;
+          number: string | null;
+          issuer: string | null;
+          expires_on: string | null;
+          show_on_profile: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          kind: string;
+          label: string;
+          number?: string | null;
+          issuer?: string | null;
+          expires_on?: string | null;
+          show_on_profile?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          kind?: string;
+          label?: string;
+          number?: string | null;
+          issuer?: string | null;
+          expires_on?: string | null;
+          show_on_profile?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       calls: {
         Row: {
           id: string;
@@ -383,6 +422,57 @@ export type Database = {
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      files: {
+        Row: {
+          id: string;
+          org_id: string;
+          contact_id: string | null;
+          subject_id: string | null;
+          kind: string;
+          document_type: string | null;
+          expires_on: string | null;
+          storage_path: string;
+          content_type: string;
+          size_bytes: number;
+          original_name: string | null;
+          uploaded_by: string | null;
+          created_at: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          contact_id?: string | null;
+          subject_id?: string | null;
+          kind: string;
+          document_type?: string | null;
+          expires_on?: string | null;
+          storage_path: string;
+          content_type: string;
+          size_bytes: number;
+          original_name?: string | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+          deleted_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          contact_id?: string | null;
+          subject_id?: string | null;
+          kind?: string;
+          document_type?: string | null;
+          expires_on?: string | null;
+          storage_path?: string;
+          content_type?: string;
+          size_bytes?: number;
+          original_name?: string | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+          deleted_at?: string | null;
         };
         Relationships: [];
       };
@@ -1043,6 +1133,72 @@ export type Database = {
           to_date?: string;
           broadcast_id?: string | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      subject_private: {
+        Row: {
+          subject_id: string;
+          org_id: string;
+          access_notes: string | null;
+          vin: string | null;
+          behavior_notes: string | null;
+          care_notes: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          subject_id: string;
+          org_id: string;
+          access_notes?: string | null;
+          vin?: string | null;
+          behavior_notes?: string | null;
+          care_notes?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          subject_id?: string;
+          org_id?: string;
+          access_notes?: string | null;
+          vin?: string | null;
+          behavior_notes?: string | null;
+          care_notes?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      subjects: {
+        Row: {
+          id: string;
+          org_id: string;
+          contact_id: string;
+          kind: string;
+          label: string;
+          attributes: Json;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          contact_id: string;
+          kind: string;
+          label: string;
+          attributes?: Json;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          contact_id?: string;
+          kind?: string;
+          label?: string;
+          attributes?: Json;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };

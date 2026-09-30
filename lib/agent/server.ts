@@ -35,6 +35,7 @@ import { addManualLead, changeLeadStage, completeJobForLead, loadLead, replyToLe
 import { loadCoreMetrics, loadRecurringMetrics } from "@/lib/services/metrics";
 import { runDispatch } from "@/lib/services/outbox";
 import type { AdminClient } from "@/lib/supabase/admin";
+import { shareableSubject } from "@/lib/subjects/fields";
 import { renderTemplate } from "@/lib/templates/render";
 import { DAY_NAMES, isWithinWindow, localDateString, weekdayOf } from "@/lib/time";
 
@@ -264,7 +265,7 @@ export function buildAgentServer(ctx: AgentContext, extensions: AgentToolRegistr
       const loaded = await loadLead(db, org.id, lead_id);
       if (!loaded) return { result: fail("No lead with that id in this business."), summary: "Lead not found" };
       const { lead, contact } = loaded;
-      const [{ data: msgs }, { data: calls }, { data: scheduled }] = await Promise.all([
+      const [{ data: msgs }, { data: calls }, { data: scheduled }, { data: subjects }] = await Promise.all([
         db
           .from("messages")
           .select("created_at, direction, body, sender_type, status, error")
@@ -274,6 +275,8 @@ export function buildAgentServer(ctx: AgentContext, extensions: AgentToolRegistr
           .limit(40),
         db.from("calls").select("created_at, status, text_back_sent").eq("org_id", org.id).eq("contact_id", contact.id).order("created_at", { ascending: false }).limit(10),
         db.from("scheduled_messages").select("kind, template_key, send_at, status, skip_reason").eq("lead_id", lead.id).order("send_at").limit(10),
+        // Only shareable fields: private notes, codes, VINs and files never go to assistants.
+        db.from("subjects").select("id, kind, label, attributes").eq("org_id", org.id).eq("contact_id", contact.id).is("archived_at", null),
       ]);
       const FROM: Record<string, string> = { contact: "Customer", user: "Business (owner/staff)", automation: "Business (automatic)", assistant: "Business (AI assistant)" };
       const timeline = [
@@ -302,6 +305,7 @@ export function buildAgentServer(ctx: AgentContext, extensions: AgentToolRegistr
             never_auto_text: contact.do_not_autotext,
           },
           stage: label(lead.stage),
+          ...(subjects?.length ? { records: subjects.map(shareableSubject).filter(Boolean) } : {}),
           source: lead.source.replace("_", " "),
           estimate: lead.estimate_amount_cents ? money(lead.estimate_amount_cents) : null,
           notes: lead.notes,

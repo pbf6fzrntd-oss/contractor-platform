@@ -393,6 +393,84 @@ describe.skipIf(!url)("row-level security", () => {
     });
   });
 
+  describe("customer records, private details, files and licenses (Milestone 18)", () => {
+    let contactA = "";
+    let contactB2 = "";
+    let subjectB = "";
+
+    beforeAll(async () => {
+      await actAs(ownerA);
+      contactA = (await db.query("insert into public.contacts (org_id, phone) values ($1, '+18435550300') returning id", [orgA])).rows[0].id;
+      await actAs(ownerB);
+      contactB2 = (await db.query("insert into public.contacts (org_id, phone) values ($1, '+18435550301') returning id", [orgB])).rows[0].id;
+      subjectB = (
+        await db.query("insert into public.subjects (org_id, contact_id, kind, label, attributes) values ($1, $2, 'pet', 'Buddy', '{\"breed\":\"Lab\"}') returning id", [orgB, contactB2])
+      ).rows[0].id;
+      await db.query("insert into public.subject_private (subject_id, org_id, behavior_notes) values ($1, $2, 'bites')", [subjectB, orgB]);
+      await db.query("reset role");
+      await db.query(
+        "insert into public.files (org_id, contact_id, subject_id, kind, storage_path, content_type, size_bytes) values ($1, $2, $3, 'vaccination_record', $4, 'application/pdf', 100)",
+        [orgB, contactB2, subjectB, `${orgB}/2026/x.pdf`],
+      );
+      await actAs(ownerB);
+      await db.query("insert into public.business_credentials (org_id, kind, label) values ($1, 'license', 'Kennel permit')", [orgB]);
+    });
+
+    it("hides another business's records, private details, files and licenses", async () => {
+      await actAs(ownerA);
+      for (const table of ["subjects", "subject_private", "files", "business_credentials"]) {
+        expect((await db.query(`select * from public.${table} where org_id = $1`, [orgB])).rowCount, table).toBe(0);
+      }
+      expect((await attempt("update public.subject_private set behavior_notes = 'x' where subject_id = $1", [subjectB])).rowCount).toBe(0);
+    });
+
+    it("won't attach a record to another business's customer, even inside your own business", async () => {
+      await actAs(ownerA);
+      const cross = await attempt("insert into public.subjects (org_id, contact_id, kind, label) values ($1, $2, 'pet', 'Stolen')", [orgA, contactB2]);
+      expect(cross.error?.message).toMatch(/different business/);
+      const intoB = await attempt("insert into public.subjects (org_id, contact_id, kind, label) values ($1, $2, 'pet', 'X')", [orgB, contactB2]);
+      expect(intoB.error).not.toBeNull();
+      const privCross = await attempt("insert into public.subject_private (subject_id, org_id, vin) values ($1, $2, '1HGCM82633A004352')", [subjectB, orgA]);
+      expect(privCross.error).not.toBeNull();
+    });
+
+    it("lets office managers keep records and private notes for their own business", async () => {
+      await actAs(managerA);
+      const id = (await db.query("insert into public.subjects (org_id, contact_id, kind, label) values ($1, $2, 'property', '1 Main St') returning id", [orgA, contactA])).rows[0].id;
+      await db.query("insert into public.subject_private (subject_id, org_id, access_notes) values ($1, $2, 'Gate 1234')", [id, orgA]);
+      expect((await db.query("select access_notes from public.subject_private where subject_id = $1", [id])).rows[0].access_notes).toBe("Gate 1234");
+      expect((await attempt("insert into public.subject_private (subject_id, org_id, vin) values ($1, $2, 'NOT-A-VIN')", [id, orgA])).error).not.toBeNull();
+    });
+
+    it("only lets the server record file uploads", async () => {
+      await actAs(ownerB);
+      expect((await db.query("select kind from public.files")).rows).toEqual([{ kind: "vaccination_record" }]);
+      const ins = await attempt(
+        "insert into public.files (org_id, kind, storage_path, content_type, size_bytes) values ($1, 'photo', $2, 'image/jpeg', 10)",
+        [orgB, `${orgB}/2026/y.jpg`],
+      );
+      expect(ins.error).not.toBeNull();
+      expect((await attempt("update public.files set deleted_at = now() where org_id = $1", [orgB])).error).not.toBeNull();
+    });
+
+    it("lets only the owner change licenses and insurance", async () => {
+      await actAs(managerA);
+      expect((await attempt("insert into public.business_credentials (org_id, kind, label) values ($1, 'license', 'x')", [orgA])).error).not.toBeNull();
+      await actAs(ownerA);
+      expect((await attempt("insert into public.business_credentials (org_id, kind, label) values ($1, 'insurance', 'Liability')", [orgA])).error).toBeNull();
+      await actAs(managerA);
+      expect((await db.query("select label from public.business_credentials")).rows).toEqual([{ label: "Liability" }]);
+    });
+
+    it("gives logged-out visitors none of it", async () => {
+      await actAsAnonymous();
+      for (const table of ["subjects", "subject_private", "files", "business_credentials"]) {
+        const r = await attempt(`select * from public.${table}`);
+        expect(r.rowCount, table).toBe(0);
+      }
+    });
+  });
+
   it("keeps sales audits completely server-only (Milestone 17)", async () => {
     await db.query("reset role");
     await db.query("insert into public.audit_reports (prospect_name, score) values ('Prospect Roofing', 42)");
