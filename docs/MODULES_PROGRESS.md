@@ -15,7 +15,7 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M14 Safety net + team AI access | ✅ done |
 | M15 Module framework + industry picker | ✅ done |
 | M16 Industry configs for every industry | ✅ done |
-| M17 Sales audit tool (admin only) | not started |
+| M17 Sales audit tool (admin only) | ✅ done |
 | M18 Customer records, private data, files, licenses | not started |
 | M19 Booking engine | not started |
 | M20 Approval rules + source reporting | not started |
@@ -23,7 +23,7 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M22 Agent Ready | not started |
 
 ## Next up
-M17: sales audit tool in /admin (website checks + call answers → score + printable report, stored in a server-only table).
+M18: `subjects` + `subject_private` + `files` (private bucket, signed links, limits in `lib/files/validate.ts`) + `business_credentials`; property card on leads; Settings → Licenses & insurance.
 
 ## Milestone notes and "how to test"
 (Added as each milestone finishes.)
@@ -71,3 +71,17 @@ M17: sales audit tool in /admin (website checks + call answers → score + print
 
 **How to check**
 Nothing new to click yet. The configs show up in the sales audit (M17) and on hosted profiles (M22). To review the wording, open the files in `lib/industries/`. Have a native speaker review the Spanish.
+
+### M17: Sales audit tool (admin only)
+**What changed**
+- /admin → **Sales audits**: pick any of the 26 industries (including coming-soon ones), enter the prospect's website, and tap Yes / No / Not sure for 6 call questions.
+- The app visits the home page, robots.txt and llms.txt. It checks https, phone-friendliness, schema.org business details (and whether the type fits the industry), tap-to-call, hours, whether AI crawlers (ChatGPT, Claude, Perplexity, Google) are blocked, reviews, and each industry's own checks (license shown, prices, service area, online booking, photos…).
+- Score 0–100 ("Ready" / "Getting there" / "Invisible to AI"). Questions you haven't answered don't count against them. "What we'd fix first" maps each gap to the product feature that fixes it. "Print / save as PDF" gives a clean report to send after the call.
+- Safety: it only visits public web addresses on normal ports, re-checks every redirect, and never reads private networks or cloud metadata. Pages are limited to 1.5 MB and 8 seconds. Audits live in a server-only table (`audit_reports`) that no business or visitor can read; non-admins get "not found".
+- Click-through tested with a sample pest control site: score 51, flagged GPTBot blocked, generic business type, no online booking, no https.
+
+**How to test**
+1. Log in with your admin email → Settings → Platform admin → Sales audits → New audit.
+2. Enter a real local business (e.g. a roofer's website), pick the industry, answer what you know → Run audit.
+3. Read the report, then "Print / save as PDF". Change an answer at the bottom and save to see the score update.
+4. Log in as a non-admin: /admin/audit shows "not found".

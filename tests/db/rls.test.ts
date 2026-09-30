@@ -393,6 +393,18 @@ describe.skipIf(!url)("row-level security", () => {
     });
   });
 
+  it("keeps sales audits completely server-only (Milestone 17)", async () => {
+    await db.query("reset role");
+    await db.query("insert into public.audit_reports (prospect_name, score) values ('Prospect Roofing', 42)");
+    for (const who of [ownerA, managerA]) {
+      await actAs(who);
+      expect((await attempt("select * from public.audit_reports")).error, "read").not.toBeNull();
+      expect((await attempt("insert into public.audit_reports (prospect_name, score) values ('x', 1)")).error, "insert").not.toBeNull();
+    }
+    await actAsAnonymous();
+    expect((await attempt("select * from public.audit_reports")).error).not.toBeNull();
+  });
+
   it("gives logged-out visitors nothing", async () => {
     await actAsAnonymous();
     for (const table of ["organizations", "message_templates", "memberships", "profiles", "plans", "contacts", "leads", "messages", "org_modules", "api_keys"]) {

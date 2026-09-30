@@ -158,6 +158,51 @@ export type Database = {
         };
         Relationships: [];
       };
+      audit_reports: {
+        Row: {
+          id: string;
+          prospect_name: string;
+          industry: string | null;
+          website_url: string | null;
+          contact_phone: string | null;
+          findings: Json;
+          answers: Json;
+          score: number;
+          notes: string | null;
+          fetch_error: string | null;
+          created_by_email: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          prospect_name: string;
+          industry?: string | null;
+          website_url?: string | null;
+          contact_phone?: string | null;
+          findings?: Json;
+          answers?: Json;
+          score: number;
+          notes?: string | null;
+          fetch_error?: string | null;
+          created_by_email?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          prospect_name?: string;
+          industry?: string | null;
+          website_url?: string | null;
+          contact_phone?: string | null;
+          findings?: Json;
+          answers?: Json;
+          score?: number;
+          notes?: string | null;
+          fetch_error?: string | null;
+          created_by_email?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       broadcasts: {
         Row: {
           id: string;
