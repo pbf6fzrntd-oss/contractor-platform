@@ -52,11 +52,24 @@ export function isPrivateAddress(ip: string): boolean {
     return PRIVATE_V4.some(([base, bits]) => (n >>> (32 - bits)) === (ipv4ToInt(base) >>> (32 - bits)));
   }
   if (v === 6) {
-    const a = ip.toLowerCase();
-    if (a === "::" || a === "::1") return true;
-    const mapped = a.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-    if (mapped) return isPrivateAddress(mapped[1]);
-    return /^(fc|fd|fe8|fe9|fea|feb|ff)/.test(a);
+    // URL parsing normalizes dotted mapped IPv4 into hexadecimal IPv6.
+    let a = ip.toLowerCase();
+    if (a.includes(".")) {
+      const dotted = a.slice(a.lastIndexOf(":") + 1);
+      const n = ipv4ToInt(dotted);
+      a = a.slice(0, a.lastIndexOf(":") + 1) + (n >>> 16).toString(16) + ":" + (n & 65535).toString(16);
+    }
+    const parts = a.split("::");
+    const left = parts[0] ? parts[0].split(":") : [];
+    const right = parts[1] ? parts[1].split(":") : [];
+    const words = parts.length === 2 ? [...left, ...Array(8 - left.length - right.length).fill("0"), ...right] : left;
+    const n = words.map((word) => parseInt(word, 16));
+    if (n.slice(0, 5).every((word) => word === 0) && (n[5] === 0 || n[5] === 65535)) {
+      return isPrivateAddress(`${n[6] >>> 8}.${n[6] & 255}.${n[7] >>> 8}.${n[7] & 255}`);
+    }
+    // Only global unicast; reject transition, documentation and special networks.
+    return (n[0] & 0xe000) !== 0x2000 || n[0] === 0x2002 ||
+      (n[0] === 0x2001 && (n[1] === 0 || n[1] === 2 || n[1] === 0xdb8));
   }
   return true; // not an IP at all: treat as unsafe
 }

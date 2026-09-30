@@ -847,6 +847,7 @@ exports[`golden: today's behavior for home-service businesses > texting rules 1`
   ],
   "blockReasons": {
     "billing_inactive": "Not sent: your subscription isn't active (Settings → Billing).",
+    "delivery_unknown": "Delivery needs review: check provider receipts before trying another send.",
     "monthly_limit_reached": "Not sent: you've used this month's texts on your plan.",
     "no_business_number": "Not sent: set up your business phone number first (Settings → Phone number).",
     "no_marketing_consent": "Not sent: no marketing consent on file for this customer.",

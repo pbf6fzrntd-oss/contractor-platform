@@ -58,7 +58,7 @@ describe.skipIf(!url)("booking the last spot at the same time", () => {
     const moved = JSON.stringify({ org_id: orgId, contact_id: contactId, mode: "fixed_appointment", starts_at: "2026-10-13T13:00:00Z", ends_at: "2026-10-13T14:00:00Z", service_date: "2026-10-13", rescheduled_from: id1 });
     const id2 = (await setup.query("select public.book_slot($1::jsonb, 'none') as id", [moved])).rows[0].id;
     const { rows } = await setup.query("select id, status, verify_by, pending_reasons, rescheduled_from, canceled_by from public.bookings where id = any($1) order by starts_at", [[id1, id2]]);
-    expect(rows[0]).toMatchObject({ status: "requested", pending_reasons: ["New customer"], rescheduled_from: null, canceled_by: null });
+    expect(rows[0]).toMatchObject({ status: "canceled", pending_reasons: ["New customer"], rescheduled_from: null, canceled_by: "customer" });
     expect(rows[0].verify_by.toISOString()).toBe("2026-10-01T14:00:00.000Z");
     expect(rows[1]).toMatchObject({ pending_reasons: [], rescheduled_from: id1, verify_by: null });
     // Only known "canceled by" values, and approvals can now expire.

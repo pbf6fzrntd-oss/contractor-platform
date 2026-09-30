@@ -315,6 +315,7 @@ async function processItem(
     leadId: item.lead_id,
     broadcastId: item.broadcast_id,
     senderType: "automation",
+    requestKey: `outbox:${item.id}`,
     now,
   });
 
@@ -328,7 +329,7 @@ async function processItem(
     }
     return "sent";
   }
-  const failed = result.reason === "provider_error";
+  const failed = result.status === "failed";
   await db
     .from("scheduled_messages")
     .update({

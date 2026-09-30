@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash, randomUUID } from "node:crypto";
 import type { Language } from "@/lib/business-types";
 import { addComplianceFooter, checkSendPolicy, MARKETING_WINDOW, type SendPurpose } from "@/lib/automation/compliance";
 import type { Tables } from "@/lib/database.types";
@@ -75,6 +76,8 @@ export type SendInput = {
   userId?: string | null;
   purpose?: SendPurpose;
   now?: Date;
+  /** Stable outbox/request key. Ambiguous provider attempts are never resent. */
+  requestKey?: string;
 };
 
 export async function sendToContact(db: AdminClient, ctx: SendingContext, input: SendInput): Promise<SendResult> {
@@ -102,6 +105,16 @@ export async function sendToContact(db: AdminClient, ctx: SendingContext, input:
     return { status, reason, messageId: data?.id ?? null } as const;
   }
 
+  const requestKey = input.requestKey ?? randomUUID();
+  const fingerprint = createHash("sha256").update(JSON.stringify([ctx.orgId, contact.id, input.body, input.category, input.leadId ?? null, input.broadcastId ?? null])).digest("hex");
+  const { data: previous, error: lookupError } = await db.from("sms_attempts").select("fingerprint, message_id, state").eq("org_id", ctx.orgId).eq("request_key", requestKey).maybeSingle();
+  if (lookupError) return { status: "failed", reason: "provider_error", messageId: null };
+  if (previous) {
+    if (previous.fingerprint !== fingerprint) return { status: "failed", reason: "provider_error", messageId: previous.message_id };
+    return previous.state === "accepted" ? { status: "sent", messageId: previous.message_id } :
+      { status: "failed", reason: previous.state === "rejected" ? "provider_error" : "delivery_unknown", messageId: previous.message_id };
+  }
+
   const gate = checkSendingGate({
     hasPhoneNumber: Boolean(ctx.phone),
     textingApproved: ctx.textingApproved,
@@ -118,7 +131,7 @@ export async function sendToContact(db: AdminClient, ctx: SendingContext, input:
     return logBlocked("outside_marketing_hours");
   }
 
-  const { count: previousOutbound } = await db
+  const { count: previousOutbound, error: historyError } = await db
     .from("messages")
     .select("id", { count: "exact", head: true })
     .eq("org_id", ctx.orgId)
@@ -126,48 +139,55 @@ export async function sendToContact(db: AdminClient, ctx: SendingContext, input:
     .eq("direction", "outbound")
     .neq("status", "blocked");
 
+  if (historyError) return { status: "failed", reason: "provider_error", messageId: null };
+
   const body = addComplianceFooter(input.body, {
     isFirstMessage: (previousOutbound ?? 0) === 0,
     category: input.category,
     language,
   });
 
-  const phone = ctx.phone!;
-  const result = await getProvider(phone).sendSms({
-    from: phone.e164,
-    messagingServiceSid: phone.messaging_service_sid,
-    to: contact.phone,
-    body,
+  const { data: reserved, error: reserveError } = await db.rpc("reserve_sms_attempt", {
+    p_message: { ...base, body }, p_month: monthKey(now, ctx.timezone),
+    p_limit: ctx.monthlyLimit, p_key: requestKey, p_fingerprint: fingerprint,
   });
+  if (reserveError || !reserved) return { status: "failed", reason: "provider_error", messageId: null };
+  const attempt = reserved as { fresh?: boolean; limited?: boolean; message_id?: string; state?: string; usage?: number };
+  if (attempt.limited) return logBlocked("monthly_limit_reached");
+  if (!attempt.message_id) return { status: "failed", reason: "provider_error", messageId: null };
+  const messageId = attempt.message_id;
+  if (!attempt.fresh) return attempt.state === "accepted" ? { status: "sent", messageId } : { status: "failed", reason: "delivery_unknown", messageId };
+  ctx.sentThisMonth = attempt.usage ?? ctx.sentThisMonth + 1;
 
+  async function finish(state: "accepted" | "rejected" | "unknown", status: string, sid?: string, error?: string) {
+    const r = await db.rpc("finish_sms_attempt", { p_org_id: ctx.orgId, p_key: requestKey, p_state: state,
+      p_status: status, p_sid: sid, p_error: error });
+    return !r.error && r.data === true;
+  }
+  const phone = ctx.phone!;
+  let result;
+  try {
+    result = await getProvider(phone).sendSms({ from: phone.e164, messagingServiceSid: phone.messaging_service_sid, to: contact.phone, body });
+  } catch {
+    await finish("unknown", "queued", undefined, "delivery_unknown: provider response missing; reconcile before retry");
+    return { status: "failed", reason: "delivery_unknown", messageId };
+  }
   if (!result.ok) {
-    // 21610: the person texted STOP to the carrier. Keep our records in sync.
-    if (result.code === 21610) {
-      await db.rpc("record_consent_event", {
-        p_org_id: ctx.orgId,
-        p_contact_id: contact.id,
-        p_kind: "opt_out",
-        p_method: "sms_keyword",
-        p_evidence: "Phone company reported this number unsubscribed (Twilio error 21610).",
-      });
-      return logBlocked("opted_out");
+    if (result.unknown) {
+      await finish("unknown", "queued", undefined, "delivery_unknown: " + result.error);
+      return { status: "failed", reason: "delivery_unknown", messageId };
     }
-    return logBlocked("provider_error", "failed", result.error);
+    const finished = await finish("rejected", "failed", undefined, result.error);
+    if (!finished) return { status: "failed", reason: "delivery_unknown", messageId };
+    ctx.sentThisMonth = Math.max(0, ctx.sentThisMonth - 1);
+    if (result.code === 21610) {
+      await db.rpc("record_consent_event", { p_org_id: ctx.orgId, p_contact_id: contact.id,
+        p_kind: "opt_out", p_method: "sms_keyword", p_evidence: "Phone company reported STOP (Twilio error 21610)." });
+      return { status: "blocked", reason: "opted_out", messageId };
+    }
+    return { status: "failed", reason: "provider_error", messageId };
   }
-
-  const { data: message } = await db
-    .from("messages")
-    .insert({ ...base, body, status: result.status, provider_sid: result.sid })
-    .select("id")
-    .single();
-
-  const month = monthKey(now, ctx.timezone);
-  const { data: newCount } = await db.rpc("increment_sms_usage", { p_org_id: ctx.orgId, p_month: month, p_count: 1 });
-  ctx.sentThisMonth = typeof newCount === "number" ? newCount : ctx.sentThisMonth + 1;
-
-  if (input.leadId) {
-    await db.from("leads").update({ last_message_at: now.toISOString() }).eq("id", input.leadId);
-  }
-
-  return { status: "sent", messageId: message!.id };
+  if (!await finish("accepted", result.status, result.sid)) return { status: "failed", reason: "delivery_unknown", messageId };
+  if (input.leadId) await db.from("leads").update({ last_message_at: now.toISOString() }).eq("id", input.leadId);
+  return { status: "sent", messageId };
 }

@@ -18,13 +18,10 @@ type AgreementRow = Tables<"rh_agreements">;
  */
 export async function queueRenewalReminder(db: AdminClient, org: Pick<Org, "id" | "name">, a: AgreementRow, now = new Date()): Promise<boolean> {
   if (!a.ends_on) return false;
-  const { error } = await db.from("scheduled_messages").insert({
-    org_id: org.id,
-    contact_id: a.contact_id,
-    kind: "module_notice",
-    category: "informational",
-    send_at: now.toISOString(),
-    context: {
+  const { data, error } = await db.rpc("queue_agreement_reminder", {
+    p_org_id: org.id, p_agreement_id: a.id, p_expected_end: a.ends_on,
+    p_send_at: now.toISOString(),
+    p_context: {
       module: MODULE_ID,
       purpose: "agreement_renewal",
       agreement_id: a.id,
@@ -33,9 +30,7 @@ export async function queueRenewalReminder(db: AdminClient, org: Pick<Org, "id" 
       guard: { table: "rh_agreements", id: a.id, column: "ends_on", equals: a.ends_on },
     },
   });
-  if (error) return false;
-  await db.from("rh_agreements").update({ renewal_notice_for: a.ends_on }).eq("id", a.id);
-  return true;
+  return !error && data === true;
 }
 
 /**
@@ -71,20 +66,24 @@ export async function runAgreementRenewals(db: AdminClient, now: Date): Promise<
 
     const after = afterEndDate(a, today);
     if (after.action === "renew") {
-      await db.from("rh_agreements").update({ ends_on: after.ends_on }).eq("id", a.id).eq("ends_on", a.ends_on!);
+      const { data: changed, error } = await db.from("rh_agreements").update({ ends_on: after.ends_on }).eq("id", a.id).eq("status", "active").eq("ends_on", a.ends_on!).select("id");
+      if (error) throw error;
+      if (!changed?.length) continue;
       renewed++;
       note(org.id, `${who(a.contact_id)}'s "${a.name}" renewed through ${formatDay(after.ends_on, "en")}.`);
       continue;
     }
     if (after.action === "end") {
-      await db.from("rh_agreements").update({ status: "ended" }).eq("id", a.id).eq("status", "active");
+      const { data: changed, error } = await db.from("rh_agreements").update({ status: "ended" }).eq("id", a.id).eq("status", "active").eq("ends_on", a.ends_on!).select("id");
+      if (error) throw error;
+      if (!changed?.length) continue;
       ended++;
       note(org.id, `${who(a.contact_id)}'s "${a.name}" ended (it doesn't renew on its own). Worth a call?`);
       continue;
     }
     if (renewalReminderDue(a, today) && (await queueRenewalReminder(db, org, a, now))) {
       reminded++;
-      note(org.id, `${who(a.contact_id)}'s "${a.name}" ${a.auto_renew ? "renews" : "ends"} ${formatDay(a.ends_on!, "en")}. We're texting them a reminder.`);
+      note(org.id, `${who(a.contact_id)}'s "${a.name}" ${a.auto_renew ? "renews" : "ends"} ${formatDay(a.ends_on!, "en")}. A reminder is queued; delivery is recorded separately.`);
     }
   }
 

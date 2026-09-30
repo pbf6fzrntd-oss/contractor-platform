@@ -28,7 +28,8 @@ export type BlockReason =
   | "opted_out"
   | "no_marketing_consent"
   | "outside_marketing_hours"
-  | "provider_error";
+  | "provider_error"
+  | "delivery_unknown";
 
 /** Plain-English explanation shown in the inbox next to a text that wasn't sent. */
 export const BLOCK_REASON_TEXT: Record<BlockReason, string> = {
@@ -39,5 +40,6 @@ export const BLOCK_REASON_TEXT: Record<BlockReason, string> = {
   opted_out: "Not sent: this customer opted out of texts.",
   no_marketing_consent: "Not sent: no marketing consent on file for this customer.",
   outside_marketing_hours: "Not sent: promotions can only go out 8am–8pm.",
+  delivery_unknown: "Delivery needs review: check provider receipts before trying another send.",
   provider_error: "Not sent: the phone company returned an error.",
 };

@@ -50,7 +50,7 @@ export default async function AgreementsPage() {
               <span className="block text-xs text-slate-500">
                 {x.a.auto_renew ? "Renews" : "Ends"} {new Date(`${x.a.ends_on}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}
                 {x.standing === "renewing_soon" ? ` (in ${daysUntil(x.a.ends_on, today)} days)` : ""}
-                {x.a.renewal_notice_for === x.a.ends_on ? " · reminder sent" : ""}
+                {x.a.renewal_notice_for === x.a.ends_on ? " · reminder queued" : ""}
               </span>
             )}
           </span>
