@@ -173,3 +173,59 @@ describe("module framework", () => {
     expect(all.indexOf("/pets")).toBeLessThan(all.indexOf("/settings"));
   });
 });
+
+import { findUnknownVariables } from "@/lib/templates/render";
+import { industriesByModule } from "@/lib/industries";
+
+describe("every industry in every module (Milestone 16)", () => {
+  const EXPECTED = [
+    "house_cleaning", "pest_control", "pool_service",
+    "moving", "pressure_washing", "junk_removal",
+    "pet_grooming", "pet_boarding", "mobile_vet", "dog_training",
+    "auto_detailing", "auto_repair", "mobile_mechanic", "window_tinting",
+  ];
+
+  it("has a config for every industry we plan to sell", () => {
+    for (const key of EXPECTED) expect(getIndustry(key), key).toBeDefined();
+    for (const g of industriesByModule()) expect(g.industries.length, g.module).toBeGreaterThan(0);
+  });
+
+  it("keeps coming-soon industries out of the sign-up picker", () => {
+    const values = industryGroups().flatMap((g) => g.choices.map((c) => c.value));
+    for (const key of EXPECTED) expect(values).not.toContain(key);
+    // ...unless the business already has one (set by the platform admin for a pilot).
+    expect(industryGroups("pet_grooming").flatMap((g) => g.choices.map((c) => c.value))).toContain("pet_grooming");
+  });
+
+  it("has campaign presets that follow the marketing template rules", () => {
+    for (const i of INDUSTRIES) {
+      const keys = (i.campaignPresets ?? []).map((c) => c.key);
+      expect(new Set(keys).size, i.key).toBe(keys.length);
+      for (const c of i.campaignPresets ?? []) {
+        expect(c.key).toMatch(/^campaign_[a-z0-9_]+$/);
+        expect(c.months.every((m) => m >= 1 && m <= 12), `${i.key}.${c.key}`).toBe(true);
+        for (const lang of LANGUAGES) {
+          expect(c.text[lang], `${i.key}.${c.key}.${lang}`).toContain("{business_name}");
+          expect(findUnknownVariables(c.text[lang]), `${i.key}.${c.key}.${lang}`).toEqual([]);
+          expect(c.text[lang]).not.toMatch(/\bSTOP\b/);
+        }
+      }
+    }
+  });
+
+  it("gives pet and mobile-vet voice agents hard medical limits and an emergency hand-off", () => {
+    for (const key of ["pet_grooming", "pet_boarding", "mobile_vet", "dog_training"]) {
+      const i = getIndustry(key)!;
+      expect(i.voice.never.join(" "), key).toMatch(/medical advice/);
+      expect(i.voice.emergency?.instruction, key).toMatch(/emergency vet/);
+    }
+    expect(getIndustry("mobile_vet")!.voice.never.join(" ")).toMatch(/medical records/);
+  });
+
+  it("uses the vehicle subject for automotive and pets for pet care", () => {
+    for (const i of INDUSTRIES) {
+      if (i.module === "automotive") expect(i.subjectType, i.key).toBe("vehicle");
+      if (i.module === "pet_care") expect(i.subjectType, i.key).toBe("pet");
+    }
+  });
+});

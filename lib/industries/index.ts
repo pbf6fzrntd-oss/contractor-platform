@@ -1,11 +1,30 @@
 import { BUSINESS_TYPE_INFO, type BusinessType } from "@/lib/business-types";
+import { AUTOMOTIVE_INDUSTRIES } from "@/lib/industries/automotive";
 import { HOME_SERVICES_INDUSTRIES } from "@/lib/industries/home-services";
+import { PET_CARE_INDUSTRIES } from "@/lib/industries/pet-care";
+import { PROJECT_QUOTE_INDUSTRIES } from "@/lib/industries/project-quote";
+import { RECURRING_HOME_INDUSTRIES } from "@/lib/industries/recurring-home";
 import type { IndustryConfig, ModuleId } from "@/lib/industries/types";
 
 export type { IndustryConfig } from "@/lib/industries/types";
 
 /** Every industry we know about, available or not. */
-export const INDUSTRIES: readonly IndustryConfig[] = [...HOME_SERVICES_INDUSTRIES];
+export const INDUSTRIES: readonly IndustryConfig[] = [
+  ...HOME_SERVICES_INDUSTRIES,
+  ...RECURRING_HOME_INDUSTRIES,
+  ...PROJECT_QUOTE_INDUSTRIES,
+  ...PET_CARE_INDUSTRIES,
+  ...AUTOMOTIVE_INDUSTRIES,
+];
+
+/** Industries grouped by module, for the sales audit and admin pickers (includes coming-soon ones). */
+export function industriesByModule(): { module: ModuleId; label: string; industries: IndustryConfig[] }[] {
+  return (Object.keys(MODULE_LABELS) as ModuleId[]).map((module) => ({
+    module,
+    label: MODULE_LABELS[module],
+    industries: INDUSTRIES.filter((i) => i.module === module),
+  }));
+}
 
 export const MODULE_LABELS: Record<ModuleId, string> = {
   home_services: "Home services",

@@ -14,7 +14,7 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 |---|---|
 | M14 Safety net + team AI access | ✅ done |
 | M15 Module framework + industry picker | ✅ done |
-| M16 Industry configs for every industry | not started |
+| M16 Industry configs for every industry | ✅ done |
 | M17 Sales audit tool (admin only) | not started |
 | M18 Customer records, private data, files, licenses | not started |
 | M19 Booking engine | not started |
@@ -23,7 +23,7 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M22 Agent Ready | not started |
 
 ## Next up
-M16: add the configs for every module industry (cleaning, pest, pool, moving, pressure washing, junk removal, grooming, boarding, mobile vet, training, detailing, repair, mobile mechanic, tinting) as `coming_soon` in `lib/industries/`.
+M17: sales audit tool in /admin (website checks + call answers → score + printable report, stored in a server-only table).
 
 ## Milestone notes and "how to test"
 (Added as each milestone finishes.)
@@ -57,3 +57,17 @@ M16: add the configs for every module industry (cleaning, pest, pool, moving, pr
 2. Settings shows "Heating & air (HVAC)". Settings → Message templates → Missed-call text-back mentions AC or heat.
 3. Inbox → + → add a lead → the lead page shows "Questions to ask".
 4. An existing business that never picked an industry looks exactly like before (Settings → Business shows "Other trade" / "Other lawn or yard service").
+
+### M16: Industry configs for every industry
+**What changed**
+- 14 more industries as data, all `coming_soon` (can't be picked at sign-up yet; the admin can set one for a pilot):
+  - Module A: house cleaning, pest control, pool service.
+  - Module B: moving, pressure washing, junk removal.
+  - Module C: pet grooming, pet boarding & daycare, mobile vet, dog training.
+  - Module D: auto detailing, auto repair, mobile mechanic, window tinting.
+- Each has services with price ranges and booking modes, stage words (e.g. "Booked", "Reserved", "Enrolled"), EN/ES wording for the missed-call text (plus review and weather-delay texts where the lawn wording didn't fit), seasonal campaign ideas by month, questions to ask, a voice script with hard limits, suggested licenses/insurance (marked "verify with the regulator"), audit checks, and a verified schema.org type.
+- Pet care voice scripts never give medical advice and hand emergencies to the owner and the business's emergency vet. The mobile vet script also refuses medical records.
+- Tests check every industry: real schema.org types, template rules (placeholders, business name, no STOP line), campaign rules, medical limits for pet care, and the right record type (vehicle/pet/property).
+
+**How to check**
+Nothing new to click yet. The configs show up in the sales audit (M17) and on hosted profiles (M22). To review the wording, open the files in `lib/industries/`. Have a native speaker review the Spanish.
