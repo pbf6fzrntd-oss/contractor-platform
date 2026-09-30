@@ -14,7 +14,13 @@ test("a pool tech files a visit report and the customer gets a 'service complete
   for (let i = 0; i < 7 && !found; i++) {
     const d = new Date(Date.now() + i * 86_400_000).toISOString().slice(0, 10);
     await page.goto(`/today?date=${d}`);
-    const report = page.getByRole("link", { name: "Report", exact: true }).first();
+    // Demo route order varies and includes Spanish-speaking customers.
+    // This scenario asserts the English text and needs an unfinished English stop.
+    const stop = page.getByRole("listitem").filter({
+      has: page.getByRole("link", { name: "Report", exact: true }),
+      hasNot: page.getByText(/^ES(?:\\s|$)/),
+    }).filter({ hasNot: page.getByLabel("Done", { exact: true }) }).first();
+    const report = stop.getByRole("link", { name: "Report", exact: true });
     if (await report.count()) {
       await report.click();
       found = true;
