@@ -554,6 +554,21 @@ describe.skipIf(!url)("row-level security", () => {
     expect((await attempt("select * from public.approval_requests")).rowCount).toBe(0);
   });
 
+  it("offers Executive and Enterprise, keeps old plans' switches, and protects the add-on catalog (Milestone 21)", async () => {
+    await actAs(ownerA);
+    const plans = (await db.query("select id, feature_team_ai, feature_booking, feature_agent_ready, feature_campaigns, is_public from public.plans order by sort_order")).rows;
+    expect(plans.map((p) => p.id)).toEqual(["pilot", "core", "pro", "executive", "enterprise"]);
+    expect(plans.find((p) => p.id === "pro")).toMatchObject({ feature_campaigns: true, feature_booking: false, feature_agent_ready: false });
+    expect(plans.find((p) => p.id === "executive")).toMatchObject({ feature_team_ai: true, feature_booking: true, feature_agent_ready: true, is_public: true });
+    expect(plans.find((p) => p.id === "enterprise")?.is_public).toBe(false);
+    expect((await db.query("select key from public.addon_catalog order by sort_order")).rows.map((r) => r.key)).toEqual(["agent_ready", "recurring_home", "project_quote", "pet_care", "automotive"]);
+    expect((await attempt("update public.addon_catalog set monthly_price_cents = 0")).error).not.toBeNull();
+    expect((await attempt("update public.organizations set edition = 'pet_care' where id = $1", [orgA])).error).not.toBeNull();
+    expect((await db.query("select source from public.org_modules where org_id = $1", [orgA])).rows).toEqual([{ source: "edition" }]);
+    await actAsAnonymous();
+    expect((await attempt("select * from public.addon_catalog")).rowCount).toBe(0);
+  });
+
   it("keeps sales audits completely server-only (Milestone 17)", async () => {
     await db.query("reset role");
     await db.query("insert into public.audit_reports (prospect_name, score) values ('Prospect Roofing', 42)");

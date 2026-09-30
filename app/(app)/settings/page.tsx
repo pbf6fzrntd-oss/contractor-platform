@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { isPlatformAdmin } from "@/lib/auth/admin";
 import { requireAppContext } from "@/lib/auth/context";
+import { bookingOn, canUse } from "@/lib/entitlements";
 import { industryLabel } from "@/lib/industries";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -10,7 +11,7 @@ export const metadata: Metadata = { title: "Settings" };
 type Row = { href?: string; label: string; detail: string };
 
 export default async function SettingsPage() {
-  const { org, role, plan } = await requireAppContext();
+  const { org, role, plan, modules } = await requireAppContext();
 
   const rows: Row[] = [
     { href: "/settings/business", label: "Business details", detail: industryLabel(org) },
@@ -23,7 +24,7 @@ export default async function SettingsPage() {
     { href: "/settings/billing", label: "Billing", detail: `${plan.id === "pilot" ? "Pilot" : plan.id} plan and text usage` },
     ...(role === "owner"
       ? [
-          { href: "/settings/booking", label: "Online booking", detail: org.booking_enabled ? "On" : "Off: set up services and hours" },
+          { href: "/settings/booking", label: "Online booking", detail: bookingOn(org, plan, modules) ? "On" : canUse(plan, modules, "booking") ? "Off: set up services and hours" : "Part of Executive or the Agent Ready add-on" },
           { href: "/settings/approvals", label: "Approval rules", detail: "Which bookings wait for your OK" },
           { href: "/settings/registration", label: "Carrier registration", detail: "Required before texting real customers" },
           { href: "/settings/assistants", label: "AI assistants", detail: "Let Claude, ChatGPT and others help run your inbox" },

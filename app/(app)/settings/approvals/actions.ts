@@ -4,10 +4,12 @@ import { revalidatePath } from "next/cache";
 import type { FormState } from "@/components/form-message";
 import { APPROVAL_RULE_KEYS, parseApprovalSettings } from "@/lib/approvals/rules";
 import { requireOwner } from "@/lib/auth/context";
+import { canUse } from "@/lib/entitlements";
 import { createClient } from "@/lib/supabase/server";
 
 export async function saveApprovalRules(_prev: FormState, formData: FormData): Promise<FormState> {
-  const { org } = await requireOwner();
+  const { org, plan, modules } = await requireOwner();
+  if (!canUse(plan, modules, "approvals")) return { error: "Approval rules are part of the Executive plan or the Agent Ready add-on." };
   const current = parseApprovalSettings(org.approval_settings);
   const next = Object.fromEntries(
     APPROVAL_RULE_KEYS.map((k) => {

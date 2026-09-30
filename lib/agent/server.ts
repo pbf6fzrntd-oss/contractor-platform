@@ -22,7 +22,7 @@ import { applySettingsChanges, parseSettings, type OrgSettings } from "@/lib/set
 import { templateTitle } from "@/lib/templates/defaults";
 import { findDefaultTemplate, validateTemplateBody } from "@/lib/templates/validate";
 import { zonedTimeToUtc } from "@/lib/time";
-import { hasFeature, type Plan } from "@/lib/entitlements";
+import { bookingOn, hasFeature, type Plan } from "@/lib/entitlements";
 import { getIndustry } from "@/lib/industries";
 import { money } from "@/lib/format";
 import { LEAD_STAGES, stageLabel, type LeadStage } from "@/lib/leads/stages";
@@ -79,6 +79,7 @@ export function buildAgentServer(ctx: AgentContext, extensions: AgentToolRegistr
   const { db, org, plan } = ctx;
   const isLawn = org.business_type === "recurring";
   const industry = getIndustry(org.industry);
+  const booking = bookingOn(org, plan, ctx.modules ?? ["home_services"]);
   const canAct = accessAllows(ctx.access, "read_write");
   const canDoEverything = accessAllows(ctx.access, "full");
   const today = () => localDateString(new Date(), org.timezone);
@@ -436,7 +437,7 @@ export function buildAgentServer(ctx: AgentContext, extensions: AgentToolRegistr
   }
 
 
-  if (org.booking_enabled) {
+  if (booking) {
     server.registerTool(
       "list_bookings",
       {
@@ -772,7 +773,7 @@ export function buildAgentServer(ctx: AgentContext, extensions: AgentToolRegistr
   }
 
 
-  if (org.booking_enabled) {
+  if (booking) {
     server.registerTool(
       "book_visit",
       {
@@ -817,7 +818,7 @@ export function buildAgentServer(ctx: AgentContext, extensions: AgentToolRegistr
     );
   }
 
-  if (org.booking_enabled) {
+  if (booking) {
     server.registerTool(
       "decide_booking",
       {

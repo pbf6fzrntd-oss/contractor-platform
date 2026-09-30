@@ -19,11 +19,15 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M18 Customer records, private data, files, licenses | ✅ done |
 | M19 Booking engine | ✅ done |
 | M20 Approval rules + source reporting | ✅ done |
-| M21 Editions, add-ons, Executive & Enterprise | not started |
+| M21 Editions, add-ons, Executive & Enterprise | ✅ done |
 | M22 Agent Ready | not started |
 
 ## Next up
-M21: editions and add-ons: `org_modules` gains edition/add-on and Stripe item links. New plan rows `executive` and `enterprise` with switches (`feature_agent_ready`, `feature_booking`, `feature_approvals`, `feature_ai_voice`; `feature_team_ai` already exists). Stripe checkout with several items, the webhook syncs modules, and /admin can switch modules on per business. Suggested prices are in docs/PRICING.md.
+M22 (Agent Ready):
+- hosted profile `/b/[slug]` with schema.org JSON-LD, only allow-listed public fields, via a database function;
+- public booking page with SMS consent (source `customer_link`, goes through approval rules and customer texts);
+- public agent MCP `/api/agent/[slug]` for customers' AI agents: business info, services, open times, request a booking; rate limits;
+- isolation and sentinel tests for every public endpoint and tool.
 
 ## Milestone notes and "how to test"
 (Added as each milestone finishes.)
@@ -150,3 +154,31 @@ Nothing new to click yet. The configs show up in the sales audit (M17) and on ho
 2. Ask your AI assistant to book a visit. Schedule → "Waiting for you" shows it with "Why: Booked by your AI assistant". Tap Confirm.
 3. Dashboard → "Where your work came from".
 4. Customer texts on approve/decline are tested end-to-end with the public booking page in M22.
+
+### M21: Editions, add-ons, Executive & Enterprise
+**What changed**
+- New plans **Executive** ($449, public) and **Enterprise** ($899, by quote, hidden), with every AI feature. New plan switches: `feature_agent_ready`, `feature_booking`, `feature_approvals`, `feature_ai_voice`, plus `included_addons`. Existing plans keep all their switches; Pilot gets everything.
+- **Add-on catalog** (`addon_catalog`), each add-on its own Stripe product:
+  - **Agent Ready** ($99; unlocks booking + approvals + profile for Pro/Core);
+  - the four industry modules ($79 each, "coming soon" until built).
+- `organizations.edition` (default Home Services). `org_modules` records where each module came from (edition / add-on / included / pilot / admin) and its Stripe item.
+- All checks go through `lib/entitlements.ts` (`canUse`, `bookingOn`). Booking, approval rules and the Schedule now need Executive, Pilot or Agent Ready, and show a friendly "see plans" note otherwise.
+- Stripe:
+  - checkout can include add-ons;
+  - subscribers can add or remove add-ons on the Billing page (prorated);
+  - the webhook reads every subscription item and switches paid add-ons on or off. It never touches edition, pilot or admin-granted modules. Add-ons stay on while a card is retried (past due) and turn off when canceled or unpaid.
+- /admin:
+  - each business: industry (including coming-soon ones for pilots), edition, and module on/off switches;
+  - Plans: all switches shown, plus add-on prices and Stripe price IDs.
+- Migration `20260929210000_m21_editions_addons.sql`; rollback included.
+- Click-through tested with signed test webhooks:
+  - Core couldn't book;
+  - Pro + Agent Ready unlocked Schedule, and removing the add-on locked it again;
+  - Executive unlocked it;
+  - canceling kept paid add-ons off;
+  - admin switched Pet Care on for a pilot.
+
+**Before you charge anyone**
+1. In Stripe, create products and monthly prices for Core, Pro, Executive and Agent Ready (and later each module).
+2. /admin → Plans & prices: enter the prices (suggested: Core $149, Pro $249, Executive $449; Core and Pro still show $0) and paste each Stripe price ID, including the add-ons.
+3. Test mode: buy Pro with "Add Agent Ready" ticked → Settings shows Online booking unlocked.

@@ -3,7 +3,10 @@ import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { formatUSPhone } from "@/lib/phone";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assignNumber, updateAccount, updateRegistration } from "../actions";
+import { SubmitButton } from "@/components/submit-button";
+import { industriesByModule, MODULE_LABELS } from "@/lib/industries";
+import { MODULE_IDS } from "@/lib/industries/types";
+import { assignNumber, setOrgModule, updateAccount, updateOrgIndustry, updateRegistration } from "../actions";
 
 export const metadata: Metadata = { title: "Admin · Business" };
 
@@ -21,13 +24,17 @@ export default async function AdminOrgPage({ params }: PageProps<"/admin/[orgId]
   const db = createAdminClient();
   const { data: org } = await db.from("organizations").select("*").eq("id", orgId).maybeSingle();
   if (!org) notFound();
-  const [{ data: reg }, { data: phone }, { data: sub }, { data: plans }, { data: members }] = await Promise.all([
+  const [{ data: reg }, { data: phone }, { data: sub }, { data: plans }, { data: members }, { data: orgModules }, { data: catalog }] = await Promise.all([
     db.from("a2p_registrations").select("*").eq("org_id", orgId).maybeSingle(),
     db.from("phone_numbers").select("*").eq("org_id", orgId).maybeSingle(),
     db.from("subscriptions").select("*").eq("org_id", orgId).maybeSingle(),
     db.from("plans").select("id, name").order("sort_order"),
     db.from("memberships").select("user_id, role").eq("org_id", orgId),
+    db.from("org_modules").select("module, enabled, source").eq("org_id", orgId),
+    db.from("addon_catalog").select("key, name, status").order("sort_order"),
   ]);
+  const moduleKeys = ["home_services", ...(catalog ?? []).map((c) => c.key)];
+  const moduleName = (k: string) => (catalog ?? []).find((c) => c.key === k)?.name ?? MODULE_LABELS[k as keyof typeof MODULE_LABELS] ?? k;
   const { data: people } = await db.from("profiles").select("id, full_name, email").in("id", (members ?? []).map((m) => m.user_id));
   const samples = Array.isArray(reg?.sample_messages) ? (reg.sample_messages as string[]) : [];
 
@@ -80,6 +87,45 @@ export default async function AdminOrgPage({ params }: PageProps<"/admin/[orgId]
             <input name="provider_sid" placeholder="Number SID (PN...)" className="input" />
           </ActionForm>
         )}
+      </section>
+
+      <section className="card mb-4">
+        <h2 className="mb-2 font-semibold">Industry & edition</h2>
+        <ActionForm action={updateOrgIndustry.bind(null, orgId)}>
+          <select name="industry" defaultValue={org.industry ?? ""} className="input" aria-label="Industry">
+            <option value="">Generic (no specific industry)</option>
+            {industriesByModule().map((g) => (
+              <optgroup key={g.module} label={g.label}>
+                {g.industries.map((i) => <option key={i.key} value={i.key}>{i.label}{i.status === "coming_soon" ? " (module coming)" : ""}</option>)}
+              </optgroup>
+            ))}
+          </select>
+          <select name="edition" defaultValue={org.edition} className="input" aria-label="Edition">
+            {MODULE_IDS.map((m) => <option key={m} value={m}>{MODULE_LABELS[m]} edition</option>)}
+          </select>
+        </ActionForm>
+      </section>
+
+      <section className="card mb-4">
+        <h2 className="mb-2 font-semibold">Modules & add-ons</h2>
+        <ul className="divide-y divide-slate-100">
+          {moduleKeys.map((k) => {
+            const row = (orgModules ?? []).find((m) => m.module === k);
+            const on = Boolean(row?.enabled);
+            return (
+              <li key={k} className="flex items-center justify-between gap-3 py-2">
+                <span className="text-sm">
+                  <span className="font-medium">{moduleName(k)}</span>
+                  <span className="block text-slate-500">{on ? `On (${row?.source})` : "Off"}{(catalog ?? []).find((c) => c.key === k)?.status === "coming_soon" ? " · module not built yet" : ""}</span>
+                </span>
+                <form action={setOrgModule.bind(null, orgId, k, !on)}>
+                  <SubmitButton className="btn-secondary min-h-10 px-3 text-xs" pendingText="…">{on ? "Turn off" : "Turn on"}</SubmitButton>
+                </form>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="mt-2 text-xs text-slate-500">Paid add-ons are switched automatically by Stripe. Use this for pilots and modules included with Executive.</p>
       </section>
 
       <section className="card">

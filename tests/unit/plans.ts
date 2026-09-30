@@ -10,6 +10,10 @@ export const PILOT: Plan = {
   feature_bulk_messaging: true,
   feature_campaigns: true,
   feature_team_ai: true,
+  feature_agent_ready: true,
+  feature_booking: true,
+  feature_approvals: true,
+  feature_ai_voice: true,
 };
 
 export const CORE: Plan = {
@@ -20,4 +24,8 @@ export const CORE: Plan = {
   feature_bulk_messaging: false,
   feature_campaigns: false,
   feature_team_ai: false,
+  feature_agent_ready: false,
+  feature_booking: false,
+  feature_approvals: false,
+  feature_ai_voice: false,
 };

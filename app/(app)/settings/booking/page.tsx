@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { SubmitButton } from "@/components/submit-button";
+import { UpgradeNote } from "@/components/upgrade-note";
 import { requireOwner } from "@/lib/auth/context";
+import { canUse } from "@/lib/entitlements";
 import { parseBookingSettings } from "@/lib/booking/settings";
 import { money } from "@/lib/format";
 import { getIndustry } from "@/lib/industries";
@@ -21,7 +23,15 @@ const MODE_LABEL: Record<string, string> = {
 };
 
 export default async function BookingSettingsPage() {
-  const { org } = await requireOwner();
+  const { org, plan, modules } = await requireOwner();
+  if (!canUse(plan, modules, "booking")) {
+    return (
+      <>
+        <PageHeader title="Online booking" backHref="/settings" />
+        <UpgradeNote feature="Online booking" />
+      </>
+    );
+  }
   const supabase = await createClient();
   const [{ data: services }, { data: resources }] = await Promise.all([
     supabase.from("service_catalog").select("*").eq("org_id", org.id).order("sort_order").order("name"),

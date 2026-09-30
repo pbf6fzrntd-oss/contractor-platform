@@ -14,9 +14,13 @@ export type Plan = Pick<
   | "feature_bulk_messaging"
   | "feature_campaigns"
   | "feature_team_ai"
+  | "feature_agent_ready"
+  | "feature_booking"
+  | "feature_approvals"
+  | "feature_ai_voice"
 >;
 
-export const PLAN_FEATURES = ["recurring_customers", "bulk_messaging", "campaigns", "team_ai"] as const;
+export const PLAN_FEATURES = ["recurring_customers", "bulk_messaging", "campaigns", "team_ai", "agent_ready", "booking", "approvals", "ai_voice"] as const;
 export type PlanFeature = (typeof PLAN_FEATURES)[number];
 
 export function hasFeature(plan: Plan, feature: PlanFeature): boolean {
@@ -30,7 +34,33 @@ export function hasFeature(plan: Plan, feature: PlanFeature): boolean {
     case "team_ai":
       // Office managers connecting their own AI tools (Executive tier).
       return plan.feature_team_ai;
+    case "agent_ready":
+      return plan.feature_agent_ready;
+    case "booking":
+      return plan.feature_booking;
+    case "approvals":
+      return plan.feature_approvals;
+    case "ai_voice":
+      return plan.feature_ai_voice;
   }
+}
+
+/** Plan switches an add-on unlocks (e.g. Agent Ready on the Pro plan). */
+export const ADDON_GRANTS: Partial<Record<string, PlanFeature[]>> = {
+  agent_ready: ["agent_ready", "booking", "approvals"],
+};
+
+/**
+ * Can this business use a feature? Its plan includes it, or it bought an
+ * add-on that unlocks it. `modules` are its enabled org_modules keys.
+ */
+export function canUse(plan: Plan, modules: readonly string[], feature: PlanFeature): boolean {
+  return hasFeature(plan, feature) || modules.some((m) => ADDON_GRANTS[m]?.includes(feature));
+}
+
+/** Booking is on when the business has it (plan or add-on) AND the owner switched it on. */
+export function bookingOn(org: { booking_enabled: boolean }, plan: Plan, modules: readonly string[]): boolean {
+  return org.booking_enabled && canUse(plan, modules, "booking");
 }
 
 export function canAddUser(plan: Plan, currentUserCount: number): boolean {

@@ -74,6 +74,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      addon_catalog: {
+        Row: {
+          key: string;
+          kind: string;
+          name: string;
+          description: string;
+          monthly_price_cents: number;
+          stripe_price_id: string | null;
+          status: string;
+          sort_order: number;
+        };
+        Insert: {
+          key: string;
+          kind: string;
+          name: string;
+          description?: string;
+          monthly_price_cents?: number;
+          stripe_price_id?: string | null;
+          status?: string;
+          sort_order?: number;
+        };
+        Update: {
+          key?: string;
+          kind?: string;
+          name?: string;
+          description?: string;
+          monthly_price_cents?: number;
+          stripe_price_id?: string | null;
+          status?: string;
+          sort_order?: number;
+        };
+        Relationships: [];
+      };
       agent_activity: {
         Row: {
           id: string;
@@ -960,6 +993,8 @@ export type Database = {
           enabled: boolean;
           created_at: string;
           updated_at: string;
+          source: string;
+          stripe_subscription_item_id: string | null;
         };
         Insert: {
           org_id: string;
@@ -967,6 +1002,8 @@ export type Database = {
           enabled?: boolean;
           created_at?: string;
           updated_at?: string;
+          source?: string;
+          stripe_subscription_item_id?: string | null;
         };
         Update: {
           org_id?: string;
@@ -974,6 +1011,8 @@ export type Database = {
           enabled?: boolean;
           created_at?: string;
           updated_at?: string;
+          source?: string;
+          stripe_subscription_item_id?: string | null;
         };
         Relationships: [];
       };
@@ -994,6 +1033,7 @@ export type Database = {
           booking_enabled: boolean;
           booking_settings: Json;
           approval_settings: Json;
+          edition: string;
         };
         Insert: {
           id?: string;
@@ -1011,6 +1051,7 @@ export type Database = {
           booking_enabled?: boolean;
           booking_settings?: Json;
           approval_settings?: Json;
+          edition?: string;
         };
         Update: {
           id?: string;
@@ -1028,6 +1069,7 @@ export type Database = {
           booking_enabled?: boolean;
           booking_settings?: Json;
           approval_settings?: Json;
+          edition?: string;
         };
         Relationships: [];
       };
@@ -1119,6 +1161,11 @@ export type Database = {
           sort_order: number;
           created_at: string;
           feature_team_ai: boolean;
+          feature_agent_ready: boolean;
+          feature_booking: boolean;
+          feature_approvals: boolean;
+          feature_ai_voice: boolean;
+          included_addons: number;
         };
         Insert: {
           id: string;
@@ -1135,6 +1182,11 @@ export type Database = {
           sort_order?: number;
           created_at?: string;
           feature_team_ai?: boolean;
+          feature_agent_ready?: boolean;
+          feature_booking?: boolean;
+          feature_approvals?: boolean;
+          feature_ai_voice?: boolean;
+          included_addons?: number;
         };
         Update: {
           id?: string;
@@ -1151,6 +1203,11 @@ export type Database = {
           sort_order?: number;
           created_at?: string;
           feature_team_ai?: boolean;
+          feature_agent_ready?: boolean;
+          feature_booking?: boolean;
+          feature_approvals?: boolean;
+          feature_ai_voice?: boolean;
+          included_addons?: number;
         };
         Relationships: [];
       };

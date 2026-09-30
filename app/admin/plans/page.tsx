@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import { ActionForm } from "@/components/action-form";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { updatePlan } from "../actions";
+import { updateAddon, updatePlan } from "../actions";
 
 export const metadata: Metadata = { title: "Admin · Plans" };
 
 export default async function PlansPage() {
-  const { data: plans } = await createAdminClient().from("plans").select("*").order("sort_order");
+  const db = createAdminClient();
+  const [{ data: plans }, { data: addons }] = await Promise.all([
+    db.from("plans").select("*").order("sort_order"),
+    db.from("addon_catalog").select("*").order("sort_order"),
+  ]);
   return (
     <>
       <h1 className="mb-1 text-2xl font-bold">Plans & prices</h1>
@@ -36,8 +40,42 @@ export default async function PlansPage() {
                 </div>
               </div>
               <p className="text-xs text-slate-500">
-                Features: {[p.feature_recurring_customers && "customers", p.feature_bulk_messaging && "bulk texts", p.feature_campaigns && "campaigns"].filter(Boolean).join(", ") || "core only"}
+                Features:{" "}
+                {[
+                  p.feature_recurring_customers && "customers",
+                  p.feature_bulk_messaging && "bulk texts",
+                  p.feature_campaigns && "campaigns",
+                  p.feature_team_ai && "team AI",
+                  p.feature_agent_ready && "Agent Ready",
+                  p.feature_booking && "booking",
+                  p.feature_approvals && "approvals",
+                  p.feature_ai_voice && "AI voice",
+                ]
+                  .filter(Boolean)
+                  .join(", ") || "core only"}
+                {p.included_addons > 0 ? ` · ${p.included_addons >= 99 ? "all" : p.included_addons} industry module(s) included` : ""}
               </p>
+            </ActionForm>
+          </section>
+        ))}
+      </div>
+
+      <h2 className="mb-1 mt-8 text-xl font-bold">Add-ons</h2>
+      <p className="mb-4 text-sm text-slate-600">Each add-on is its own Stripe product with a monthly price. Only &quot;available&quot; add-ons with a price ID can be bought.</p>
+      <div className="flex flex-col gap-4">
+        {(addons ?? []).map((a) => (
+          <section key={a.key} className="card">
+            <h3 className="mb-1 font-semibold">{a.name} <span className="text-sm font-normal text-slate-500">({a.key})</span></h3>
+            <p className="mb-2 text-sm text-slate-600">{a.description}</p>
+            <ActionForm action={updateAddon.bind(null, a.key)}>
+              <label className="label" htmlFor={`aprice-${a.key}`}>Monthly price ($)</label>
+              <input id={`aprice-${a.key}`} name="monthly_price" defaultValue={a.monthly_price_cents / 100} className="input" inputMode="decimal" />
+              <label className="label" htmlFor={`astripe-${a.key}`}>Stripe price ID</label>
+              <input id={`astripe-${a.key}`} name="stripe_price_id" defaultValue={a.stripe_price_id ?? ""} className="input" placeholder="price_..." />
+              <select name="status" defaultValue={a.status} className="input" aria-label="Status">
+                <option value="available">Available to buy</option>
+                <option value="coming_soon">Coming soon (sales only)</option>
+              </select>
             </ActionForm>
           </section>
         ))}

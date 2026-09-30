@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { SubmitButton } from "@/components/submit-button";
 import { requireAppContext } from "@/lib/auth/context";
+import { bookingOn } from "@/lib/entitlements";
 import { formatUSPhone } from "@/lib/phone";
 import { bookingWhen } from "@/lib/services/booking";
 import { createClient } from "@/lib/supabase/server";
@@ -24,8 +25,8 @@ const STATUS: Record<string, { label: string; className: string }> = {
 const SOURCE: Record<string, string> = { owner: "", team: "", customer_link: "Booked online", ai_assistant: "Via AI assistant", outside_agent: "Via customer's AI agent", voice: "Via phone assistant" };
 
 export default async function SchedulePage() {
-  const { org } = await requireAppContext();
-  if (!org.booking_enabled) redirect("/settings/booking");
+  const { org, plan, modules } = await requireAppContext();
+  if (!bookingOn(org, plan, modules)) redirect("/settings/booking");
   const today = localDateString(new Date(), org.timezone);
   const supabase = await createClient();
   const { data: bookings } = await supabase

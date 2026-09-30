@@ -42,7 +42,7 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, ro
 - [x] M18 Customer records (property/pet/vehicle), private fields, private files, licenses & insurance
 - [x] M19 Booking engine (7 modes, `book_slot()` capacity lock)
 - [x] M20 Approval rules + lead/booking source reporting
-- [ ] M21 Editions, add-on modules, Executive & Enterprise plans (Stripe multi-item)
+- [x] M21 Editions, add-on modules, Executive & Enterprise plans (Stripe multi-item)
 - [ ] M22 Agent Ready: hosted profile + JSON-LD, public booking page, public agent booking MCP
 
 Founder decisions (2026-09-29): default phone setup is "keep your number" (conditional forwarding); pilots are billed by hand until M10; LLC/EIN/domain come later, so build and demo without real carrier registration; team roles are owner + office manager only.

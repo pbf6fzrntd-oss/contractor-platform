@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { FormState } from "@/components/form-message";
 import { validateBookingSettings } from "@/lib/booking/settings";
 import { requireOwner } from "@/lib/auth/context";
+import { canUse } from "@/lib/entitlements";
 import { getIndustry } from "@/lib/industries";
 import { BOOKING_MODES, type BookingMode } from "@/lib/industries/types";
 import { parseDollars } from "@/lib/format";
@@ -15,7 +16,8 @@ const done = () => {
 };
 
 export async function saveBookingSettings(_prev: FormState, formData: FormData): Promise<FormState> {
-  const { org } = await requireOwner();
+  const { org, plan, modules } = await requireOwner();
+  if (!canUse(plan, modules, "booking")) return { error: "Online booking is part of the Executive plan or the Agent Ready add-on." };
   const num = (k: string) => Number(formData.get(k));
   const result = validateBookingSettings({
     openDays: formData.getAll("openDays").map(Number),

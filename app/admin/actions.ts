@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import type { FormState } from "@/components/form-message";
 import { requirePlatformAdmin } from "@/lib/auth/admin";
 import { REGISTRATION_STATUS_TEXT } from "@/lib/automation/a2p";
+import { getIndustry } from "@/lib/industries";
+import { MODULE_IDS } from "@/lib/industries/types";
 import { normalizeUSPhone } from "@/lib/phone";
 import { notifyOwner } from "@/lib/services/conversations";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -92,6 +94,45 @@ export async function updatePlan(planId: string, _prev: FormState, formData: For
     })
     .eq("id", planId);
   if (error) return { error: "Couldn't save." };
+  revalidatePath("/admin/plans");
+  return { success: "Saved." };
+}
+
+/** Switches a module or add-on on/off for one business (e.g. a pilot, or a module included with Executive). */
+export async function setOrgModule(orgId: string, moduleKey: string, enabled: boolean): Promise<void> {
+  await requirePlatformAdmin();
+  if (!/^[a-z][a-z0-9_]{1,39}$/.test(moduleKey)) return;
+  const db = createAdminClient();
+  const { data: existing } = await db.from("org_modules").select("source").eq("org_id", orgId).eq("module", moduleKey).maybeSingle();
+  await db.from("org_modules").upsert({ org_id: orgId, module: moduleKey, enabled, source: existing?.source ?? "admin" });
+  revalidatePath(`/admin/${orgId}`);
+}
+
+/** Sets a business's industry (any, including coming-soon ones for pilots) and edition. */
+export async function updateOrgIndustry(orgId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  await requirePlatformAdmin();
+  const industryKey = String(formData.get("industry") ?? "");
+  const edition = String(formData.get("edition") ?? "home_services");
+  const industry = industryKey ? getIndustry(industryKey) : null;
+  if (industryKey && !industry) return { error: "Unknown industry." };
+  if (!(MODULE_IDS as readonly string[]).includes(edition)) return { error: "Unknown edition." };
+  const update: { industry: string | null; edition: string; business_type?: string } = { industry: industry?.key ?? null, edition };
+  if (industry) update.business_type = industry.businessType;
+  await createAdminClient().from("organizations").update(update).eq("id", orgId);
+  revalidatePath(`/admin/${orgId}`);
+  return { success: "Saved." };
+}
+
+export async function updateAddon(key: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  await requirePlatformAdmin();
+  const price = Number(formData.get("monthly_price"));
+  if (!Number.isFinite(price) || price < 0) return { error: "Enter a monthly price." };
+  const status = formData.get("status") === "available" ? "available" : "coming_soon";
+  const { error } = await createAdminClient()
+    .from("addon_catalog")
+    .update({ monthly_price_cents: Math.round(price * 100), stripe_price_id: String(formData.get("stripe_price_id") ?? "").trim() || null, status })
+    .eq("key", key);
+  if (error) return { error: "Couldn't save (is that Stripe price already used?)." };
   revalidatePath("/admin/plans");
   return { success: "Saved." };
 }

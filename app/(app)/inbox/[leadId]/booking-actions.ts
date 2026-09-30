@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { FormState } from "@/components/form-message";
 import { requireAppContext } from "@/lib/auth/context";
+import { bookingOn } from "@/lib/entitlements";
 import { createBooking } from "@/lib/services/booking";
 import { loadLeadForUser } from "@/lib/services/leads";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -11,7 +12,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 /** Books a visit for this lead's customer through the shared booking engine. */
 export async function bookForLead(leadId: string, serviceId: string, _prev: FormState, formData: FormData): Promise<FormState> {
   const ctx = await requireAppContext();
-  if (!ctx.org.booking_enabled) return { error: "Turn on booking in Settings → Online booking first." };
+  if (!bookingOn(ctx.org, ctx.plan, ctx.modules)) return { error: "Turn on booking in Settings → Online booking first." };
   const loaded = await loadLeadForUser(ctx, leadId);
   if (!loaded) return { error: "Lead not found." };
   const str = (k: string) => {

@@ -6,6 +6,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { Thread } from "@/components/thread";
 import { requireAppContext } from "@/lib/auth/context";
 import { money } from "@/lib/format";
+import { bookingOn } from "@/lib/entitlements";
 import { getIndustry } from "@/lib/industries";
 import { LEAD_STAGES, stageLabel, type LeadStage } from "@/lib/leads/stages";
 import { formatUSPhone } from "@/lib/phone";
@@ -118,7 +119,7 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/inb
 
       <SubjectCard ctx={ctx} leadId={lead.id} contactId={contact.id} />
 
-      {org.booking_enabled && (
+      {bookingOn(org, ctx.plan, ctx.modules) && (
         <BookingCard ctx={ctx} leadId={lead.id} contactId={contact.id} service={param("book")} day={param("day")} booked={param("booked") === "1"} />
       )}
 
