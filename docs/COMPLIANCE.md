@@ -23,6 +23,10 @@ Not legal advice. Have an attorney who knows the TCPA review this before launch.
 | Texting to the public is off until carrier (A2P) registration is marked approved | `lib/messaging/send.ts` → `loadSendingContext` |
 | Imports and manually added customers require the owner to confirm service-text consent; marketing consent requires choosing how it was given | Customers → Add / Import |
 | AI assistants (MCP) send texts only through the same pipeline; bulk texts and campaigns need a preview + confirm; campaigns need the owner's "Everything" level and still only reach customers with written consent; adding a customer requires the owner to confirm service-text consent; every action is logged; texts are labeled "via AI assistant" | `lib/agent/server.ts` |
+| Online booking (public page): customer must tick a consent box with the exact wording (business name, frequency, rates, STOP/HELP); the wording is saved in the consent log (`web_form`). A customer's AI agent must affirm the customer agreed (`ai_agent_request`) | `lib/public/consent.ts`, `lib/services/public-booking.ts` |
+| Booking texts (received / confirmed / declined) are informational, about the customer's own request, and go through the same pipeline (opt-outs honored; people who opted out aren't re-subscribed by booking) | `lib/services/approvals.ts` |
+| Private details (gate codes, access notes, VINs, pet behavior/care notes, uploaded files) never appear in texts, AI answers or public pages; mobile vet: scheduling and intake only, no medical records or advice | `lib/subjects/fields.ts` (`shareableSubject`), `public_business_profile()`, industry voice rules |
+| Public profile, booking page and agent connection are rate limited per visitor and business; IPs stored only as salted hashes | `lib/public/rate-limit.ts` |
 | Public privacy policy (with required "no sharing of mobile information" language), terms, and SMS terms (frequency, rates, STOP/HELP) | `/privacy`, `/terms`, `/sms-terms` |
 
 ## Your to-do list
@@ -36,4 +40,5 @@ Not legal advice. Have an attorney who knows the TCPA review this before launch.
 4. **Carrier registration for each customer business** (Settings → Carrier registration, then Admin → copy into the Twilio console). Register each campaign as **Mixed** (customer care + marketing) for lawn businesses.
 5. **Twilio opt-out settings:** keep Twilio's default opt-out handling on. The app mirrors it and doesn't double-reply to standard English keywords.
 6. **Spanish:** have a native speaker review every Spanish template before launch.
-7. **Record keeping:** don't delete contacts who opted out. The consent log is your evidence if a complaint comes in.
+7. **Online booking consent:** have your attorney review the booking consent wording (`lib/public/consent.ts`) and the AI-agent attestation. Consider whether bookings made by a customer's AI agent need a follow-up "reply YES to confirm" text before any non-booking texts.
+8. **Record keeping:** don't delete contacts who opted out. The consent log is your evidence if a complaint comes in.

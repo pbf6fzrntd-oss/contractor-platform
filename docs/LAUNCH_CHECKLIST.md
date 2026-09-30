@@ -62,6 +62,16 @@ Legend: ☐ = to do · ✅ = already verified in development
 ✅ Full owner coverage: add customer (refused without consent confirmation), pause/resume, running-late preview → send, campaign preview (consented customers only) → schedule → cancel, wording change (refuses dropping the business name), settings change (refuses out-of-range values), cancel follow-ups, update contact
 ✅ AI assistant (MCP), tested with the official MCP client: keys created in Settings; overview, leads, conversations, schedule, customers; reply marked "via AI assistant" and New→Contacted; stage change schedules follow-ups; job done schedules review; rain delay preview → confirm → texts sent and visits moved; read-only keys can't see action tools; missing/fake keys rejected (401); every call logged
 
+**Industry modules program (M14–M22):** click-through tested on the same local setup:
+✅ Industry picker at sign-up, tailored wording, "questions to ask" on leads
+✅ Office manager connects their own AI tool (capped), which stops working when they're removed
+✅ Sales audit of a sample website (blocked AI crawler, missing booking and generic type detected), printable report
+✅ Property record with private gate code and photo; fake photo refused; signed links expire; AI assistant never sees the code
+✅ Booking from a lead, full windows disappear, AI assistant books, "Done" records the job
+✅ Approval rules hold bookings; confirm/decline with texts
+✅ Plans and add-ons through signed Stripe test events (Agent Ready on/off, Executive, canceled)
+✅ Public profile with schema.org data, online booking with consent → "We got your request" text (with STOP) → owner confirms → "You're booked" text; customers' AI agent books; another business's services refused; no private data in any public output; rate limits
+
 ## Part 4: What needs a live test (real phones, money, people)
 
 Do these with 2 phones (yours + a friend's) once Twilio is connected.
@@ -95,6 +105,13 @@ Do these with 2 phones (yours + a friend's) once Twilio is connected.
 - ☐ Decide whether AI access is included in every plan or only higher plans (it's on for all plans now).
 - ☐ One-tap connect from inside the Claude and ChatGPT apps (add a custom connector with `https://YOUR-DOMAIN/api/mcp`): log in, tap Allow, then ask it to do real work. Each app's connector rules change often. If one refuses, check its current requirements (for example, some need the site on https with a real domain).
 - ☐ Try each access level once (Read only / Read and act / Everything) and confirm the assistant can't do more than its level.
+
+**Agent Ready (after deploy, with a real domain)**
+- ☐ Supabase → Storage: the `private-files` bucket exists and is **not public**. Upload a photo from a phone on cell service and open it.
+- ☐ Turn on a pilot's public profile, paste `https://YOUR-DOMAIN/b/<slug>` into Google's Rich Results Test and fix anything it flags.
+- ☐ Add `https://YOUR-DOMAIN/api/agent/<slug>` as a custom connector in ChatGPT or Claude (as a "customer") and ask it to book a visit. Confirm the owner gets the request and the customer gets texts.
+- ☐ Book from the public page on iPhone and Android; check the consent checkbox wording with your attorney.
+- ☐ Run 3–5 sales audits on real Charleston/Summerville businesses and sanity-check the scores.
 
 **People**
 - ☐ Native Spanish speaker reviews every Spanish template (Settings → Message templates → Spanish).

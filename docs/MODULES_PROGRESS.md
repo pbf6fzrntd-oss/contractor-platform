@@ -20,14 +20,15 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M19 Booking engine | ✅ done |
 | M20 Approval rules + source reporting | ✅ done |
 | M21 Editions, add-ons, Executive & Enterprise | ✅ done |
-| M22 Agent Ready | not started |
+| M22 Agent Ready | ✅ done |
 
 ## Next up
-M22 (Agent Ready):
-- hosted profile `/b/[slug]` with schema.org JSON-LD, only allow-listed public fields, via a database function;
-- public booking page with SMS consent (source `customer_link`, goes through approval rules and customer texts);
-- public agent MCP `/api/agent/[slug]` for customers' AI agents: business info, services, open times, request a booking; rate limits;
-- isolation and sentinel tests for every public endpoint and tool.
+M14–M22 (the shared foundations) are done. Next, per docs/MODULES_PLAN.md: **Module A, Recurring Home Services** (M23–M25):
+- `modules/recurring-home/` manifest;
+- switch cleaning/pest/pool to `available`;
+- service agreements with renewal reminders, a visit log with notes and photos, a "service complete" text, and industry campaign presets in the Campaigns screen.
+
+Before that: the founder's live tests in docs/LAUNCH_CHECKLIST.md Part 4 ("Agent Ready").
 
 ## Milestone notes and "how to test"
 (Added as each milestone finishes.)
@@ -182,3 +183,25 @@ Nothing new to click yet. The configs show up in the sales audit (M17) and on ho
 1. In Stripe, create products and monthly prices for Core, Pro, Executive and Agent Ready (and later each module).
 2. /admin → Plans & prices: enter the prices (suggested: Core $149, Pro $249, Executive $449; Core and Pro still show $0) and paste each Stripe price ID, including the add-ons.
 3. Test mode: buy Pro with "Add Agent Ready" ticked → Settings shows Online booking unlocked.
+
+### M22: Agent Ready
+**What changed**
+- Settings → **Public profile** (Executive, Pilot, or the Agent Ready add-on): on/off, web address, "about", area served, show prices.
+- **`/b/<slug>`**: a mobile profile page with call/text/book buttons, services and typical prices, hours, licenses (unexpired, marked public) and the review link. It includes **schema.org JSON-LD** (the industry's verified type, offers with price ranges, hours, area and ZIPs, credentials, and a ReserveAction to book).
+- **`/b/<slug>/llms.txt`**: a plain summary for AI crawlers, including the agent connection address.
+- **`/b/<slug>/book`**: the public booking page. It works without JavaScript and has a bot trap. The customer ticks an exact consent statement, which is saved in the consent log. It uses the same booking rules, and online bookings **wait for the owner's OK** by default. The customer gets "We got your request", then "You're booked" or "Sorry…", through the normal send pipeline (STOP footer on the first text).
+- **`/api/agent/<slug>`**: a public MCP for **customers' AI agents**, no key needed. Tools: `get_business_info`, `list_services`, `find_open_times` (times only, never who else is booked), `request_booking` (requires `customer_agreed_to_texts: true`; logged as `ai_agent_request`). The industry's voice "never" rules are in its instructions. Modules can add public tools through the `publicAgentTools` hook.
+- **Safety:**
+  - All public data comes from `public_business_profile()`, a database allow-list, parsed with strict schemas. Anything unexpected is refused.
+  - The business is found only from the slug. Every service id is re-checked against that business.
+  - Rate limits: 120 lookups per 10 minutes and 5 bookings per hour per visitor, plus 60 bookings a day per business. IPs are stored only as salted hashes.
+  - Tests plant secret values in every private field and prove they never appear.
+- Public pages were added to the login guard's allow-list (`/b`).
+- Migration `20260929220000_m22_agent_ready.sql`; rollback included.
+- Click-through tested end-to-end (see LAUNCH_CHECKLIST Part 3).
+
+**How to test**
+1. As the owner (Pilot or Executive): Settings → Online booking → on, add services. Settings → Licenses → add one. Settings → Public profile → on → Save → open the profile link.
+2. Log out (or use a private window) → open the profile → Book online → pick a time, fill in details, tick the consent box → "Request sent".
+3. Simulator: the customer got "We got your request…" with "Reply STOP to opt out." Schedule → Waiting for you → Confirm. The customer got "You're booked…".
+4. Dashboard → "Where your work came from" shows "Online booking page".

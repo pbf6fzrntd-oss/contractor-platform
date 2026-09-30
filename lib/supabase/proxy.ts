@@ -4,7 +4,7 @@ import type { Database } from "@/lib/database.types";
 import { publicEnv } from "@/lib/env-public";
 
 /** Pages anyone can open without logging in. */
-const PUBLIC_PATHS = ["/", "/login", "/signup", "/forgot-password", "/auth", "/invite", "/privacy", "/terms", "/sms-terms", "/.well-known"];
+const PUBLIC_PATHS = ["/", "/login", "/signup", "/forgot-password", "/auth", "/invite", "/privacy", "/terms", "/sms-terms", "/.well-known", "/b"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || (p !== "/" && pathname.startsWith(`${p}/`)));

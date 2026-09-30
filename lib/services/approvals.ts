@@ -30,13 +30,13 @@ async function textAboutBooking(db: AdminClient, org: Org, bookingId: string, ki
 }
 
 /** Tells a customer we got their request (for bookings that wait for approval). */
-export async function sendBookingReceived(db: AdminClient, org: Org, bookingId: string): Promise<void> {
-  await textAboutBooking(db, org, bookingId, "received", null);
+export async function sendBookingReceived(db: AdminClient, org: Org, bookingId: string): Promise<boolean> {
+  return textAboutBooking(db, org, bookingId, "received", null);
 }
 
 /** Tells a customer their (instantly confirmed) booking is set. */
-export async function sendBookingConfirmed(db: AdminClient, org: Org, bookingId: string): Promise<void> {
-  await textAboutBooking(db, org, bookingId, "confirmed", null);
+export async function sendBookingConfirmed(db: AdminClient, org: Org, bookingId: string): Promise<boolean> {
+  return textAboutBooking(db, org, bookingId, "confirmed", null);
 }
 
 /**

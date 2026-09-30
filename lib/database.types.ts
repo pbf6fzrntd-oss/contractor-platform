@@ -1034,6 +1034,9 @@ export type Database = {
           booking_settings: Json;
           approval_settings: Json;
           edition: string;
+          slug: string | null;
+          public_profile_enabled: boolean;
+          profile: Json;
         };
         Insert: {
           id?: string;
@@ -1052,6 +1055,9 @@ export type Database = {
           booking_settings?: Json;
           approval_settings?: Json;
           edition?: string;
+          slug?: string | null;
+          public_profile_enabled?: boolean;
+          profile?: Json;
         };
         Update: {
           id?: string;
@@ -1070,6 +1076,9 @@ export type Database = {
           booking_settings?: Json;
           approval_settings?: Json;
           edition?: string;
+          slug?: string | null;
+          public_profile_enabled?: boolean;
+          profile?: Json;
         };
         Relationships: [];
       };
@@ -1228,6 +1237,30 @@ export type Database = {
           id?: string;
           email?: string | null;
           full_name?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      public_request_log: {
+        Row: {
+          id: number;
+          org_id: string | null;
+          ip_hash: string;
+          kind: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          org_id?: string | null;
+          ip_hash: string;
+          kind: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          org_id?: string | null;
+          ip_hash?: string;
+          kind?: string;
           created_at?: string;
         };
         Relationships: [];
@@ -1606,6 +1639,8 @@ export type Database = {
       has_org_role: { Args: { p_org_id: string; p_role: string }; Returns: boolean };
       increment_sms_usage: { Args: { p_org_id: string; p_month: string; p_count?: number }; Returns: number };
       is_org_member: { Args: { p_org_id: string }; Returns: boolean };
+      public_business_profile: { Args: { p_slug: string }; Returns: Json };
+      public_profile_org: { Args: { p_slug: string }; Returns: string };
       record_consent_event: { Args: { p_org_id: string; p_contact_id: string; p_kind: string; p_method: string; p_evidence?: string }; Returns: undefined };
     };
     Enums: { [_ in never]: never };

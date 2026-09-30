@@ -43,7 +43,7 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, ro
 - [x] M19 Booking engine (7 modes, `book_slot()` capacity lock)
 - [x] M20 Approval rules + lead/booking source reporting
 - [x] M21 Editions, add-on modules, Executive & Enterprise plans (Stripe multi-item)
-- [ ] M22 Agent Ready: hosted profile + JSON-LD, public booking page, public agent booking MCP
+- [x] M22 Agent Ready: hosted profile + JSON-LD, public booking page, public agent booking MCP
 
 Founder decisions (2026-09-29): default phone setup is "keep your number" (conditional forwarding); pilots are billed by hand until M10; LLC/EIN/domain come later, so build and demo without real carrier registration; team roles are owner + office manager only.
 
@@ -110,6 +110,10 @@ Founder decisions (2026-09-29): default phone setup is "keep your number" (condi
 - Rules are pure functions in `lib/automation/*` with tests in `tests/unit/*`.
 - Platform admin (`/admin`) is limited to `PLATFORM_ADMIN_EMAILS` and uses the admin client.
 - AI assistants: `app/api/mcp/route.ts` → `lib/agent/auth.ts` (key → business) → `lib/agent/server.ts` (tools).
+- Customers' AI agents (public): `app/api/agent/[slug]/route.ts` → `lib/services/public-booking.ts` (business found ONLY from the slug via `public_business_profile()`) → `lib/agent/public-server.ts`.
+- Booking: `lib/booking/rules.ts` (pure) → `lib/services/booking.ts` (`createBooking`, approvals) → `book_slot()` (lock). Approval rules: `lib/approvals/rules.ts`.
+- Entitlements: `lib/entitlements.ts` (`hasFeature`, `canUse` incl. add-ons, `bookingOn`). Industries: `lib/industries/`. Modules: `modules/registry.ts`.
+- Progress and resume notes for the modules program: `docs/MODULES_PROGRESS.md`.
 - Launch status and remaining live tests: `docs/LAUNCH_CHECKLIST.md`. Compliance: `docs/COMPLIANCE.md`.
 
 ## Commands

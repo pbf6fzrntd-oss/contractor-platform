@@ -569,6 +569,83 @@ describe.skipIf(!url)("row-level security", () => {
     expect((await attempt("select * from public.addon_catalog")).rowCount).toBe(0);
   });
 
+  describe("public profile for customers and AI agents (Milestone 22)", () => {
+    const SECRET = "SENTINEL-8841";
+    beforeAll(async () => {
+      await db.query("reset role");
+      // Business A: pilot plan (includes Agent Ready), public profile ON, booking ON.
+      await db.query("update public.organizations set slug = 'a-roofing', public_profile_enabled = true, booking_enabled = true, profile = $2 where id = $1", [
+        orgA,
+        JSON.stringify({ about: "Roofs since 2009", service_area: "Summerville", show_prices: true }),
+      ]);
+      await db.query("insert into public.service_catalog (org_id, name, booking_mode, price_from_cents, public) values ($1, 'Public inspection', 'arrival_window', 0, true), ($1, 'Hidden service', 'arrival_window', 100, false)", [orgA]);
+      await db.query("insert into public.business_credentials (org_id, kind, label, show_on_profile, expires_on) values ($1, 'license', 'Shown license', true, null), ($1, 'license', 'Private license', false, null), ($1, 'insurance', 'Expired policy', true, '2020-01-01')", [orgA]);
+      // Private things that must NEVER appear publicly.
+      const c = (await db.query("insert into public.contacts (org_id, phone, name, address, notes) values ($1, '+18435550777', $2, $2, $2) returning id", [orgA, SECRET])).rows[0].id;
+      const subj = (await db.query("insert into public.subjects (org_id, contact_id, kind, label, attributes) values ($1, $2, 'property', $3, $4) returning id", [orgA, c, SECRET, JSON.stringify({ address: SECRET })])).rows[0].id;
+      await db.query("insert into public.subject_private (subject_id, org_id, access_notes, behavior_notes, care_notes) values ($1, $2, $3, $3, $3)", [subj, orgA, SECRET]);
+      await db.query("insert into public.files (org_id, contact_id, subject_id, kind, storage_path, content_type, size_bytes, original_name) values ($1, $2, $3, 'photo', $4, 'image/jpeg', 10, $5)", [orgA, c, subj, `${orgA}/2026/${SECRET}.jpg`.replace(SECRET, "11111111-1111-4111-8111-111111111111"), SECRET]);
+      await db.query("insert into public.leads (org_id, contact_id, notes) values ($1, $2, $3)", [orgA, c, SECRET]);
+      // Business B: profile ON but on the Core plan without Agent Ready.
+      await db.query("update public.organizations set slug = 'b-lawn', public_profile_enabled = true, plan_id = 'core' where id = $1", [orgB]);
+    });
+
+    it("shows a live business's allow-listed profile to anyone, and nothing private", async () => {
+      await actAsAnonymous();
+      const r = (await db.query("select public.public_business_profile('a-roofing') as p")).rows[0].p;
+      expect(r.name).toBe("A Roofing");
+      expect(r.about).toBe("Roofs since 2009");
+      expect(r.booking_available).toBe(true);
+      const names = r.services.map((s: { name: string }) => s.name);
+      expect(names).toContain("Public inspection");
+      expect(names).not.toContain("Hidden service");
+      const creds = r.credentials.map((c: { label: string }) => c.label);
+      expect(creds).toContain("Shown license");
+      expect(creds).not.toContain("Private license");
+      expect(creds).not.toContain("Expired policy");
+      const text = JSON.stringify(r);
+      expect(text).not.toContain(SECRET);
+      expect(text).not.toContain("+18435550777");
+      expect(Object.keys(r).sort()).toEqual(["about", "booking_available", "business_type", "credentials", "hours", "industry", "name", "phone", "review_url", "service_area", "service_zips", "services", "slug", "timezone"]);
+    });
+
+    it("hides profiles that are off or not included in the plan, and unknown ones", async () => {
+      await actAsAnonymous();
+      expect((await db.query("select public.public_business_profile('b-lawn') as p")).rows[0].p).toBeNull();
+      expect((await db.query("select public.public_business_profile('no-such-business') as p")).rows[0].p).toBeNull();
+      await db.query("reset role");
+      await db.query("update public.organizations set public_profile_enabled = false where id = $1", [orgA]);
+      await actAsAnonymous();
+      expect((await db.query("select public.public_business_profile('a-roofing') as p")).rows[0].p).toBeNull();
+      await db.query("reset role");
+      await db.query("update public.organizations set public_profile_enabled = true where id = $1", [orgA]);
+    });
+
+    it("turns on for Core with the Agent Ready add-on, and off if the account is canceled", async () => {
+      await db.query("reset role");
+      await db.query("insert into public.org_modules (org_id, module, source) values ($1, 'agent_ready', 'addon')", [orgB]);
+      await actAsAnonymous();
+      const p = (await db.query("select public.public_business_profile('b-lawn') as p")).rows[0].p;
+      expect(p.name).toBe("B Lawn");
+      expect(p.booking_available).toBe(false); // booking not switched on by the owner
+      await db.query("reset role");
+      await db.query("update public.subscriptions set status = 'canceled' where org_id = $1", [orgB]);
+      await actAsAnonymous();
+      expect((await db.query("select public.public_business_profile('b-lawn') as p")).rows[0].p).toBeNull();
+    });
+
+    it("keeps the server-only helpers and the request log away from the public", async () => {
+      await actAsAnonymous();
+      expect((await attempt("select public.public_profile_org('a-roofing')")).error).not.toBeNull();
+      expect((await attempt("select * from public.public_request_log")).error).not.toBeNull();
+      await actAs(ownerA);
+      expect((await attempt("select public.public_profile_org('a-roofing')")).error).not.toBeNull();
+      expect((await attempt("update public.organizations set slug = 'stolen' where id = $1", [orgB])).rowCount).toBe(0);
+      await actAs(managerA);
+      expect((await attempt("update public.organizations set public_profile_enabled = false where id = $1", [orgA])).rowCount).toBe(0);
+    });
+  });
+
   it("keeps sales audits completely server-only (Milestone 17)", async () => {
     await db.query("reset role");
     await db.query("insert into public.audit_reports (prospect_name, score) values ('Prospect Roofing', 42)");
