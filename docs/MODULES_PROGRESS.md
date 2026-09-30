@@ -21,14 +21,14 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M20 Approval rules + source reporting | ✅ done |
 | M21 Editions, add-ons, Executive & Enterprise | ✅ done |
 | M22 Agent Ready | ✅ done |
+| M23 Booking hardening: approval expiry, reminders, reschedule/cancel link, closed dates, YES check for agent bookings, Spanish booking page | not started |
+| M24 Expiry reminders (licenses, vaccines) + photos texted in | not started |
+| M25 Quality: click-through suite in the repo, automatic checks on GitHub, daily cleanup, error alerts | not started |
+| M26 Selling: demo business per industry, setup checklist, audit→customer link, calendar feed | not started |
 
 ## Next up
-M14–M22 (the shared foundations) are done. Next, per docs/MODULES_PLAN.md: **Module A, Recurring Home Services** (M23–M25):
-- `modules/recurring-home/` manifest;
-- switch cleaning/pest/pool to `available`;
-- service agreements with renewal reminders, a visit log with notes and photos, a "service complete" text, and industry campaign presets in the Campaigns screen.
-
-Before that: the founder's live tests in docs/LAUNCH_CHECKLIST.md Part 4 ("Agent Ready").
+Founder approved items 1–16 of the post-M22 recommendations (2026-09-30), as M23–M26 above. Module A (Recurring Home Services) moves to M27+.
+Start with M23.
 
 ## Milestone notes and "how to test"
 (Added as each milestone finishes.)
