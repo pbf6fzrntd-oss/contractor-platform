@@ -25,6 +25,7 @@ import {
   type Service,
   type SubjectDocument,
 } from "@/lib/booking/types";
+import { evaluateApproval, hasBehaviorWarning, parseApprovalSettings } from "@/lib/approvals/rules";
 import type { Tables } from "@/lib/database.types";
 import type { Org } from "@/lib/org";
 import type { AdminClient } from "@/lib/supabase/admin";
@@ -164,7 +165,9 @@ export type BookingRequest = {
   userId?: string | null;
 };
 
-export type BookingOutcome = { ok: true; bookingId: string; startsAt: string; endsAt: string } | { ok: false; error: string };
+export type BookingOutcome =
+  | { ok: true; bookingId: string; startsAt: string; endsAt: string; status: BookingStatus; approvalReasons: string[] }
+  | { ok: false; error: string };
 
 const fail = (r: RuleResult): BookingOutcome => ({ ok: false, error: r.ok ? "Couldn't book that." : `${BLOCK_REASON_TEXT[r.reason]}${r.detail ? ` (${r.detail.replace(/_/g, " ")})` : ""}` });
 
@@ -248,6 +251,7 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
   }
 
   // Required records (e.g. rabies vaccine) must be valid through the last day.
+  let vaccineStatus: "ok" | "expiring" | null = null;
   if (s.requiredDocuments?.length) {
     if (!req.subjectId) return { ok: false, error: "Pick which pet or vehicle this is for, so we can check required records." };
     const { data: docs } = await db
@@ -260,6 +264,8 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
     const documents: SubjectDocument[] = (docs ?? []).map((d) => ({ documentType: d.document_type!, expiresOn: d.expires_on }));
     const r = checkDocuments(s.requiredDocuments, documents, lastDay);
     if (!r.ok) return fail(r);
+    // Valid for the visit but running out within two weeks after it: worth a look.
+    vaccineStatus = checkDocuments(s.requiredDocuments, documents, addDays(lastDay, 14)).ok ? "ok" : "expiring";
   }
 
   if (req.packageId) {
@@ -273,6 +279,31 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
     if (!r.ok) return fail(r);
   }
 
+  // Approval rules: bookings from outside the team may wait for the owner's OK.
+  let status: BookingStatus = req.status ?? "confirmed";
+  let approvalReasons: string[] = [];
+  if (req.source !== "owner" && req.source !== "team") {
+    const [{ count: pastVisits }, { data: priv }] = await Promise.all([
+      db.from("bookings").select("id", { count: "exact", head: true }).eq("org_id", org.id).eq("contact_id", req.contactId).eq("status", "completed"),
+      req.subjectId ? db.from("subject_private").select("behavior_notes").eq("subject_id", req.subjectId).eq("org_id", org.id).maybeSingle() : Promise.resolve({ data: null }),
+    ]);
+    const decision = evaluateApproval(parseApprovalSettings(org.approval_settings), {
+      source: req.source,
+      isNewCustomer: (pastVisits ?? 0) === 0,
+      priceCents: serviceRow.price_from_cents,
+      hoursUntilStart: (startsAt.getTime() - nowMs) / 3_600_000,
+      zip: req.zip ?? null,
+      serviceZips: data.settings.serviceZips,
+      // Only a yes/no flag is derived from private notes; the notes never leave the team's screens.
+      petBehaviorWarning: hasBehaviorWarning(priv?.behavior_notes),
+      vaccineStatus,
+    });
+    if (decision.needsApproval) {
+      status = "pending_approval";
+      approvalReasons = decision.reasons;
+    }
+  }
+
   const row = {
     org_id: org.id,
     contact_id: req.contactId,
@@ -282,7 +313,7 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
     package_id: req.packageId ?? null,
     resource_id: resourceId,
     mode: s.mode,
-    status: req.status ?? "confirmed",
+    status,
     source: req.source,
     starts_at: startsAt.toISOString(),
     ends_at: endsAt.toISOString(),
@@ -308,7 +339,17 @@ export async function createBooking(db: AdminClient, org: Org, req: BookingReque
     console.error("book_slot failed", error);
     return { ok: false, error: "Couldn't save the booking. Please try again." };
   }
-  return { ok: true, bookingId: id, startsAt: row.starts_at, endsAt: row.ends_at };
+  if (status === "pending_approval") {
+    await db.from("approval_requests").insert({
+      org_id: org.id,
+      kind: "booking",
+      booking_id: id,
+      lead_id: req.leadId ?? null,
+      contact_id: req.contactId,
+      reasons: approvalReasons,
+    });
+  }
+  return { ok: true, bookingId: id, startsAt: row.starts_at, endsAt: row.ends_at, status, approvalReasons };
 }
 
 /** "Mon, Oct 5, 8–10am" style label for a booking. */

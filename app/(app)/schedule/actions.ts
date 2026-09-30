@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAppContext } from "@/lib/auth/context";
+import { decideBooking } from "@/lib/services/approvals";
 import { completeJobForLead } from "@/lib/services/lead-actions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -19,6 +20,15 @@ const TO: Record<string, string> = { confirm: "confirmed", start: "in_progress",
 export async function changeBookingStatus(bookingId: string, action: keyof typeof TO): Promise<void> {
   const ctx = await requireAppContext();
   const supabase = await createClient();
+  // Confirming or declining a waiting booking goes through the approval flow (records the decision, texts the customer).
+  if (action === "confirm" || action === "cancel") {
+    const { data: waiting } = await supabase.from("bookings").select("id").eq("id", bookingId).eq("org_id", ctx.org.id).in("status", ["requested", "pending_approval"]).maybeSingle();
+    if (waiting) {
+      await decideBooking(createAdminClient(), ctx.org, bookingId, action === "confirm" ? "approve" : "decline", ctx.userId);
+      revalidatePath("/schedule");
+      return;
+    }
+  }
   const { data: b } = await supabase
     .from("bookings")
     .update({ status: TO[action] })

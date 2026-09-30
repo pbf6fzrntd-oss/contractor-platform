@@ -18,12 +18,12 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M17 Sales audit tool (admin only) | ✅ done |
 | M18 Customer records, private data, files, licenses | ✅ done |
 | M19 Booking engine | ✅ done |
-| M20 Approval rules + source reporting | not started |
+| M20 Approval rules + source reporting | ✅ done |
 | M21 Editions, add-ons, Executive & Enterprise | not started |
 | M22 Agent Ready | not started |
 
 ## Next up
-M20: approval rules (pure evaluators in `lib/approvals/`, `approval_rules` + `approval_requests`), bookings from outside channels go to "Needs your OK", customer texts on approve/decline, and a "Where leads and bookings came from" report on the dashboard.
+M21: editions and add-ons: `org_modules` gains edition/add-on and Stripe item links. New plan rows `executive` and `enterprise` with switches (`feature_agent_ready`, `feature_booking`, `feature_approvals`, `feature_ai_voice`; `feature_team_ai` already exists). Stripe checkout with several items, the webhook syncs modules, and /admin can switch modules on per business. Suggested prices are in docs/PRICING.md.
 
 ## Milestone notes and "how to test"
 (Added as each milestone finishes.)
@@ -129,3 +129,24 @@ Nothing new to click yet. The configs show up in the sales audit (M17) and on ho
 3. Set "Visits per window" to 1 and try the same window on another lead: it's gone.
 4. Schedule → Done on a visit → the lead shows the job and a review request.
 5. A business that never turns booking on sees no change anywhere.
+
+### M20: Approval rules + source reporting
+**What changed**
+- Pure approval rules (`lib/approvals/rules.ts`):
+  - core rules: outside channels, your own AI assistant, new customer, price over $X, short notice, outside service ZIPs;
+  - module rules: pet behavior warning, vaccine problems, move over X miles, repair estimate over $X, quote over $X.
+  - Defaults: anything booked online, by a customer's AI agent or by the phone assistant **waits for your OK**. Bookings by you or your team never do.
+- Bookings that match a rule are saved as "Needs your OK" with the reasons (`approval_requests`). The slot is held while waiting, so nobody else can take it.
+- Schedule → "Waiting for you" shows **why**. Confirm/Decline records who decided, and texts the customer when they booked from outside. The text goes through the normal pipeline (opt-outs, hours, STOP footer).
+- A pet's behavior notes stay private: only a yes/no "warning" flag is used for the rule.
+- Settings → **Approval rules** (owner). Each business sees only the rules for its modules.
+- Dashboard → **Where your work came from** (last 90 days): leads, wins and bookings per source (missed calls, texts, campaigns, online page, customers' AI agents, phone assistant, your AI assistant). Lead sources now also allow `booking_page`, `outside_agent`, `voice`, `ai_assistant` (the list was only widened).
+- AI assistant: `list_bookings` shows why a booking is waiting; new `decide_booking` tool. It says honestly whether the customer got a text.
+- Migration `20260929200000_m20_approvals_sources.sql`; rollback included.
+- Click-through tested: turned on "hold my AI assistant's bookings". The assistant's booking showed as waiting with its reason and was confirmed from the Schedule. A second one was declined by the assistant and couldn't be decided twice. The dashboard showed sources.
+
+**How to test**
+1. Settings → Approval rules → check "Bookings made by your own AI assistant" → Save.
+2. Ask your AI assistant to book a visit. Schedule → "Waiting for you" shows it with "Why: Booked by your AI assistant". Tap Confirm.
+3. Dashboard → "Where your work came from".
+4. Customer texts on approve/decline are tested end-to-end with the public booking page in M22.

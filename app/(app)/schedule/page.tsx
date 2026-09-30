@@ -36,12 +36,14 @@ export default async function SchedulePage() {
     .order("starts_at")
     .limit(300);
   const list = bookings ?? [];
-  const [{ data: contacts }, { data: services }, { data: subjects }, { data: resources }] = await Promise.all([
+  const [{ data: contacts }, { data: services }, { data: subjects }, { data: resources }, { data: approvals }] = await Promise.all([
     supabase.from("contacts").select("id, name, phone").in("id", [...new Set(list.map((b) => b.contact_id))]),
     supabase.from("service_catalog").select("id, name").eq("org_id", org.id),
     supabase.from("subjects").select("id, label").in("id", list.map((b) => b.subject_id).filter((x): x is string => Boolean(x))),
     supabase.from("resources").select("id, name").eq("org_id", org.id),
+    supabase.from("approval_requests").select("booking_id, reasons").eq("org_id", org.id).eq("status", "pending"),
   ]);
+  const reasons = new Map((approvals ?? []).map((a) => [a.booking_id, a.reasons]));
   const name = <T extends { id: string }>(rows: T[] | null, id: string | null, pick: (r: T) => string) => (id ? (rows?.find((r) => r.id === id) ? pick(rows.find((r) => r.id === id)!) : null) : null);
   const waiting = list.filter((b) => b.status === "requested" || b.status === "pending_approval");
   const days = new Map<string, typeof list>();
@@ -75,6 +77,7 @@ export default async function SchedulePage() {
           </span>
           <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${s.className}`}>{s.label}</span>
         </div>
+        {reasons.get(b.id)?.length ? <p className="rounded-lg bg-amber-50 px-3 py-1.5 text-sm text-amber-900">Why: {reasons.get(b.id)!.join(" · ")}</p> : null}
         {actions.length > 0 && (
           <div className="flex gap-2">
             {actions.map(([a, label, cls]) => (

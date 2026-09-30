@@ -536,6 +536,24 @@ describe.skipIf(!url)("row-level security", () => {
     });
   });
 
+  it("keeps approvals private and server-controlled, and accepts the new lead sources (Milestone 20)", async () => {
+    await db.query("reset role");
+    const contact = (await db.query("insert into public.contacts (org_id, phone) values ($1, '+18435550500') returning id", [orgB])).rows[0].id;
+    await db.query("insert into public.approval_requests (org_id, contact_id, reasons) values ($1, $2, '{Booked online}')", [orgB, contact]);
+    for (const source of ["booking_page", "outside_agent", "voice", "ai_assistant"]) {
+      await db.query("insert into public.leads (org_id, contact_id, source, stage) values ($1, $2, $3, 'won')", [orgB, contact, source]);
+    }
+    expect((await attempt("insert into public.leads (org_id, contact_id, source) values ($1, $2, 'bogus')", [orgB, contact])).error).not.toBeNull();
+    await actAs(ownerA);
+    expect((await db.query("select * from public.approval_requests where org_id = $1", [orgB])).rowCount).toBe(0);
+    await actAs(ownerB);
+    expect((await db.query("select reasons from public.approval_requests")).rows).toEqual([{ reasons: ["Booked online"] }]);
+    expect((await attempt("update public.approval_requests set status = 'approved'")).error).not.toBeNull();
+    expect((await attempt("insert into public.approval_requests (org_id) values ($1)", [orgB])).error).not.toBeNull();
+    await actAsAnonymous();
+    expect((await attempt("select * from public.approval_requests")).rowCount).toBe(0);
+  });
+
   it("keeps sales audits completely server-only (Milestone 17)", async () => {
     await db.query("reset role");
     await db.query("insert into public.audit_reports (prospect_name, score) values ('Prospect Roofing', 42)");

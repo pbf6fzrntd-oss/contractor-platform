@@ -158,6 +158,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      approval_requests: {
+        Row: {
+          id: string;
+          org_id: string;
+          kind: string;
+          booking_id: string | null;
+          lead_id: string | null;
+          contact_id: string | null;
+          reasons: string[];
+          status: string;
+          decided_by: string | null;
+          decided_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          kind?: string;
+          booking_id?: string | null;
+          lead_id?: string | null;
+          contact_id?: string | null;
+          reasons?: string[];
+          status?: string;
+          decided_by?: string | null;
+          decided_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          kind?: string;
+          booking_id?: string | null;
+          lead_id?: string | null;
+          contact_id?: string | null;
+          reasons?: string[];
+          status?: string;
+          decided_by?: string | null;
+          decided_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       audit_reports: {
         Row: {
           id: string;
@@ -951,6 +993,7 @@ export type Database = {
           industry: string | null;
           booking_enabled: boolean;
           booking_settings: Json;
+          approval_settings: Json;
         };
         Insert: {
           id?: string;
@@ -967,6 +1010,7 @@ export type Database = {
           industry?: string | null;
           booking_enabled?: boolean;
           booking_settings?: Json;
+          approval_settings?: Json;
         };
         Update: {
           id?: string;
@@ -983,6 +1027,7 @@ export type Database = {
           industry?: string | null;
           booking_enabled?: boolean;
           booking_settings?: Json;
+          approval_settings?: Json;
         };
         Relationships: [];
       };

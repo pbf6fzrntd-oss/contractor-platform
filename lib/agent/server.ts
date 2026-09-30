@@ -38,6 +38,7 @@ import type { AdminClient } from "@/lib/supabase/admin";
 import { shareableSubject } from "@/lib/subjects/fields";
 import { renderTemplate } from "@/lib/templates/render";
 import { addDays, DAY_NAMES, isWithinWindow, localDateString, weekdayOf } from "@/lib/time";
+import { decideBooking } from "@/lib/services/approvals";
 import { bookingWhen, createBooking, loadBookingData, openingsOn } from "@/lib/services/booking";
 
 /**
@@ -455,10 +456,12 @@ export function buildAgentServer(ctx: AgentContext, extensions: AgentToolRegistr
           .order("starts_at")
           .limit(100);
         const ids = [...new Set((data ?? []).map((b) => b.contact_id))];
-        const [{ data: contacts }, { data: services }] = await Promise.all([
+        const [{ data: contacts }, { data: services }, { data: approvals }] = await Promise.all([
           db.from("contacts").select("id, name, phone").in("id", ids),
           db.from("service_catalog").select("id, name").eq("org_id", org.id),
+          db.from("approval_requests").select("booking_id, reasons").eq("org_id", org.id).eq("status", "pending"),
         ]);
+        const waiting = new Map((approvals ?? []).map((a) => [a.booking_id, a.reasons.join("; ")]));
         const rows = (data ?? []).map((b) => {
           const c = contacts?.find((x) => x.id === b.contact_id);
           return {
@@ -467,7 +470,8 @@ export function buildAgentServer(ctx: AgentContext, extensions: AgentToolRegistr
             when: bookingWhen(b, org.timezone),
             service: services?.find((s) => s.id === b.service_id)?.name ?? "Visit",
             customer: c?.name ?? (c ? formatUSPhone(c.phone) : null),
-            status: b.status.replace(/_/g, " "),
+            status: b.status === "pending_approval" ? "waiting for the owner's OK" : b.status.replace(/_/g, " "),
+            ...(waiting.get(b.id) ? { why_waiting: waiting.get(b.id) } : {}),
           };
         });
         return { result: ok(rows.length ? rows : "Nothing booked."), summary: `Looked at ${rows.length} booking(s)` };
@@ -801,7 +805,32 @@ export function buildAgentServer(ctx: AgentContext, extensions: AgentToolRegistr
           userId: ctx.userId,
         });
         if (!r.ok) return { result: fail(r.error), summary: `Booking not made: ${r.error}` };
-        return { result: ok({ booking_id: r.bookingId, message: `Booked for ${when(r.startsAt)}.` }), summary: `Booked a visit for ${loaded.contact.name ?? formatUSPhone(loaded.contact.phone)} on ${when(r.startsAt)}` };
+        const waiting = r.status === "pending_approval";
+        return {
+          result: ok({
+            booking_id: r.bookingId,
+            message: waiting ? `Requested for ${when(r.startsAt)}. It's waiting for the owner's OK (${r.approvalReasons.join("; ")}).` : `Booked for ${when(r.startsAt)}.`,
+          }),
+          summary: `${waiting ? "Requested" : "Booked"} a visit for ${loaded.contact.name ?? formatUSPhone(loaded.contact.phone)} on ${when(r.startsAt)}`,
+        };
+      }),
+    );
+  }
+
+  if (org.booking_enabled) {
+    server.registerTool(
+      "decide_booking",
+      {
+        title: "Approve or decline a booking",
+        description: "Approve or decline a booking that's waiting for the owner's OK (see list_bookings). The customer gets a text. Only do this when the owner tells you to.",
+        inputSchema: { booking_id: z.string().uuid(), decision: z.enum(["approve", "decline"]) },
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+      },
+      logged("decide_booking", async ({ booking_id, decision }) => {
+        const r = await decideBooking(db, org, booking_id, decision, ctx.userId);
+        if (!r.done) return { result: fail("No booking waiting for approval with that id."), summary: "Booking not found" };
+        const told = r.texted ? " The customer got a text." : " No text was sent (the business booked it, or the customer can't get texts).";
+        return { result: ok(`${decision === "approve" ? "Approved." : "Declined."}${told}`), summary: `${decision === "approve" ? "Approved" : "Declined"} a booking` };
       }),
     );
   }

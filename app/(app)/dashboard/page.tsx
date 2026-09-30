@@ -8,6 +8,7 @@ import { stageLabel } from "@/lib/leads/stages";
 import { createClient } from "@/lib/supabase/server";
 import { loadCoreMetrics } from "@/lib/services/metrics";
 import { RecurringMetricsSection } from "./recurring-metrics";
+import { SourcesSection } from "./sources";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -55,6 +56,7 @@ export default async function DashboardPage() {
           }
         />
         <RecurringMetricsSection org={org} />
+        <SourcesSection org={org} />
       </div>
     </>
   );

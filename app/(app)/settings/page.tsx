@@ -24,6 +24,7 @@ export default async function SettingsPage() {
     ...(role === "owner"
       ? [
           { href: "/settings/booking", label: "Online booking", detail: org.booking_enabled ? "On" : "Off: set up services and hours" },
+          { href: "/settings/approvals", label: "Approval rules", detail: "Which bookings wait for your OK" },
           { href: "/settings/registration", label: "Carrier registration", detail: "Required before texting real customers" },
           { href: "/settings/assistants", label: "AI assistants", detail: "Let Claude, ChatGPT and others help run your inbox" },
         ]
