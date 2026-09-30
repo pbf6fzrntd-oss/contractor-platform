@@ -47,7 +47,7 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, ro
 - [x] M23 Booking hardening: approval expiry, reminders, reschedule/cancel link, closed dates, YES check for agent bookings, Spanish booking page
 - [x] M24 Expiry reminders (licenses, vaccines) + photos texted in (MMS → private storage)
 - [x] Demo-ready (founder request after M24): laptop layout (side menu, two-pane inbox, wider dashboard with money won + weekly chart), "Try it live" demo businesses at /demo (`DEMO_MODE=on`, `lib/demo/`, `lib/services/demo.ts`), live demo buttons. Guide: `docs/DEMO.md`
-- [ ] M25 Quality: click-through suite in the repo (Playwright), GitHub Actions checks, daily cleanup, Sentry
+- [x] M25 Quality: click-through suite in the repo (Playwright), GitHub Actions checks, daily cleanup, Sentry
 - [ ] M26 Selling: demo business per industry, in-app setup checklist, audit→customer link + re-audit, calendar feed
 
 Founder decisions (2026-09-29): default phone setup is "keep your number" (conditional forwarding); pilots are billed by hand until M10; LLC/EIN/domain come later, so build and demo without real carrier registration; team roles are owner + office manager only.
@@ -132,5 +132,6 @@ npm run db:push        # apply new migrations to the linked Supabase project
 npm run db:types       # regenerate lib/database.types.ts (DATABASE_URL=... with migrations applied)
 npm run db:test:setup  # prepare a plain local Postgres for the database tests
 npm run demo:seed      # load two demo businesses into a DEV database
+npm run e2e            # click-through tests (app running with DEMO_MODE=on; see README)
 ```
 Definition of done for a milestone: `npm run check` passes, database tests pass against a real database, and the founder has a "how to test" checklist.

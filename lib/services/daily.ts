@@ -1,6 +1,7 @@
 import "server-only";
 import { credentialAlertDue, credentialAlertText, vaccineReminderDue, VACCINE_REMINDER_DAYS, VACCINE_REMINDER_GRACE_DAYS } from "@/lib/automation/expiry";
 import { parseBookingSettings } from "@/lib/booking/settings";
+import { RETENTION, retentionCutoff } from "@/lib/automation/retention";
 import type { Json } from "@/lib/database.types";
 import { toOrg } from "@/lib/org";
 import { notifyOwner } from "@/lib/services/conversations";
@@ -19,6 +20,7 @@ type DailyJob = (db: AdminClient, now: Date) => Promise<Json>;
 const JOBS: Record<string, DailyJob> = {
   credential_expiry: alertExpiringCredentials,
   vaccine_expiry: queueVaccineReminders,
+  cleanup: cleanUpOldRecords,
 };
 
 /** Registers another daily job (used by later milestones, e.g. cleanup). */
@@ -119,4 +121,17 @@ export async function queueVaccineReminders(db: AdminClient, now = new Date()): 
     queued += 1;
   }
   return { queued };
+}
+
+/** Deletes short-lived records past their keep-for time (see lib/automation/retention.ts). */
+export async function cleanUpOldRecords(db: AdminClient, now = new Date()): Promise<Json> {
+  const deleted: Record<string, number> = {};
+  for (const rule of RETENTION) {
+    let q = db.from(rule.table).delete({ count: "exact" }).lt(rule.column, retentionCutoff(rule, now));
+    // Accepted invitations stay (they show who joined when).
+    if (rule.table === "invitations") q = q.is("accepted_at", null);
+    const { count, error } = await q;
+    deleted[rule.table] = error ? -1 : (count ?? 0);
+  }
+  return deleted;
 }

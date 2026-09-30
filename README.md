@@ -192,3 +192,11 @@ tests/unit/        business-rule tests          tests/db/  data-isolation tests
 ## 11. Environment variables
 
 See `.env.example` for the full, commented list. Secrets: `SUPABASE_SECRET_KEY`, `TWILIO_AUTH_TOKEN`, `CRON_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TEST_DATABASE_URL`. Never commit `.env.local`.
+
+## Click-through tests and automatic checks
+- `npm run e2e` runs the Playwright click-through tests in `e2e/` against a running app (`E2E_BASE_URL`, default http://localhost:3000). The app needs `DEMO_MODE=on` and `DEMO_STARTS_PER_HOUR=500`. First time: `npx playwright install chromium`.
+- GitHub runs `.github/workflows/ci.yml` on every push: the full `npm run check` with database tests, then the click-through tests against a local Supabase.
+
+## Error alerts
+Set `SENTRY_DSN` (from a free sentry.io project) to get emailed when something breaks. Only the error, code location and page are sent. Phone numbers, emails, secrets and message text are removed first (`lib/monitoring/sentry.ts`).
+

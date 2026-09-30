@@ -43,3 +43,8 @@ next-env.d.ts
 
 # local private-file storage (FILE_STORAGE=local)
 /.data/
+
+# Playwright click-through test output
+/test-results/
+/playwright-report/
+/blob-report/

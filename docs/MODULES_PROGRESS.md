@@ -24,7 +24,7 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M23 Booking hardening: approval expiry, reminders, reschedule/cancel link, closed dates, YES check for agent bookings, Spanish booking page | ✅ done |
 | M24 Expiry reminders (licenses, vaccines) + photos texted in | ✅ done |
 | Demo-ready UI (founder request) | ✅ done |
-| M25 Quality: click-through suite in the repo, automatic checks on GitHub, daily cleanup, error alerts | not started |
+| M25 Quality: click-through suite in the repo, automatic checks on GitHub, daily cleanup, error alerts | ✅ done |
 | M26 Selling: demo business per industry, setup checklist, audit→customer link, calendar feed | not started |
 
 ## Next up
@@ -274,4 +274,27 @@ Nothing new to click yet. The configs show up in the sales audit (M17) and on ho
 4. **Dashboard**: money won, saved calls, the weekly chart. On a laptop: side menu; on a phone: bottom bar.
 5. **Pick another trade** → Lawn care → **Today** → rain delay.
 6. The script for sales calls is in `docs/DEMO.md`.
+
+### M25: Quality
+**What changed**
+- **Click-through tests in the repo** (`e2e/`, Playwright; `npm run e2e`). They run at laptop and phone size:
+  - a missed call → text-back → reply → estimate → follow-ups;
+  - the dashboard numbers and chart;
+  - a customer booking online, and the owner seeing it;
+  - Spanish replies;
+  - a lawn rain delay;
+  - sign-up → onboarding → pretend number → simulated missed call;
+  - logged-out visitors blocked, bad booking links refused, the scheduler needing its secret.
+  They start their own demo businesses, so no seed data is needed.
+- **Automatic checks on GitHub** (`.github/workflows/ci.yml`) on every push:
+  1. lint, typecheck, unit + database tests (Postgres service), build;
+  2. local Supabase (all migrations), the built app, then the click-through tests. Screenshots and traces are kept for failures.
+- **Daily cleanup** (the scheduler's once-a-day job): deletes old rate-limit records (2 days), used/expired AI sign-in codes (1 day), expired unaccepted invites (30 days), job-run records (90 days), old notices (180 days) and AI activity older than a year. Rules: `lib/automation/retention.ts`. Conversations, consent history, jobs, bookings and files are never deleted by it.
+- **Error alerts (Sentry)**, off until `SENTRY_DSN` is set. Server errors (`instrumentation.ts` → `onRequestError`) and browser errors ("Something went wrong" screens → `/api/client-errors`, max 20/minute) are sent straight to Sentry's API. There's no SDK. What's sent is scrubbed: no phone numbers, emails, secrets, long tokens or query strings, and never message text.
+- `DEMO_STARTS_PER_HOUR` setting (default 8) so the tests can start many demos.
+
+**How to test**
+1. GitHub → the repository → **Actions**: every push shows "CI" with two checks (green = good). Click a failed run to see which step failed. The click-through step keeps screenshots under "Artifacts".
+2. Locally: run the app with `DEMO_MODE=on` and `DEMO_STARTS_PER_HOUR=500`, then `npm run e2e`.
+3. Error alerts: create a free Sentry project (Next.js), put its DSN in `SENTRY_DSN` on Vercel, redeploy. Visit a page that errors; the alert email arrives within a minute.
 

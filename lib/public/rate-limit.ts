@@ -8,7 +8,7 @@ export const LIMITS = {
   lookup: { perIp: 120, windowMinutes: 10 },
   booking: { perIp: 5, windowMinutes: 60, perOrgPerDay: 60 },
   /** "Try it live" demo businesses: per visitor, plus a cap for the whole site. */
-  demo: { perIp: 8, windowMinutes: 60, perSitePerDay: 300 },
+  demo: { perIp: Number(process.env.DEMO_STARTS_PER_HOUR) || 8, windowMinutes: 60, perSitePerDay: 300 },
 } as const;
 
 /** The visitor's IP, salted and hashed (we never store raw IPs). */
