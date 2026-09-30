@@ -106,6 +106,12 @@ const twilio: SmsProvider = {
   },
 };
 
-export function getProvider(): SmsProvider {
+/**
+ * The texting provider. A pretend (simulator) business number ALWAYS uses the
+ * simulator, even when the site texts through Twilio, so demo businesses and
+ * test numbers can never text a real phone.
+ */
+export function getProvider(phone?: { provider: string } | null): SmsProvider {
+  if (phone?.provider === "simulator") return simulator;
   return serverEnv.smsProvider === "twilio" ? twilio : simulator;
 }

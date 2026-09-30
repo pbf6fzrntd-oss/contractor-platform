@@ -13,12 +13,13 @@ export async function RecurringMetricsSection({ org }: { org: Org }) {
   return (
     <>
       <h2 className="mt-3 text-lg font-semibold">Recurring customers</h2>
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-4 lg:gap-5">
       <StatTile
         label="Active customers"
         value={String(m.active)}
         detail={`${m.paused} paused · about ${money(m.estimatedMonthlyCents)}/month`}
       />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:contents">
         <StatTile label="New this month" value={String(m.newThisMonth)} />
         <StatTile label="Canceled this month" value={String(m.canceledThisMonth)} />
       </div>
@@ -31,6 +32,7 @@ export async function RecurringMetricsSection({ org }: { org: Org }) {
             : "Share of customers who canceled"
         }
       />
+      </div>
     </>
   );
 }

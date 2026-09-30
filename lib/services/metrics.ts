@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeCoreMetrics, computeRecurringMetrics, type CoreMetrics, type RecurringMetrics } from "@/lib/automation/metrics";
 import type { Database } from "@/lib/database.types";
+import { computeTrend, type Trend } from "@/lib/automation/trend";
 import type { Org } from "@/lib/org";
 import { addDays, localDateString, zonedTimeToUtc } from "@/lib/time";
 
@@ -54,4 +55,16 @@ export async function loadRecurringMetrics(db: Db, org: Pick<Org, "id" | "timezo
     .limit(5000);
   const today = localDateString(now, org.timezone);
   return computeRecurringMetrics(data ?? [], today, `${today.slice(0, 8)}01`, addDays(today, -30));
+}
+
+/** Leads per week and money won (dashboard trend). */
+export async function loadTrend(db: Db, org: Pick<Org, "id" | "timezone">, now = new Date()): Promise<Trend> {
+  const since = new Date(now.getTime() - 100 * 86_400_000).toISOString();
+  const { data } = await db
+    .from("leads")
+    .select("created_at, source, stage, won_at, estimate_amount_cents")
+    .eq("org_id", org.id)
+    .or(`created_at.gte.${since},won_at.gte.${since}`)
+    .limit(5000);
+  return computeTrend(data ?? [], now, org.timezone);
 }

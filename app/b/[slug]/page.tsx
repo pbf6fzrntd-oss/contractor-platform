@@ -18,6 +18,8 @@ export async function generateMetadata({ params }: PageProps<"/b/[slug]">): Prom
     title: { absolute: `${biz.profile.name}${industry ? ` · ${industry.label}` : ""}` },
     description: biz.profile.about ?? `${biz.profile.name}${biz.profile.service_area ? ` serving ${biz.profile.service_area}` : ""}.`,
     alternates: { canonical: publicUrls(biz.profile.slug, false).page },
+    // Demo businesses are practice data: keep them out of search engines.
+    ...(biz.org.is_demo ? { robots: { index: false, follow: false } } : {}),
   };
 }
 

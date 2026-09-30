@@ -42,6 +42,13 @@ export const serverEnv = {
   get allowUnregisteredTexting() {
     return process.env.ALLOW_UNREGISTERED_TEXTING === "true";
   },
+  /**
+   * "Try it live" demo at /demo: anyone with the link gets their own private
+   * demo business (pretend numbers only; deleted after 24 hours). Off unless "on".
+   */
+  get demoMode() {
+    return process.env.DEMO_MODE === "on";
+  },
   /** Secret the scheduler must send to /api/cron/dispatch. */
   get cronSecret() {
     return process.env.CRON_SECRET ?? "";

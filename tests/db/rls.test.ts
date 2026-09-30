@@ -688,6 +688,14 @@ describe.skipIf(!url)("row-level security", () => {
     expect((await attempt("select id from public.files where message_id = $1", [msg])).rowCount).toBe(1);
   });
 
+  it("doesn't let owners turn a demo business into a permanent one", async () => {
+    await actAs(ownerA);
+    expect((await attempt("update public.organizations set is_demo = true where id = $1", [orgA])).error).not.toBeNull();
+    expect((await attempt("update public.organizations set demo_expires_at = now() + interval '1 year' where id = $1", [orgA])).error).not.toBeNull();
+    await db.query("reset role");
+    expect((await attempt("insert into public.public_request_log (ip_hash, kind) values ('x', 'demo')")).error).toBeNull();
+  });
+
   it("gives logged-out visitors nothing", async () => {
     await actAsAnonymous();
     for (const table of ["organizations", "message_templates", "memberships", "profiles", "plans", "contacts", "leads", "messages", "org_modules", "api_keys"]) {

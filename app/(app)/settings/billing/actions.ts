@@ -20,6 +20,7 @@ async function ensureCustomer(orgId: string, orgName: string, email: string | nu
 /** Checkout for a plan plus any add-ons ticked on the form (each add-on is its own Stripe price). */
 export async function startCheckout(planId: string, formData?: FormData): Promise<void> {
   const { org, userId } = await requireOwner();
+  if (org.is_demo) redirect("/settings/billing");
   const stripe = getStripe();
   if (!stripe) redirect("/settings/billing");
   const db = createAdminClient();
@@ -49,6 +50,7 @@ export async function startCheckout(planId: string, formData?: FormData): Promis
 /** Adds or removes one add-on on an existing subscription (prorated by Stripe; the webhook turns it on or off). */
 export async function changeAddon(key: string, add: boolean): Promise<void> {
   const { org } = await requireOwner();
+  if (org.is_demo) redirect("/settings/billing");
   const stripe = getStripe();
   if (!stripe) redirect("/settings/billing");
   const db = createAdminClient();
@@ -71,6 +73,7 @@ export async function changeAddon(key: string, add: boolean): Promise<void> {
 
 export async function openBillingPortal(): Promise<void> {
   const { org, userId } = await requireOwner();
+  if (org.is_demo) redirect("/settings/billing");
   const stripe = getStripe();
   if (!stripe) redirect("/settings/billing");
   const db = createAdminClient();

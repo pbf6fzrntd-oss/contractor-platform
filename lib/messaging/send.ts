@@ -133,7 +133,7 @@ export async function sendToContact(db: AdminClient, ctx: SendingContext, input:
   });
 
   const phone = ctx.phone!;
-  const result = await getProvider().sendSms({
+  const result = await getProvider(phone).sendSms({
     from: phone.e164,
     messagingServiceSid: phone.messaging_service_sid,
     to: contact.phone,

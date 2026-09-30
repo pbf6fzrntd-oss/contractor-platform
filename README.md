@@ -128,6 +128,7 @@ Anything that texts many people (rain delays, running-late texts, campaigns) ret
 
   - `{SITE}/m/<token>`: a customer's private link to move or cancel one booking (sent in confirmation and reminder texts);
   - add `?lang=es` to any public page for Spanish.
+  Live demo for prospects: set `DEMO_MODE=on` and open `/demo` (each visitor gets a private demo business on pretend numbers, deleted after 24 hours). Sales script: `docs/DEMO.md`.
   Reminders go out at 5pm the day before (reply C to confirm, R to reschedule). Requests from customers' AI agents need the customer to text YES first. Requests the owner doesn't answer within the hold time are released by `/api/cron/dispatch`.
   Outside bookings wait for the owner's OK by default (Settings → Approval rules). Public data comes only from the `public_business_profile()` database function (an allow-list).
 - **Sales audit:** /admin → Sales audits (admin only).

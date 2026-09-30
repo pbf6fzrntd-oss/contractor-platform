@@ -7,6 +7,8 @@ import type { AdminClient } from "@/lib/supabase/admin";
 export const LIMITS = {
   lookup: { perIp: 120, windowMinutes: 10 },
   booking: { perIp: 5, windowMinutes: 60, perOrgPerDay: 60 },
+  /** "Try it live" demo businesses: per visitor, plus a cap for the whole site. */
+  demo: { perIp: 8, windowMinutes: 60, perSitePerDay: 300 },
 } as const;
 
 /** The visitor's IP, salted and hashed (we never store raw IPs). */
@@ -16,12 +18,17 @@ export function visitorHash(headers: Headers): string {
 }
 
 /** Records the request and says whether it's within the limits. */
-export async function allowPublicRequest(db: AdminClient, orgId: string, ipHash: string, kind: "lookup" | "booking"): Promise<boolean> {
+export async function allowPublicRequest(db: AdminClient, orgId: string | null, ipHash: string, kind: "lookup" | "booking" | "demo"): Promise<boolean> {
   const rule = LIMITS[kind];
   const since = new Date(Date.now() - rule.windowMinutes * 60_000).toISOString();
   const { count } = await db.from("public_request_log").select("id", { count: "exact", head: true }).eq("ip_hash", ipHash).eq("kind", kind).gte("created_at", since);
   if ((count ?? 0) >= rule.perIp) return false;
-  if (kind === "booking") {
+  if (kind === "demo") {
+    const day = new Date(Date.now() - 86_400_000).toISOString();
+    const { count: all } = await db.from("public_request_log").select("id", { count: "exact", head: true }).eq("kind", "demo").gte("created_at", day);
+    if ((all ?? 0) >= LIMITS.demo.perSitePerDay) return false;
+  }
+  if (kind === "booking" && orgId) {
     const day = new Date(Date.now() - 86_400_000).toISOString();
     const { count: orgCount } = await db.from("public_request_log").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("kind", "booking").gte("created_at", day);
     if ((orgCount ?? 0) >= LIMITS.booking.perOrgPerDay) return false;

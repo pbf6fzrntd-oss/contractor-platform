@@ -27,6 +27,7 @@ function read(formData: FormData): RegistrationInput {
 
 export async function saveRegistration(_prev: FormState, formData: FormData): Promise<FormState> {
   const { org } = await requireOwner();
+  if (org.is_demo) return { error: "Demo businesses don't need carrier registration. Sign up to register your real business." };
   const input = read(formData);
   const submit = formData.get("intent") === "submit";
   if (submit) {

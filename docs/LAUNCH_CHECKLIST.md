@@ -112,6 +112,7 @@ Do these with 2 phones (yours + a friend's) once Twilio is connected.
 - ☐ Add `https://YOUR-DOMAIN/api/agent/<slug>` as a custom connector in ChatGPT or Claude (as a "customer") and ask it to book a visit. Confirm the owner gets the request and the customer gets texts.
 - ☐ Book from the public page on iPhone and Android; check the consent checkbox wording with your attorney.
 - ☐ Twilio Messaging Service → Advanced Opt-Out: remove **YES** from the opt-in keywords (customers reply YES to confirm an AI agent's booking; keep START/UNSTOP for re-subscribing).
+- ☐ Demo: set `DEMO_MODE=on` on the live site, open `/demo` on your phone and a laptop, and run through `docs/DEMO.md` once before your first sales call.
 - ☐ Text a photo to the business number from a real phone (iPhone and Android): it shows in the conversation within a few seconds.
 - ☐ A real booking reminder arrives at 5pm the day before; reply C and R from a real phone.
 - ☐ Run 3–5 sales audits on real Charleston/Summerville businesses and sanity-check the scores.

@@ -46,6 +46,7 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) · Supabase (Postgres, auth, ro
 - [x] M22 Agent Ready: hosted profile + JSON-LD, public booking page, public agent booking MCP
 - [x] M23 Booking hardening: approval expiry, reminders, reschedule/cancel link, closed dates, YES check for agent bookings, Spanish booking page
 - [x] M24 Expiry reminders (licenses, vaccines) + photos texted in (MMS → private storage)
+- [x] Demo-ready (founder request after M24): laptop layout (side menu, two-pane inbox, wider dashboard with money won + weekly chart), "Try it live" demo businesses at /demo (`DEMO_MODE=on`, `lib/demo/`, `lib/services/demo.ts`), live demo buttons. Guide: `docs/DEMO.md`
 - [ ] M25 Quality: click-through suite in the repo (Playwright), GitHub Actions checks, daily cleanup, Sentry
 - [ ] M26 Selling: demo business per industry, in-app setup checklist, audit→customer link + re-audit, calendar feed
 
@@ -117,6 +118,8 @@ Founder decisions (2026-09-29): default phone setup is "keep your number" (condi
 - Customers' AI agents (public): `app/api/agent/[slug]/route.ts` → `lib/services/public-booking.ts` (business found ONLY from the slug via `public_business_profile()`) → `lib/agent/public-server.ts`.
 - Booking: `lib/booking/rules.ts` (pure) → `lib/services/booking.ts` (`createBooking`, approvals) → `book_slot()` (lock). Approval rules: `lib/approvals/rules.ts`.
 - Entitlements: `lib/entitlements.ts` (`hasFeature`, `canUse` incl. add-ons, `bookingOn`). Industries: `lib/industries/`. Modules: `modules/registry.ts`.
+- Demo businesses: `/demo` → `lib/services/demo.ts` (story from `lib/demo/scenario.ts`, pure) → `is_demo` orgs on pretend 555 numbers (`getProvider(phone)` always uses the simulator for them), deleted by `/api/cron/dispatch` after 24h. Demo orgs can't buy numbers, bill or register.
+- Layout: phones use the bottom bar (`components/bottom-nav.tsx`); laptops (`lg:`) use `components/side-nav.tsx`. Pages that need room put `data-wide` on their top element.
 - Progress and resume notes for the modules program: `docs/MODULES_PROGRESS.md`.
 - Launch status and remaining live tests: `docs/LAUNCH_CHECKLIST.md`. Compliance: `docs/COMPLIANCE.md`.
 

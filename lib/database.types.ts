@@ -1088,6 +1088,8 @@ export type Database = {
           slug: string | null;
           public_profile_enabled: boolean;
           profile: Json;
+          is_demo: boolean;
+          demo_expires_at: string | null;
         };
         Insert: {
           id?: string;
@@ -1109,6 +1111,8 @@ export type Database = {
           slug?: string | null;
           public_profile_enabled?: boolean;
           profile?: Json;
+          is_demo?: boolean;
+          demo_expires_at?: string | null;
         };
         Update: {
           id?: string;
@@ -1130,6 +1134,8 @@ export type Database = {
           slug?: string | null;
           public_profile_enabled?: boolean;
           profile?: Json;
+          is_demo?: boolean;
+          demo_expires_at?: string | null;
         };
         Relationships: [];
       };

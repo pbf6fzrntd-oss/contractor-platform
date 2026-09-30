@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function getBusinessNumber(_prev: FormState, formData: FormData): Promise<FormState> {
   const { org } = await requireOwner();
+  if (org.is_demo) return { error: "Demo businesses use a pretend number. Sign up to get a real one." };
   const areaCode = String(formData.get("area_code") ?? "").replace(/\D/g, "");
   if (areaCode && !/^[2-9]\d{2}$/.test(areaCode)) return { error: "Enter a 3-digit area code, like 843." };
   const result = await provisionBusinessNumber(createAdminClient(), org.id, areaCode);

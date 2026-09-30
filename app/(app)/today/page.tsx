@@ -58,7 +58,8 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
   const noticeHref = (type: string) => `/today/notice?type=${type}&date=${date}`;
 
   return (
-    <>
+    <div data-wide className="lg:grid lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-start lg:gap-8">
+      <div>
       {sentStatus && sentStatus.pending > 0 && <AutoRefresh seconds={4} />}
       <PageHeader title={date === today ? "Today" : title} subtitle={date === today ? title : undefined} />
 
@@ -99,7 +100,8 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
         </ul>
       )}
 
-      <section>
+      </div>
+      <section className="lg:pt-2">
         <h2 className="mb-2 text-lg font-semibold">
           {scheduled.length} scheduled{remaining < scheduled.length ? ` · ${scheduled.length - remaining} done` : ""}
         </h2>
@@ -136,6 +138,6 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
         )}
         {scheduled.length > 0 && <CompleteDayButton date={date} remaining={remaining} />}
       </section>
-    </>
+    </div>
   );
 }

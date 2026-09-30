@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import { serverEnv } from "@/lib/env";
+
+// Read settings (DEMO_MODE) on every visit, so turning the demo on/off needs no rebuild.
+export const dynamic = "force-dynamic";
 
 // Public home page. Carrier registration reviewers look for the privacy and
 // SMS terms links at the bottom.
@@ -15,7 +19,12 @@ export default function HomePage() {
         </p>
       </div>
       <div className="flex flex-col gap-3">
-        <Link href="/signup" className="btn-primary">
+        {serverEnv.demoMode && (
+          <Link href="/demo" className="btn-primary">
+            ▶ Try the live demo
+          </Link>
+        )}
+        <Link href="/signup" className={serverEnv.demoMode ? "btn-secondary" : "btn-primary"}>
           Get started
         </Link>
         <Link href="/login" className="btn-secondary">

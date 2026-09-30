@@ -23,6 +23,7 @@ The plan is `docs/MODULES_PLAN.md` and pricing is `docs/PRICING.md`. Update this
 | M22 Agent Ready | ✅ done |
 | M23 Booking hardening: approval expiry, reminders, reschedule/cancel link, closed dates, YES check for agent bookings, Spanish booking page | ✅ done |
 | M24 Expiry reminders (licenses, vaccines) + photos texted in | ✅ done |
+| Demo-ready UI (founder request) | ✅ done |
 | M25 Quality: click-through suite in the repo, automatic checks on GitHub, daily cleanup, error alerts | not started |
 | M26 Selling: demo business per industry, setup checklist, audit→customer link, calendar feed | not started |
 
@@ -239,4 +240,38 @@ Nothing new to click yet. The configs show up in the sales audit (M17) and on ho
 1. Simulator → type a message, attach a photo → Send. Open the lead: the photo shows in the conversation. Try attaching a non-photo file: "The photo wasn't saved".
 2. Pet business (industry "Pet care"): open a customer → add a pet → "💉 Add vaccine record" → rabies, expiring in 10 days. The next morning (or after 12:00 UTC with the scheduler running) the customer gets the reminder in the Simulator. Reply with a photo → file it under the pet as a new rabies record.
 3. Settings → Licenses: add one expiring in 20 days. The next morning there's a notice: "Your … expires in 20 days".
+
+### Demo-ready UI (founder request after M24: "an actual usable front end I can demo to prospects")
+**What changed**
+- **Laptop/tablet layout:** a side menu replaces the bottom bar at laptop width. The inbox shows the list next to the open conversation; on wide screens the lead page puts the conversation beside the customer details. The dashboard, Today and the recurring metrics use the width. Phone layout is unchanged.
+- **Dashboard:** new top row: "Won, last 30 days" ($), "Saved from missed calls" (and what they became), plus a "New leads per week" chart for 12 weeks (`lib/automation/trend.ts`, pure). The existing numbers are unchanged (golden tests).
+- **"Try it live" demo at `/demo`** (only when `DEMO_MODE=on`):
+  - Pick one of the 12 trades; you get a private demo business in about 1 second.
+  - It has about 50 leads with full conversations, jobs, review requests, follow-ups (sent, skipped and waiting), booked visits and licenses. Lawn/landscaping also get 26 recurring customers, today's route, a rain delay and a campaign.
+  - The story comes from `lib/demo/scenario.ts` (pure, seeded) and `lib/demo/content.ts` (wording per trade).
+  - Rate limited (8 per visitor per hour, 300 per day site-wide).
+  - Demo businesses are on the Executive plan and have `is_demo`. They're deleted with their login after 24 hours by the scheduler.
+- **Safety:**
+  - A pretend (simulator) number ALWAYS uses the simulator, even when the site texts through Twilio (`getProvider(phone)`). Before this, a pretend number on a live site would have tried Twilio.
+  - Demo businesses use 555 area-code numbers.
+  - They can't buy a number, bill or submit registration, and their public pages aren't indexed.
+  - Owners can't change `is_demo` or `demo_expires_at` (DB test).
+- **Live demo buttons** (yellow 🎬 Demo bar, demo businesses only; `lib/services/demo-live.ts`):
+  - miss a call (text-back plus the customer's reply, through the same code as a real call);
+  - a customer texts in (English or Spanish);
+  - jump ahead in time (sends waiting follow-ups);
+  - see the customer's phone (simulator);
+  - book online as a customer, or send a rain delay.
+  - After a button, the conversation shows a "What just happened" note.
+- **Home page:** "▶ Try the live demo" when the demo is on.
+- Migration `20260930030000_demo_sandboxes.sql` (additive); rollback included.
+- Tests: `tests/unit/demo.test.ts` (every trade's story is complete and consistent, no leftover placeholders, no replies before the question, the business is growing, the trend math, and simulator numbers never use Twilio); DB test for the demo columns. Click-through: all 12 trades on laptop and phone.
+
+**How to test**
+1. Set `DEMO_MODE=on` in `.env.local`, then run `npm run dev`. Open http://localhost:3000 → **▶ Try the live demo** → pick Roofing.
+2. **▶ Try it** → **Miss a call from a new customer**. You land in the conversation: the automatic text and the customer's reply, with "What just happened".
+3. Reply, set the stage to **Estimate sent**, press **⏩ Jump ahead in time**. The follow-ups go out.
+4. **Dashboard**: money won, saved calls, the weekly chart. On a laptop: side menu; on a phone: bottom bar.
+5. **Pick another trade** → Lawn care → **Today** → rain delay.
+6. The script for sales calls is in `docs/DEMO.md`.
 
