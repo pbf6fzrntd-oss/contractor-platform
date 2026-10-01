@@ -2,6 +2,7 @@
 
 A texting and follow-up app for small home-service contractors: missed-call text-back, a lead inbox, estimate follow-ups, Google review requests, an owner dashboard and, for lawn care companies, recurring customers, one-tap rain-delay texts and seasonal campaigns.
 
+- Hosted, persistent practice environment: [`docs/PRODUCTION_DEMO.md`](docs/PRODUCTION_DEMO.md)
 - Product plan and milestones: [`docs/PLAN.md`](docs/PLAN.md)
 - What still needs testing/connecting before launch: [`docs/LAUNCH_CHECKLIST.md`](docs/LAUNCH_CHECKLIST.md)
 - SMS compliance (what the app enforces, what you must do): [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md)

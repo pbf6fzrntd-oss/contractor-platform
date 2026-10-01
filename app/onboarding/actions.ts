@@ -1,5 +1,6 @@
 "use server";
 
+import { serverEnv } from "@/lib/env";
 import { redirect } from "next/navigation";
 import type { FormState } from "@/components/form-message";
 import { getAppContext, getUserId } from "@/lib/auth/context";
@@ -10,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { parseBusinessForm } from "@/lib/validation/business";
 
 export async function createBusiness(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (serverEnv.demoDeployment) return { error: "Use Try the live demo to start a practice business." };
   if (!(await getUserId())) redirect("/login");
   if (await getAppContext()) redirect("/home");
 

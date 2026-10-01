@@ -6,6 +6,7 @@ import { modulesOrDefault } from "@/lib/modules/defaults";
 import { canVisit, homePath } from "@/lib/navigation";
 import { toOrg, toRole, type Org, type Role } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
+import { serverEnv } from "@/lib/env";
 
 export type AppContext = {
   userId: string;
@@ -44,6 +45,7 @@ export const getAppContext = cache(async (): Promise<AppContext | null> => {
 
   const { data: org } = await supabase.from("organizations").select("*").eq("id", membership.org_id).single();
   if (!org) return null;
+  if (serverEnv.demoDeployment && !org.is_demo) return null;
 
   const [{ data: plan }, { data: modules }] = await Promise.all([
     supabase.from("plans").select("*").eq("id", org.plan_id).single(),

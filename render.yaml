@@ -1,0 +1,35 @@
+# Provision only after account access and hosting cost review.
+services:
+  - type: web
+    name: lowcountry-production-demo
+    runtime: node
+    branch: claude/home-service-saas-mvp-bcc00c
+    plan: 0.5c-512mb
+    region: ohio
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0
+      - key: NODE_ENV
+        value: production
+      - key: DEPLOYMENT_MODE
+        value: demo
+      - key: DEMO_MODE
+        value: "on"
+      - key: SMS_PROVIDER
+        value: simulator
+      - key: FILE_STORAGE
+        value: supabase
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: CRON_SECRET
+        generateValue: true

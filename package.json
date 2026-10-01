@@ -14,6 +14,7 @@
     "db:push": "supabase db push",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build",
     "db:types": "node scripts/gen-db-types.mjs",
+    "demo:operator": "tsx --conditions=react-server --env-file=.env.local scripts/seed-demo-operator.ts",
     "demo:seed": "tsx --env-file=.env.local scripts/seed-demo.ts",
     "e2e": "playwright test"
   },
