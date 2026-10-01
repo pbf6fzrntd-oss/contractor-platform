@@ -17,12 +17,16 @@ function required(name: string): string {
 export { publicEnv };
 
 export const serverEnv = {
+  get demoDeployment() {
+    return process.env.DEPLOYMENT_MODE === "demo";
+  },
   /** Supabase secret key (sb_secret_...). Server only: bypasses row-level security. */
   get supabaseSecretKey() {
     return required("SUPABASE_SECRET_KEY");
   },
   /** "simulator" (default: nothing real is sent) or "twilio". */
   get smsProvider(): "simulator" | "twilio" {
+    if (this.demoDeployment) return "simulator";
     return process.env.SMS_PROVIDER === "twilio" ? "twilio" : "simulator";
   },
   get twilioAccountSid() {
@@ -73,9 +77,11 @@ export const serverEnv = {
     return process.env.FILE_SIGNING_SECRET || required("SUPABASE_SECRET_KEY");
   },
   get stripeSecretKey() {
+    if (this.demoDeployment) return "";
     return process.env.STRIPE_SECRET_KEY ?? "";
   },
   get stripeWebhookSecret() {
+    if (this.demoDeployment) return "";
     return process.env.STRIPE_WEBHOOK_SECRET ?? "";
   },
 };

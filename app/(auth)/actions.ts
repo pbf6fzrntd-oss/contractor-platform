@@ -6,6 +6,7 @@ import type { FormState } from "@/components/form-message";
 import { publicEnv } from "@/lib/env-public";
 import { safeNextPath } from "@/lib/redirects";
 import { createClient } from "@/lib/supabase/server";
+import { serverEnv } from "@/lib/env";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Enter a valid email address."),
@@ -30,6 +31,7 @@ const signupSchema = z.object({
 });
 
 export async function signup(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (serverEnv.demoDeployment) return { error: "Use Try the live demo to start a practice business." };
   const parsed = signupSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 

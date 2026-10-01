@@ -24,9 +24,9 @@ export default function HomePage() {
             ▶ Try the live demo
           </Link>
         )}
-        <Link href="/signup" className={serverEnv.demoMode ? "btn-secondary" : "btn-primary"}>
+        {!serverEnv.demoDeployment && <Link href="/signup" className={serverEnv.demoMode ? "btn-secondary" : "btn-primary"}>
           Get started
-        </Link>
+        </Link>}
         <Link href="/login" className="btn-secondary">
           Log in
         </Link>
