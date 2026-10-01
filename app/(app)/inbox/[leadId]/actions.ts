@@ -27,7 +27,11 @@ export async function sendReply(leadId: string, _prev: FormState, formData: Form
   if (!body) return { error: "Type a message first." };
   if (body.length > 1000) return { error: "That's too long for a text. Keep it under 1,000 characters." };
 
-  const result = await replyToLead(createAdminClient(), ctx.org.id, leadId, body, { type: "user", userId: ctx.userId });
+  const key = z.uuid().safeParse(formData.get("request_key"));
+  if (!key.success) return { error: "Reload the conversation before sending." };
+  // Scope client identity to this sender and conversation, never another tenant.
+  const result = await replyToLead(createAdminClient(), ctx.org.id, leadId, body,
+    { type: "user", userId: ctx.userId }, `reply:${ctx.userId}:${leadId}:${key.data}`);
   if (result.status === "not_found") return { error: "Lead not found." };
 
   refresh(leadId);

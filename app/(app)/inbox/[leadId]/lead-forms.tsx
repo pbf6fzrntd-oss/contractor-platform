@@ -1,13 +1,26 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { replyRequestIdentity } from "@/lib/messaging/reply-request";
 import { FormMessage } from "@/components/form-message";
 import { SubmitButton } from "@/components/submit-button";
 import type { LeadStage } from "@/lib/leads/stages";
 import { saveContact, sendReply, setStage } from "./actions";
 
 export function Composer({ leadId, disabledReason }: { leadId: string; disabledReason?: string }) {
-  const [state, action] = useActionState(sendReply.bind(null, leadId), undefined);
+  const [state, action] = useActionState(async (prev: Parameters<typeof sendReply>[1], data: FormData) => {
+    let identity;
+    try {
+      identity = await replyRequestIdentity(sessionStorage, leadId, String(data.get("body") ?? ""));
+    } catch {
+      return { error: "Couldn't prepare a safe send. Reload and try again." };
+    }
+    data.set("request_key", identity.key);
+    const result = await sendReply(leadId, prev, data);
+    // Keep the identity after an error or lost response, including across reloads.
+    if (result?.success) sessionStorage.removeItem(identity.storageKey);
+    return result;
+  }, undefined);
   const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (state?.success) formRef.current?.reset();

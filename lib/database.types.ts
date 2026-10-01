@@ -1917,6 +1917,7 @@ export type Database = {
       apply_billing_snapshot: { Args: { p_snapshot: Json; p_event_id: string; p_token: string }; Returns: boolean };
       book_slot: { Args: { p_booking: Json; p_capacity_scope: string; p_capacity?: number }; Returns: string };
       claim_billing_sync: { Args: { p_subscription_id: string; p_event_id: string }; Returns: Json };
+      claim_scheduled_messages: { Args: { p_now: string; p_limit?: number; p_org_id?: string; p_broadcast_id?: string; p_ids?: string[]; p_fast_forward?: boolean }; Returns: unknown[] };
       claim_due_scheduled_messages: { Args: { p_now: string; p_limit?: number }; Returns: unknown[] };
       create_organization: { Args: { p_name: string; p_business_type: string; p_default_language: string; p_templates: Json; p_alert_phone?: string; p_google_review_url?: string; p_industry?: string }; Returns: string };
       finish_sms_attempt: { Args: { p_org_id: string; p_key: string; p_state: string; p_status: string; p_sid?: string; p_error?: string }; Returns: boolean };

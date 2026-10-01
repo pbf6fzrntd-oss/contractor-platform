@@ -101,53 +101,17 @@ export async function runDispatch(db: AdminClient, options: DispatchOptions = {}
     return b;
   }
 
-  let items: ScheduledRow[];
-  if (options.scheduledIds?.length) {
-    const { data } = await db
-      .from("scheduled_messages")
-      .update({ status: "processing", processed_at: now.toISOString() })
-      .in("id", options.scheduledIds)
-      .eq("status", "pending")
-      .lte("send_at", now.toISOString())
-      .select("*");
-    items = data ?? [];
-  } else if (options.broadcastId) {
-    // Claim this send's due texts; anything another run already took is skipped.
-    const { data } = await db
-      .from("scheduled_messages")
-      .update({ status: "processing", processed_at: now.toISOString() })
-      .eq("broadcast_id", options.broadcastId)
-      .eq("status", "pending")
-      .lte("send_at", now.toISOString())
-      .select("*");
-    items = data ?? [];
-  } else if (options.fastForwardOrgId) {
-    let q = db
-      .from("scheduled_messages")
-      .select("*")
-      .eq("org_id", options.fastForwardOrgId)
-      .eq("status", "pending");
-    if (options.dueOnly) q = q.lte("send_at", now.toISOString());
-    const { data } = await q.order("send_at").limit(options.limit ?? 200);
-    items = data ?? [];
-    if (items.length) {
-      await db
-        .from("scheduled_messages")
-        .update({ status: "processing", processed_at: new Date().toISOString() })
-        .in(
-          "id",
-          items.map((i) => i.id),
-        )
-        .eq("status", "pending");
-    }
-  } else {
-    const { data, error } = await db.rpc("claim_due_scheduled_messages", {
-      p_now: now.toISOString(),
-      p_limit: options.limit ?? 100,
-    });
-    if (error) throw error;
-    items = (data ?? []) as ScheduledRow[];
-  }
+  // All paths process only rows claimed atomically by this invocation.
+  const { data, error } = await db.rpc("claim_scheduled_messages", {
+    p_now: now.toISOString(),
+    p_limit: options.limit ?? (options.fastForwardOrgId ? 200 : 100),
+    p_org_id: options.fastForwardOrgId,
+    p_broadcast_id: options.broadcastId,
+    p_ids: options.scheduledIds,
+    p_fast_forward: Boolean(options.fastForwardOrgId && !options.dueOnly),
+  });
+  if (error) throw error;
+  const items = (data ?? []) as ScheduledRow[];
 
   for (const item of items) {
     try {
