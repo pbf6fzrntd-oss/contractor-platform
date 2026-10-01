@@ -24,7 +24,7 @@ Configure an every-minute authenticated **POST** to `/api/cron/dispatch` with `A
 
 Visitors choose a trade at `/demo` and receive an isolated fictional organization and login. These workspaces expire after 24 hours and are cleaned by the dispatcher. Never seed the hosted environment using the older `demo:seed` script and its local practice password.
 
-For a durable operator workspace, set server-side `DEMO_OPERATOR_EMAIL`, `DEMO_OPERATOR_PASSWORD` (at least 16 characters), and optionally `DEMO_OPERATOR_INDUSTRY` in a protected local `.env.local` pointing only to the dedicated demo project. Run `npm run demo:operator`. It uses the same fictional scenario and edition seeding as the visitor path, then sets `demo_expires_at` to null. It prints no password. Remove the password from local/host environment once seeded. A duplicate operator email causes a safe failure; it does not overwrite an existing user's password. Reset credentials through Supabase Auth administration, not by rerunning the script.
+For a durable operator workspace, set server-side `DEMO_OPERATOR_EMAIL`, `DEMO_OPERATOR_PASSWORD` (at least 16 characters) in a protected local `.env.local` pointing only to the dedicated demo project. Run `npm run demo:operator`. It creates the same fictional lawn-care scenario as the visitor path, then sets `demo_expires_at` to null. It prints no password. Remove the password from local/host environment once seeded. A duplicate operator email causes a safe failure; it does not overwrite an existing user's password. Reset credentials through Supabase Auth administration, not by rerunning the script.
 
 ## Launch verification and recovery
 

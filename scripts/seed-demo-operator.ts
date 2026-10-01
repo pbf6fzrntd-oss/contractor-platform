@@ -2,7 +2,6 @@
 import { validateDemoDeployment } from "@/lib/deployment";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createDemoBusiness } from "@/lib/services/demo";
-import { MODULES } from "@/modules/registry";
 
 async function main() {
   if (process.env.DEPLOYMENT_MODE !== "demo") throw new Error("Operator seeding requires DEPLOYMENT_MODE=demo");
@@ -14,7 +13,7 @@ async function main() {
   const db = createAdminClient();
   const check = await db.from("organizations").select("id", { head: true, count: "exact" }).eq("is_demo", false);
   if (check.error || check.count !== 0) throw new Error("Refusing to seed a database containing ordinary organizations or unavailable schema");
-  const login = await createDemoBusiness(db, process.env.DEMO_OPERATOR_INDUSTRY || "lawn_care", new Date(), MODULES);
+  const login = await createDemoBusiness(db, "lawn_care");
   let userId: string | undefined;
   try {
     const member = await db.from("memberships").select("user_id").eq("org_id", login.orgId).single();
