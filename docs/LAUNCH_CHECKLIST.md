@@ -1,8 +1,10 @@
 # Launch checklist: what to connect and what to test
 
-All 11 milestones are built. This list covers what's left before a real contractor uses the app: accounts to create, how the pieces connect, what has already been tested, and what can only be tested with real phones, real money or real people.
+Updated 2026-10-01 for the reporting and dispatch release. This checklist covers production connections and pilot evidence; the private hosted demo is a fictional, read-only preview. Implementation spans M1–M28 and the recovery release. A completed milestone is not evidence that a production integration is ready.
 
-Legend: ☐ = to do · ✅ = already verified in development
+Legend: ☐ = production verification required · ✅ = historical automated coverage; re-run for the release commit.
+
+Before release, apply both recovery migrations in order, run the current CI suites, and record the passing commit and workflow URLs in the release ticket. Follow [REPORTING_RETRY_RELEASE.md](REPORTING_RETRY_RELEASE.md) and [RECOVERY_RELEASE.md](RECOVERY_RELEASE.md). Never treat skipped database tests as a passing database gate.
 
 ---
 
@@ -18,13 +20,13 @@ Legend: ☐ = to do · ✅ = already verified in development
 | 6 | **Resend** (or other SMTP) | Before real sign-ups | SMTP credentials | Supabase → Authentication → Emails |
 | 7 | **Stripe** | When you stop invoicing by hand | Secret key, webhook secret, price IDs | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, /admin → Plans |
 | 8 | **Attorney** (TCPA/SMS) | Before the first campaign | Reviewed legal pages and consent wording | `/privacy`, `/terms`, `/sms-terms`, templates |
-| 9 | **Sentry** (optional) | Before pilots | Error alerts | Not wired in yet: ask me to add it |
+| 9 | **Sentry** (optional) | Before pilots | Error alerts | Monitoring hooks implemented; configure and verify an alert using the environment settings in README |
 
 ## Part 2: Connecting the pieces (in this order)
 
 ☐ **A. Database:** create the dev Supabase project → run `npm run db:push` → put the 3 keys in `.env.local` → `npm run dev` → sign up works. *(README §3)*
 
-☐ **B. Security tests against your real database:** set `TEST_DATABASE_URL` to the **dev** project → `npm run test` → all 18 data-isolation tests pass. *(These pass on a stand-in Postgres here; run them once on real Supabase.)*
+☐ **B. Security tests against your real database:** set `TEST_DATABASE_URL` to the **dev** project → `npm run test` → all current database tests execute and pass, including concurrent claims, recovery transactions and data isolation. Use a disposable database and verify the same migration set on staging Supabase.
 
 ☐ **C. Deploy to Vercel:** env vars set, prod migrations pushed, Supabase auth redirect URLs include the Vercel/production address, `NEXT_PUBLIC_SITE_URL` set to the public address.
 
@@ -38,9 +40,9 @@ Legend: ☐ = to do · ✅ = already verified in development
 
 ☐ **H. Email:** custom SMTP in Supabase; "Confirm email" ON in prod; test sign-up confirmation and password reset emails arrive and their links work.
 
-## Part 3: What's already been tested (you don't need to redo these)
+## Part 3: Automated coverage to re-run for each release
 
-**Automated tests: 202 business-rule tests + 18 database security tests, all passing.** They cover:
+**The suite has expanded beyond the original milestone counts.** Use the current CI result and executed test totals for the release commit, rather than these historical counts. Coverage includes:
 ✅ Follow-up timing (days 2/5/10 at 10am, late-night sends, daylight saving, custom days) · ✅ every follow-up stop condition (won, lost, re-sent estimate, customer replied, opted out, do-not-autotext) · ✅ STOP/HELP/START in English and Spanish, CANCEL flagging, "please stop texting me" detection · ✅ opt-out footer rules · ✅ marketing consent and 8am–8pm window · ✅ missed-call 12-hour guardrail · ✅ review once-only and Nth-visit rules · ✅ weekly/biweekly/every-4-weeks schedules, pauses, rain-delay moves · ✅ bulk-send and campaign recipient selection · ✅ CSV import parsing · ✅ dashboard and churn math · ✅ Stripe status mapping · ✅ Twilio signature check (against Twilio's own reference value) · ✅ one business can't see or change another's data; office managers can't change owner-only settings.
 
 **Click-through tests on a phone-sized screen**, against a local stand-in for Supabase (the same open-source auth + database pieces Supabase runs), in simulator mode, on a production build with a fresh database:

@@ -29,6 +29,7 @@ export async function replyToLead(
   leadId: string,
   body: string,
   sender: Sender,
+  requestKey?: string,
 ): Promise<SendResult | { status: "not_found" }> {
   const loaded = await loadLead(db, orgId, leadId);
   if (!loaded) return { status: "not_found" };
@@ -40,6 +41,7 @@ export async function replyToLead(
     leadId,
     senderType: sender.type,
     userId: sender.userId,
+    requestKey,
   });
 
   const updates: { first_response_at?: string; stage?: string } = {};

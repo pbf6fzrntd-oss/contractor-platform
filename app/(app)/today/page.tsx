@@ -58,13 +58,14 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
   }
   const remaining = scheduled.filter((s) => !doneIds.has(s.id)).length;
 
-  let sentStatus: { sent: number; pending: number; total: number } | null = null;
+  let sentStatus: { sent: number; pending: number; processing: number; total: number } | null = null;
   if (sentId) {
     const { data: rows } = await supabase.from("scheduled_messages").select("status").eq("broadcast_id", sentId);
     const r = rows ?? [];
     sentStatus = {
       sent: r.filter((x) => x.status === "sent").length,
       pending: r.filter((x) => x.status === "pending" || x.status === "processing").length,
+      processing: r.filter((x) => x.status === "processing").length,
       total: r.length,
     };
   }
@@ -90,7 +91,9 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
       {sentStatus && (
         <p role="status" className="mb-4 rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-800">
           {sentStatus.pending > 0
-            ? `Sending… ${sentStatus.sent} of ${sentStatus.total} sent`
+            ? sentStatus.processing > 0
+              ? `Sending… ${sentStatus.sent} of ${sentStatus.total} sent`
+              : `Queued ${sentStatus.pending} texts · ${sentStatus.sent} of ${sentStatus.total} sent`
             : `✓ Sent to ${sentStatus.sent} customer${sentStatus.sent === 1 ? "" : "s"}`}
           {sentStatus.total - sentStatus.sent - sentStatus.pending > 0 &&
             ` (${sentStatus.total - sentStatus.sent - sentStatus.pending} not sent. Check the conversation for why.)`}
@@ -111,7 +114,7 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
         <ul className="mb-3 text-sm text-slate-600">
           {(notices ?? []).map((n) => (
             <li key={n.id}>
-              ✉ {n.name} sent to {n.recipient_count} ·{" "}
+              ✉ {n.name} · {n.recipient_count} customers ·{" "}
               {new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: org.timezone }).format(new Date(n.created_at))}
             </li>
           ))}

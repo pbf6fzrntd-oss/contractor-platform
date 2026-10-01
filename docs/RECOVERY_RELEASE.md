@@ -1,6 +1,6 @@
 # Recovery release and pilot gate
 
-Apply `20261001000000_demo_recovery.sql` before deploying this application version. Existing records stay intact; new provider-attempt and billing-event tables start empty. Do not run an old application instance alongside the new sender: the old instance does not participate in quota reservations or the retry ledger. Drain/stop dispatchers, migrate, deploy, then restart dispatch. Review pre-existing stuck outbox rows against provider receipts before allowing them to resume.
+Apply `20261001000000_demo_recovery.sql`, then `20261001010000_reporting_dispatch.sql`, before deploying this application version. Existing records stay intact; new provider-attempt and billing-event tables start empty. Do not run an old application instance alongside the new sender: the old instance does not participate in quota reservations or the retry ledger. Drain/stop dispatchers, migrate, deploy, then restart dispatch. Review pre-existing stuck outbox rows against provider receipts before allowing them to resume.
 
 ## What changes
 
@@ -8,11 +8,14 @@ Apply `20261001000000_demo_recovery.sql` before deploying this application versi
 - OAuth refresh rotation updates only the still-current, unrevoked, unexpired hash. A concurrent loser receives `invalid_grant`; failed persistence never returns credentials.
 - Public request limits serialize count and reservation and fail closed on database errors. Invalid demo-limit settings use a bounded default. Only trust forwarded IP headers from the deployment's configured reverse proxy.
 - Billing webhooks acquire a two-minute subscription lease, retrieve current Stripe state and commit the subscription, plan, add-ons and event receipt together. Busy/failed sync returns 503 so Stripe retries. Lease expiry rejects stale workers. Existing pilot/edition/admin modules are preserved.
-- SMS quota is reserved with a queued message before the provider call. An outbox row has a stable request key. Accepted retries reuse the receipt. Missing/uncertain responses retain their quota and never resend automatically; definitive rejection releases quota once. Manual send callers receive a fresh key unless they provide one: do not blindly retry a failed manual request.
+- SMS quota is reserved with a queued message before the provider call. An outbox row has a stable request key. Accepted retries reuse the receipt. Missing/uncertain responses retain their quota and never resend automatically; definitive rejection releases quota once. The inbox composer persists a draft-specific request key in session storage until the server confirms success. A lost response and reload reuse that key; changed text gets a different key. Accepted retries reuse the receipt and uncertain provider attempts require reconciliation. Other callers must provide their own stable key before retrying an ambiguous request.
 - `/admin/delivery` is restricted by the existing platform-admin guard. After checking provider receipts, record acceptance with its message ID or confirmed rejection with evidence. Decisions are audited and send no text. Unresolved attempts stay reserved. Provider acceptance is not proof of delivery.
 - Renewal reminders reserve their outbox row and agreement marker together. The UI says queued, with delivery checked in the inbox; duplicate manual clicks cannot resend the same term reminder.
 - Website audits pin each connection to a validated DNS answer and re-check redirects. Hexadecimal mapped/private IPv6 and special networks are rejected. Responses and duration are bounded.
 - Production builds use system fonts and need no font download.
+
+- Dashboard queries use complete keyset pagination and propagate failures to a retryable error screen instead of showing zero totals.
+- Every dispatch path uses the scoped atomic claim function, including simulator fast-forward, broadcasts and selected IDs. Future rows are claimed early only for organizations with simulator numbers.
 
 ## Verification and live demonstration
 
