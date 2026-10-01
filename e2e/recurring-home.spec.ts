@@ -20,7 +20,9 @@ test("a pest control company tracks agreements, renewals and access notes", asyn
   await page.locator("#name").fill("Karen Whitfield");
   await page.locator("#phone").fill("843-555-0191");
   await page.locator("#address").fill("118 Tupelo Ln, Summerville");
-  await page.locator("#service_day").selectOption(String(new Date().getDay()));
+  // Use the business-local date supplied by the app, not the UTC runner clock.
+  const serviceDate = await page.locator("#start_date").inputValue();
+  await page.locator("#service_day").selectOption(String(new Date(`${serviceDate}T12:00:00Z`).getUTCDay()));
   await page.locator("input[name=service_texts]").check();
   await page.locator("form button[type=submit]").last().click();
   await page.waitForURL(/\/customers\/[0-9a-f-]{36}/);
@@ -29,7 +31,7 @@ test("a pest control company tracks agreements, renewals and access notes", asyn
   await page.locator("#access_notes").fill("Gate 4821#, dog in back yard");
   await page.getByRole("button", { name: "Save access notes" }).click();
   await expect(page.getByText("Saved.").first()).toBeVisible();
-  await page.goto("/today");
+  await page.goto(`/today?date=${serviceDate}`);
   await expect(page.getByText("🔑 Gate 4821#, dog in back yard")).toBeVisible();
 
   // Agreements: menu, quick pick, renewal reminder preview.
