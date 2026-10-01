@@ -34,6 +34,11 @@ describe.skipIf(!url)("dedicated demo database guard", () => {
         expect((await db.query("select has_table_privilege($1,'deployment_private.demo_settings','update') as allowed", [role])).rows[0].allowed).toBe(false);
         expect((await db.query("select has_function_privilege($1,'deployment_private.guard_demo_organization()','execute') as allowed", [role])).rows[0].allowed).toBe(false);
       }
+      for (const role of ["anon", "authenticated"]) {
+        for (const fn of ["handle_new_user", "create_a2p_registration", "rh_visit_reports_same_org_job"]) {
+          expect((await db.query("select has_function_privilege($1,$2,'execute') as allowed", [role, `public.${fn}()`])).rows[0].allowed).toBe(false);
+        }
+      }
       await db.query("update deployment_private.demo_settings set demo_only=false");
       expect((await attempt("insert into public.organizations(name,business_type) values('Restored Ordinary','project')")).error).toBeNull();
     } finally { await db.query("rollback"); await db.end(); }
