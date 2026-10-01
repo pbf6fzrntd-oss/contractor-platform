@@ -2,7 +2,7 @@
 
 This is the real Next.js application with Supabase persistence, separate from the read-only ChatGPT preview. Deploy from `claude/home-service-saas-mvp-bcc00c`. No service is provisioned merely by committing `render.yaml`.
 
-For the provisioned demo project, first read [backend status and migration-history gate](DEMO_BACKEND_STATUS.md). Do not replay migrations on that project before the documented reconciliation is approved.
+For the provisioned demo project, first read [backend status and completed migration-history reconciliation](DEMO_BACKEND_STATUS.md). Its recorded migration IDs now match the repository; do not replay existing migrations or reset this project.
 
 ## Dedicated database and settings
 

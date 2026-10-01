@@ -14,11 +14,13 @@ Dedicated project: [lowcountry-production-demo](https://supabase.com/dashboard/p
 
 Hosting access and final HTTPS origin, protected server keys/operator credentials, Auth redirect settings, the authenticated dispatch schedule, browser checks against the deployed service, and backup/restore verification are still required. The existing ChatGPT previews remain read-only.
 
-### Migration history: approval required
+### Migration history: reconciled
 
-The MCP migration API assigned deployment-time version IDs instead of the existing repository timestamps. The schema was installed successfully, but the CLI cannot safely infer that these differently numbered migrations are the same work. **Do not run `db push`, reset, or replay the original migrations on this project until history is reconciled.**
+The MCP migration API assigned deployment-time version IDs instead of the existing repository timestamps. The schema was installed successfully, but the CLI cannot safely infer that these differently numbered migrations are the same work. The history has now been reconciled with the repository; existing migrations must not be replayed or the project reset.
 
-Automatic approval review rejected a direct metadata update because changing migration tracking could cause deployment drift without clear authorization. No history update was executed. Proposed reconciliation affects only the mapping below; it must not rerun schema SQL, delete application records, or reset the project. Before execution, export current history, confirm each name has exactly one matching applied row, compare its statements to the committed migration, and verify there have been no subsequent migrations. Afterwards, compare CLI/local history with the remote list and confirm no already-applied schema is scheduled for replay.
+The user approved both the connected Supabase organization and the 26 ID corrections on 2026-10-01. The original migration history was exported before an atomic update guarded by the exact old IDs, names, SQL hashes and row count. Twenty-five SQL payloads matched repository files exactly; the remaining hardening payload matched after comment/whitespace normalization. No migration SQL was rerun. All 26 resulting IDs now match the repository. Before/after fingerprints verified that the schema and data in 49 application, private-setting, Auth-user and Storage tables were unchanged.
+
+The table below records the completed transition: “Applied ID” is the former API-assigned ID; “Repository ID” is the current reconciled ID. Continue through the normal migration workflow for future new migrations. Hosting and deployed verification remain outstanding.
 
 | Migration | Applied ID | Repository ID |
 |---|---|---|
