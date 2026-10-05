@@ -1,10 +1,10 @@
 # Launch checklist: what to connect and what to test
 
-Updated 2026-10-01 for the reporting and dispatch release. This checklist covers production connections and pilot evidence; the private hosted demo is a fictional, read-only preview. Implementation spans M1–M28 and the recovery release. A completed milestone is not evidence that a production integration is ready.
+Updated 2026-10-05 for the reporting and dispatch release. This checklist covers production connections and pilot evidence; the private hosted demo is a fictional, read-only preview. Implementation spans M1–M28 and the recovery release. A completed milestone is not evidence that a production integration is ready.
 
 Legend: ☐ = production verification required · ✅ = historical automated coverage; re-run for the release commit.
 
-Before release, apply both recovery migrations in order, run the current CI suites, and record the passing commit and workflow URLs in the release ticket. Follow [REPORTING_RETRY_RELEASE.md](REPORTING_RETRY_RELEASE.md) and [RECOVERY_RELEASE.md](RECOVERY_RELEASE.md). Never treat skipped database tests as a passing database gate.
+For a fresh database, apply the full ordered migration set. For an existing database, apply only pending migrations; the dedicated hosted-demo project is already reconciled. Run the current CI suites and record the passing commit and workflow URLs in the release ticket. Follow [REPORTING_RETRY_RELEASE.md](REPORTING_RETRY_RELEASE.md) and [RECOVERY_RELEASE.md](RECOVERY_RELEASE.md). Never treat skipped database tests as a passing database gate.
 
 ---
 
@@ -13,7 +13,7 @@ Before release, apply both recovery migrations in order, run the current CI suit
 | # | Service | When | What you get | Where it goes |
 |---|---|---|---|---|
 | 1 | **Supabase** (2 projects: dev, prod) | Now (free) | URL, publishable key, secret key, DB connection string | `.env.local` / Vercel env vars |
-| 2 | **Vercel** | Now (free to try; Pro $20/mo before charging) | A public https address | `NEXT_PUBLIC_SITE_URL` |
+| 2 | **Vercel** | Now (free to try; verify current pricing before charging) | A public https address | `NEXT_PUBLIC_SITE_URL` |
 | 3 | **Twilio** | For real calls/texts | Account SID, Auth Token | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `SMS_PROVIDER=twilio` |
 | 4 | **LLC + EIN** | Before your own Twilio brand registration, Stripe and live customers | Legal name, EIN | Twilio, Stripe, legal pages |
 | 5 | **Domain name** | Before launch (optional for testing) | e.g. yourapp.com | Vercel domain, `NEXT_PUBLIC_SITE_URL`, Supabase auth URLs |
@@ -133,6 +133,6 @@ Do these with 2 phones (yours + a friend's) once Twilio is connected.
 4. **Owner alerts** go by text to the owner's cell; there are no push notifications or an in-app notification list yet.
 5. **No voicemail recording**: missed callers hear a short greeting and get the text. Voicemail-to-inbox would be a small addition.
 6. **Crew-lead logins** aren't built (only owner and office manager), as you decided.
-7. **Error alerts (Sentry)** aren't wired in; errors go to Vercel logs.
-8. **Phone-only**: there's no desktop-optimized layout (it works on desktop, just narrow).
-9. The end-to-end click-through scripts I used live outside the repo. I can turn them into a maintained automated test suite (Playwright) that runs on every change.
+7. **Error alerts (Sentry)** are implemented; configure the DSN and verify delivery on the selected host.
+8. **Desktop and phone layouts** are implemented, including a desktop sidebar and phone bottom navigation. Check actual iPhone Safari and Android devices before pilots.
+9. **Maintained browser tests** live in `e2e/` and run in CI on desktop and phone viewports. Automated WCAG audits supplement keyboard checks; human screen-reader and device testing remains required.

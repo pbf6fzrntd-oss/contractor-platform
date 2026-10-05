@@ -47,7 +47,7 @@ export function DemoBar({
   actions,
 }: {
   businessName: string;
-  hoursLeft: number;
+  hoursLeft: number | null;
   recurring: boolean;
   /** Recurring Home Services demos: link to finishing a visit report. */
   visitReports?: boolean;
@@ -56,6 +56,7 @@ export function DemoBar({
 }) {
   const welcome = useSearchParams().get("welcome") === "1";
   const [open, setOpen] = useState(welcome);
+  const retention = hoursLeft === null ? "saved in this demo workspace" : `deleted in ${hoursLeft}h`;
 
   return (
     // Pinned to the top on phones (the page scrolls past the layout after a redirect); in place on laptops.
@@ -63,23 +64,23 @@ export function DemoBar({
       <div className="flex items-center gap-3 px-3 py-2 sm:px-4 sm:py-3">
         <p className="min-w-0 flex-1 text-sm text-amber-950">
           <span className="font-semibold">🎬 Demo</span>
-          <span className="hidden sm:inline"> business · practice data, nothing texts a real phone · deleted in {hoursLeft}h</span>
+          <span className="hidden sm:inline"> business · practice data, nothing texts a real phone · {retention}</span>
         </p>
-        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="btn-primary min-h-10 shrink-0 px-4 text-sm">
+        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="demo-actions" className="btn-primary shrink-0 px-4 text-sm">
           {open ? "Hide" : "▶ Try it"}
         </button>
-        <Link href="/demo" className="btn-secondary min-h-10 shrink-0 px-3 text-sm">
+        <Link href="/demo" className="btn-secondary shrink-0 px-3 text-sm">
           <span className="sm:hidden">Switch</span>
           <span className="hidden sm:inline">Pick another trade</span>
         </Link>
       </div>
       {open && (
-        <div className="border-t border-amber-200 px-4 pb-4 pt-3">
+        <div id="demo-actions" className="border-t border-amber-200 px-4 pb-4 pt-3">
           {welcome && (
             <div className="mb-3">
               <h2 className="text-lg font-semibold text-slate-900">Welcome to {businessName}!</h2>
               <p className="text-sm text-slate-700">
-                <span className="sm:hidden">Practice data only: nothing texts a real phone, and it&apos;s deleted in {hoursLeft}h. </span>
+                <span className="sm:hidden">Practice data only: nothing texts a real phone; {retention}. </span>
                 This is a full working copy of the app with three months of history. Start with the first button: it plays a customer calling while you&apos;re on a job.
               </p>
             </div>

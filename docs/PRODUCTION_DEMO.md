@@ -39,3 +39,17 @@ For a durable operator workspace, set server-side `DEMO_OPERATOR_EMAIL`, `DEMO_O
 - Roll back application code to a tested commit through the host. Do not roll back applied migrations destructively; use a forward migration when needed. Investigate scheduler failures before replaying work.
 
 This is a fictional production-hosted demo, not approval to enable customer billing, live SMS, or real customer onboarding. Those require the separate launch checklist.
+
+## Portable Node container and HTTPS acceptance
+
+The repository also supports Next's standalone Node output via `Dockerfile`. Build with the three **public** settings as build arguments: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`. They must match the final deployment. Supply all server secrets through the host's runtime secret manager, never through Docker arguments or committed files. The runtime runs as the unprivileged `node` user. Use Supabase private storage, not container files. A host may need a writable `.next/cache` directory for Next's runtime cache; do not treat that cache as persistent business data.
+
+After the host serves the final HTTPS origin, run:
+
+```sh
+npm run verify:hosted -- https://YOUR-DEMO-DOMAIN
+```
+
+This read-only check requires ready/no-store health, login security headers, logged-out redirects for private pages, and refusal of both unauthenticated scheduler methods. It follows no redirects, sends no credentials and creates no demo records. It cannot prove operator login, tenant isolation, working private files, cron cadence, restart persistence or backup restore on that host. Complete those authenticated checks above before using the deployment. A successful build is not a deployed site.
+
+The current local release environment cannot run Docker/local Supabase. GitHub CI is the disposable-database and full browser release gate; skipped local database tests are not database validation. Accessibility checks audit four primary pages at both viewport sizes and exercise keyboard skip navigation. Screen-reader and real-device checks remain manual launch gates.
