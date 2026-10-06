@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node scripts/start.mjs",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
@@ -16,7 +16,8 @@
     "db:types": "node scripts/gen-db-types.mjs",
     "demo:operator": "node --conditions=react-server --import tsx --env-file=.env.local scripts/seed-demo-operator.ts",
     "demo:seed": "tsx --env-file=.env.local scripts/seed-demo.ts",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "verify:hosted": "node scripts/verify-hosted.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",
@@ -30,6 +31,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.20.4",

@@ -24,7 +24,7 @@ export function SideNav({
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <nav aria-label="Main" className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col border-r border-slate-200 bg-white lg:flex">
+    <nav aria-label="Main" className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col overflow-y-auto border-r border-slate-200 bg-white lg:flex">
       <div className="px-5 pb-4 pt-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">{appName}</p>
         <p className="mt-1 truncate text-lg font-bold text-slate-900" title={businessName}>{businessName}</p>
@@ -38,7 +38,7 @@ export function SideNav({
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-medium ${
+                className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-[15px] font-medium ${
                   active ? "bg-brand-50 text-brand-800" : "text-slate-700 hover:bg-slate-50"
                 }`}
               >
@@ -59,7 +59,7 @@ export function SideNav({
               <Link
                 href={e.href}
                 aria-current={isActive(e.href) ? "page" : undefined}
-                className={`flex min-h-10 items-center rounded-xl px-3 text-sm ${isActive(e.href) ? "bg-brand-50 font-medium text-brand-800" : "text-slate-600 hover:bg-slate-50"}`}
+                className={`flex min-h-12 items-center rounded-xl px-3 text-sm ${isActive(e.href) ? "bg-brand-50 font-medium text-brand-800" : "text-slate-600 hover:bg-slate-50"}`}
               >
                 {e.label}
               </Link>

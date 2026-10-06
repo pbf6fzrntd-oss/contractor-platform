@@ -18,13 +18,13 @@ export function WeeklyBars({ title, subtitle, weeks, unit }: { title: string; su
         </div>
         <p className="shrink-0 text-sm text-slate-500">{words(total)} total</p>
       </div>
-      <div className="relative" aria-hidden="true">
+      <div className="relative" role="group" aria-label={`${title} chart`}>
         {/* Recessive guide line at the top value */}
         <div className="absolute inset-x-0 top-0 border-t border-dashed border-slate-200" />
-        <span className="absolute -top-2.5 right-0 bg-white pl-1 text-[11px] text-slate-400">{max}</span>
+        <span className="absolute -top-2.5 right-0 bg-white pl-1 text-[11px] text-slate-500">{max}</span>
         <div className="flex h-40 items-end gap-1.5 border-b border-slate-300 pt-2 sm:gap-2">
           {weeks.map((w, i) => (
-            <div key={w.start} className="group relative flex h-full flex-1 items-end" tabIndex={0}>
+            <div key={w.start} className="group relative flex h-full flex-1 items-end" tabIndex={0} role="img" aria-label={`Week of ${label(w.start)}: ${words(w.value)}${i === weeks.length - 1 ? " (so far)" : ""}`}>
               <div
                 className={`w-full rounded-t-[4px] ${i === weeks.length - 1 ? "bg-brand-600/55" : "bg-brand-600"} group-hover:bg-brand-800 group-focus:bg-brand-800`}
                 style={{ height: `${w.value ? Math.max(3, (w.value / max) * 100) : 0}%` }}

@@ -32,6 +32,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <>
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <SideNav
         appName={APP_NAME}
         businessName={org.name}
@@ -40,12 +41,12 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         badges={badges}
       />
       <div className="lg:pl-60">
-        <div className="mx-auto max-w-lg px-4 pb-28 pt-[max(1.5rem,env(safe-area-inset-top))] lg:max-w-3xl lg:px-8 lg:pb-12 lg:pt-8 lg:has-[[data-wide]]:max-w-7xl">
+        <main id="main-content" tabIndex={-1} className="mx-auto max-w-lg px-4 pb-28 pt-[max(1.5rem,env(safe-area-inset-top))] lg:max-w-3xl lg:px-8 lg:pb-12 lg:pt-8 lg:has-[[data-wide]]:max-w-7xl">
           {org.is_demo && (
             <Suspense>
               <DemoBar
                 businessName={org.name}
-                hoursLeft={Math.max(1, Math.round((Date.parse(org.demo_expires_at ?? "") - new Date().getTime()) / 3_600_000) || 24)}
+                hoursLeft={org.demo_expires_at ? Math.max(1, Math.ceil((Date.parse(org.demo_expires_at) - new Date().getTime()) / 3_600_000)) : null}
                 recurring={org.business_type === "recurring"}
                 visitReports={modules.includes("recurring_home")}
                 bookingPath={org.booking_enabled && org.slug ? `/b/${org.slug}/book` : null}
@@ -54,7 +55,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             </Suspense>
           )}
           {children}
-        </div>
+        </main>
       </div>
       <BottomNav items={nav.primary} moreHrefs={nav.more.map((i) => i.href)} badges={badges} />
     </>

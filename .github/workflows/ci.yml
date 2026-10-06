@@ -42,6 +42,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=high
       - name: Prepare the test database
         run: npm run db:test:setup
       - name: Lint, typecheck, tests, build
@@ -78,7 +80,7 @@ jobs:
       - run: npm run build
       - name: Start the app
         run: |
-          npx next start -p 3000 > /tmp/app.log 2>&1 &
+          PORT=3000 npm start > /tmp/app.log 2>&1 &
           npx --yes wait-on --timeout 60000 http://localhost:3000/login
       - name: Install the test browser
         run: npx playwright install --with-deps chromium
@@ -88,6 +90,12 @@ jobs:
         if: failure()
         run: tail -200 /tmp/app.log
       - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dashboard-test-evidence
+          path: test-results/
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
@@ -95,3 +103,48 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: checks
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the standalone deployment image
+        run: |
+          docker build -t lowcountry-release \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
+            --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=ci-placeholder \
+            --build-arg NEXT_PUBLIC_SITE_URL=http://localhost:3000 .
+      - name: Verify unprivileged runtime and fail-closed health
+        run: |
+          docker run -d --name lowcountry-runtime -p 127.0.0.1:3000:3000 \
+            -e SUPABASE_SECRET_KEY=ci-placeholder lowcountry-release
+          trap 'docker logs lowcountry-runtime; docker rm -f lowcountry-runtime' EXIT
+          for attempt in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:3000/login >/dev/null; then break; fi
+            sleep 1
+          done
+          test "$(docker exec lowcountry-runtime id -u)" != 0
+          docker exec -i lowcountry-runtime node - <<'NODE'
+          (async () => {
+            const assert = require('node:assert/strict');
+            const origin = 'http://127.0.0.1:3000';
+            const health = await fetch(origin+'/api/health');
+            assert.equal(health.status, 503);
+            assert.deepEqual(await health.json(), {status:'unavailable'});
+            const login = await fetch(origin+'/login');
+            assert.equal(login.status, 200);
+            assert.equal(login.headers.get('x-frame-options'), 'DENY');
+            await login.arrayBuffer();
+            const privatePage = await fetch(origin+'/dashboard', {redirect:'manual'});
+            assert.equal(privatePage.status, 307);
+            assert.equal(new URL(privatePage.headers.get('location'), origin).pathname, '/login');
+            await privatePage.arrayBuffer();
+            for (const method of ['GET','POST']) {
+              const cron = await fetch(origin+'/api/cron/dispatch', {method});
+              assert.equal(cron.status, 401);
+              await cron.arrayBuffer();
+            }
+          })().catch(error => { console.error(error); process.exit(1); });
+          NODE
