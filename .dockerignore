@@ -8,3 +8,6 @@ playwright-report
 coverage
 *.log
 .files
+.data
+*.pem
+*.key

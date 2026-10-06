@@ -42,6 +42,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=high
       - name: Prepare the test database
         run: npm run db:test:setup
       - name: Lint, typecheck, tests, build
@@ -78,7 +80,7 @@ jobs:
       - run: npm run build
       - name: Start the app
         run: |
-          npx next start -p 3000 > /tmp/app.log 2>&1 &
+          PORT=3000 npm start > /tmp/app.log 2>&1 &
           npx --yes wait-on --timeout 60000 http://localhost:3000/login
       - name: Install the test browser
         run: npx playwright install --with-deps chromium
@@ -87,6 +89,12 @@ jobs:
       - name: App log (on failure)
         if: failure()
         run: tail -200 /tmp/app.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dashboard-test-evidence
+          path: test-results/
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

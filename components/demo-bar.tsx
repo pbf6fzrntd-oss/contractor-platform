@@ -74,6 +74,7 @@ export function DemoBar({
           <span className="hidden sm:inline">Pick another trade</span>
         </Link>
       </div>
+      <p className="px-3 pb-2 text-xs text-amber-950 sm:hidden">Practice data · texts simulated · {retention}</p>
       {open && (
         <div id="demo-actions" className="border-t border-amber-200 px-4 pb-4 pt-3">
           {welcome && (
