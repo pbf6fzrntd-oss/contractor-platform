@@ -2,6 +2,11 @@
 import { cpSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
+import nextEnv from "@next/env";
+
+// The standalone server changes its working directory. Load the same root
+// production env files as `next start` first; host-injected secrets take priority.
+nextEnv.loadEnvConfig(process.cwd(), false);
 
 const server = resolve(".next/standalone/server.js");
 if (!existsSync(server)) {
