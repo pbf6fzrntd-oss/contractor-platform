@@ -22,9 +22,9 @@ export async function expireStaleBookings(db: AdminClient, now = new Date()): Pr
     .select("id, org_id, status, created_at, verify_by, customer_verified_at, mode, starts_at, ends_at, check_in, check_out, service_date")
     .in("status", ["requested", "pending_approval"])
     .order("created_at")
-    .limit(500);
+    .limit(500).throwOnError();
   const orgIds = [...new Set((waiting ?? []).map((b) => b.org_id))];
-  const { data: orgs } = orgIds.length ? await db.from("organizations").select("*").in("id", orgIds) : { data: [] };
+  const { data: orgs } = orgIds.length ? await db.from("organizations").select("*").in("id", orgIds).throwOnError() : { data: [] };
   let unverified = 0;
   let unapproved = 0;
 
@@ -35,17 +35,17 @@ export async function expireStaleBookings(db: AdminClient, now = new Date()): Pr
     const settings = parseBookingSettings(org.booking_settings);
 
     if (b.status === "requested" && isVerificationExpired(b.verify_by, nowMs)) {
-      const { data: done } = await db.from("bookings").update({ status: "canceled", canceled_by: "system", notes: "The customer didn't confirm their AI assistant's request in time." }).eq("id", b.id).eq("status", "requested").select("id");
+      const { data: done } = await db.from("bookings").update({ status: "canceled", canceled_by: "system", notes: "The customer didn't confirm their AI assistant's request in time." }).eq("id", b.id).eq("status", "requested").select("id").throwOnError();
       if (done?.length) unverified += 1;
       continue;
     }
 
     // The owner's clock starts when the request reached them (after the customer's YES, for AI-agent requests).
     if (b.status === "pending_approval" && isApprovalExpired(b.customer_verified_at ?? b.created_at, nowMs, settings.approvalHoldHours)) {
-      const { data: done } = await db.from("bookings").update({ status: "canceled", canceled_by: "system", notes: `Released: not approved within ${settings.approvalHoldHours} hours.` }).eq("id", b.id).eq("status", "pending_approval").select("id");
+      const { data: done } = await db.from("bookings").update({ status: "canceled", canceled_by: "system", notes: `Released: not approved within ${settings.approvalHoldHours} hours.` }).eq("id", b.id).eq("status", "pending_approval").select("id").throwOnError();
       if (!done?.length) continue;
       unapproved += 1;
-      await db.from("approval_requests").update({ status: "expired", decided_at: now.toISOString() }).eq("booking_id", b.id).eq("status", "pending");
+      await db.from("approval_requests").update({ status: "expired", decided_at: now.toISOString() }).eq("booking_id", b.id).eq("status", "pending").throwOnError();
       await textAboutBooking(db, org, b.id, "expired", null);
       await notifyOwner(db, org.id, {
         kind: "system",

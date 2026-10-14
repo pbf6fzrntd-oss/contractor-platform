@@ -57,3 +57,32 @@ The current local release environment cannot run Docker/local Supabase. GitHub C
 `npm start` now copies static assets and runs `.next/standalone/server.js`, matching the container runtime. Build first; public settings cannot be changed after compilation without rebuilding. The server listens on `PORT` (default 3000) and all interfaces; set `APP_HOSTNAME=127.0.0.1` for a strictly local workspace. Put a TLS proxy in front on hosted deployments.
 
 Dependency review (2026-10-05): `source-map-js` updated to 1.2.2; CI audits production dependencies at high severity. The development-only ESLint dependency chain still includes `braces` 3.0.3 (GHSA-vfj7-8cjw-p6xm), for which no patched version is published. Do not run lint on attacker-supplied glob patterns or downgrade Next's lint configuration to bypass the advisory. Revisit when an upstream compatible patch is published. The runtime audit does not certify the base image or Next's vendored code; continue image/dependency scanning on the selected host.
+
+## Scheduler failure checks (October 2026)
+
+The authenticated dispatch endpoint returns `status: "ok"` with HTTP 200 only when all attempted stages succeed. It returns `status: "partial_failure"` with HTTP 503 when dispatch, booking expiry, daily jobs or demo cleanup throws, or when a dispatched message/daily job records a failure. `errors` names the affected stages; provider and database error details are not returned. Configure the scheduler monitor to alert on non-2xx responses, and inspect its response body plus server/Sentry logs.
+
+Independent stages still run after another stage fails. Scheduled-message guard reads fail closed: an unavailable reply/opt-out/booking check does not allow a text to go out. A failed delivery-state write is counted as failed rather than sent. Missed-call replies use the call's stable identity, so a delayed retry after an ambiguous provider response cannot resend the same reply.
+
+Daily jobs retain their once-per-day claims when partially completed. Failed results remain visible on later dispatch calls that day; a claim without a result becomes `incomplete_run` after ten minutes. This intentionally does not replay an entire job that might already have queued texts or sent owner alerts. Inspect the day's `job_runs` result and affected records before any operator-authorized repair. Never clear claims or SMS-attempt records merely to silence an alert. Unknown SMS delivery requires reconciling the provider receipt first.
+
+Local reproduction, using synthetic fixtures only:
+
+```sh
+npm test -- tests/unit/missed-call-booking-workflow.test.ts tests/unit/daily-failures.test.ts tests/unit/scheduler-failures.test.ts
+```
+
+The service fixture exercises the real inbound, lead, outbox, send-policy, booking and approval code with an in-memory database adapter and mocked outbound provider. It is not proof of SQL locks, RLS, hosted cron execution, or real SMS. CI also runs `e2e/missed-call-booking.spec.ts` against disposable local Supabase: one fictional caller, follow-ups, the same lead's online request, owner approval and customer confirmation, on both viewport sizes. Run the existing database and browser suites before deployment; the owner-private static preview cannot run this journey.
+
+### Smallest remaining editable-hosting gate
+
+The existing repository documents a dedicated demo Supabase backend and a separate read-only static preview. It does not establish a provisioned editable application host. Before an editable private demo can be verified:
+
+1. Choose/approve an HTTPS Node host and its cost. The checked-in Render plan is `0.5c-512mb`; this repository does not establish a zero-cost hosting entitlement. Do not infer one from the backend's historical $0 creation quote.
+2. Supply the final `NEXT_PUBLIC_SITE_URL`, the dedicated `NEXT_PUBLIC_SUPABASE_URL` and publishable key at build time; supply server-only `SUPABASE_SECRET_KEY` and `CRON_SECRET` through protected settings. Keep the documented demo/simulator/storage flags. Never commit these secrets.
+3. Configure Supabase Auth Site URL and the exact `/auth/callback` redirect for that origin. Create the persistent operator only through the documented secure setup flow. Visitor workspaces remain fictional and isolated; app login does not make the public `/demo` entry point an owner-only host. If owner-only access to the whole deployment is required, the host's access-control option must be separately reviewed and configured.
+4. Configure and verify the every-minute authenticated POST schedule, including HTTP-503 alerting. Then verify login, same-customer workflow, private storage, tenant isolation, persistence across restart and backup/restore on the deployed runtime.
+
+These are deployment/access decisions, not effects of this code change. No hosting, keys, login settings, migrations or real outbound messaging are provisioned by the workflow tests.
+
+Dependency follow-up (2026-10-14): the runtime audit identified Next 16.3.7 as vulnerable. Pin `next` and `eslint-config-next` to the smallest patched release, 16.3.8, with matching Next-owned transitive packages. The [official 16.3.8 release](https://github.com/vercel/next.js/releases/tag/v16.3.8) lists the security fixes; no feature-line upgrade or app/data migration is required. Re-run `npm run check`, `npm audit --omit=dev --audit-level=high`, disposable-database tests and the browser suite before deployment. The runtime audit after this patch reports zero vulnerabilities; this is dependency-audit evidence, not proof of deployed security or the separate browser/database gates.

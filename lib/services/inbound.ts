@@ -125,6 +125,7 @@ export async function handleMissedCall(
   const result = await sendToContact(db, ctx, {
     contact,
     body: renderTemplate(template.body, templateValues(line, contact)),
+    requestKey: `missed-call:${input.callSid}`,
     category: "conversational",
     leadId: lead.id,
     senderType: "automation",
