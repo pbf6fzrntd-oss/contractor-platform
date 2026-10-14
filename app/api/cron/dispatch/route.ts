@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 import { serverEnv } from "@/lib/env";
-import { expireStaleBookings } from "@/lib/services/booking-maintenance";
-import { runDailyJobs } from "@/lib/services/daily";
-import { deleteExpiredDemos } from "@/lib/services/demo";
 import { moduleDailyJobs } from "@/lib/modules/types";
 import { MODULES } from "@/modules/registry";
-import { runDispatch } from "@/lib/services/outbox";
+import { runScheduler } from "@/lib/services/scheduler";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -21,14 +18,10 @@ async function handle(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const db = createAdminClient();
-  const summary = await runDispatch(db);
-  // Release booking requests nobody finished (customer's YES or the owner's OK).
-  const released = await expireStaleBookings(db);
-  // Once a day (the first call after 12:00 UTC): expiry alerts and reminders.
-  const daily = await runDailyJobs(db, new Date(), moduleDailyJobs(MODULES));
-  // "Try it live" demo businesses are deleted when their 24 hours are up.
-  const demosDeleted = await deleteExpiredDemos(db);
-  return NextResponse.json({ ...summary, released, ...(Object.keys(daily).length ? { daily } : {}), ...(demosDeleted ? { demosDeleted } : {}) });
+  const result = await runScheduler(db, new Date(), moduleDailyJobs(MODULES));
+  // A failing stage must be visible to the scheduler/uptime monitor. Other
+  // independent stages have still been attempted, and successful claims remain deduplicated.
+  return NextResponse.json(result, { status: result.status === "ok" ? 200 : 503 });
 }
 
 export const GET = handle;

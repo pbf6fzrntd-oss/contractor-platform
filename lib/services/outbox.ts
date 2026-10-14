@@ -42,7 +42,7 @@ export async function cancelPending(
 export async function scheduleFollowUps(db: AdminClient, orgId: string, leadId: string) {
   await cancelPending(db, { orgId, leadId, kind: "estimate_followup" }, "estimate_resent");
   const { data: lead } = await db.from("leads").select("contact_id, estimate_sent_at").eq("id", leadId).single();
-  const { data: org } = await db.from("organizations").select("timezone, settings").eq("id", orgId).single();
+  const { data: org } = await db.from("organizations").select("timezone, settings").eq("id", orgId).single().throwOnError();
   if (!lead?.estimate_sent_at || !org) return;
 
   const plan = planFollowUps(new Date(lead.estimate_sent_at), parseSettings(org.settings), org.timezone);
@@ -94,8 +94,9 @@ export async function runDispatch(db: AdminClient, options: DispatchOptions = {}
   async function bundle(orgId: string): Promise<OrgBundle> {
     let b = orgs.get(orgId);
     if (!b) {
-      const { data: org } = await db.from("organizations").select("*").eq("id", orgId).single();
-      b = { org: org!, settings: parseSettings(org!.settings), sending: await loadSendingContext(db, orgId, now) };
+      const { data: org } = await db.from("organizations").select("*").eq("id", orgId).single().throwOnError();
+      if (!org) throw new Error("Scheduled business is unavailable");
+      b = { org, settings: parseSettings(org.settings), sending: await loadSendingContext(db, orgId, now) };
       orgs.set(orgId, b);
     }
     return b;
@@ -130,7 +131,13 @@ export async function runDispatch(db: AdminClient, options: DispatchOptions = {}
       summary[outcome] += 1;
     } catch (error) {
       console.error("Outbox item failed", item.id, error);
-      await db.from("scheduled_messages").update({ status: "failed", skip_reason: "error" }).eq("id", item.id);
+      // Never report an unread guard or an unpersisted delivery receipt as success.
+      // Keep processing other claims even if recording this failure also fails.
+      try {
+        await db.from("scheduled_messages").update({ status: "failed", skip_reason: "error", processed_at: now.toISOString() }).eq("id", item.id).throwOnError();
+      } catch (writeError) {
+        console.error("Outbox failure could not be recorded", item.id, writeError);
+      }
       summary.failed += 1;
     }
   }
@@ -141,18 +148,19 @@ export async function runDispatch(db: AdminClient, options: DispatchOptions = {}
 async function checkGuard(db: AdminClient, orgId: string, guard: ModuleNoticeGuard): Promise<boolean> {
   if (!isModuleTable(guard.table) || !/^[a-z_]{1,40}$/.test(guard.column)) return false;
   // Module tables aren't known to the core's types, so the query is built by name (checked above).
-  const { data } = await (db as unknown as { from: (t: string) => { select: (c: string) => { eq: (k: string, v: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: Record<string, unknown> | null }> } } } } })
+  const { data, error } = await (db as unknown as { from: (t: string) => { select: (c: string) => { eq: (k: string, v: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error?: unknown }> } } } } })
     .from(guard.table)
     .select(guard.column)
     .eq("id", guard.id)
     .eq("org_id", orgId)
     .maybeSingle();
+  if (error) throw error;
   return data != null && String(data[guard.column]) === String(guard.equals);
 }
 
 /** A vaccine record for a reminder, and whether it's still the latest one on file for that pet. */
 async function loadVaccineRecord(db: AdminClient, orgId: string, fileId: string) {
-  const { data: f } = await db.from("files").select("id, subject_id, document_type, expires_on, deleted_at, created_at").eq("id", fileId).eq("org_id", orgId).maybeSingle();
+  const { data: f } = await db.from("files").select("id, subject_id, document_type, expires_on, deleted_at, created_at").eq("id", fileId).eq("org_id", orgId).maybeSingle().throwOnError();
   if (!f || !f.expires_on) return null;
   let newerQuery = db
     .from("files")
@@ -164,8 +172,8 @@ async function loadVaccineRecord(db: AdminClient, orgId: string, fileId: string)
   newerQuery = f.subject_id ? newerQuery.eq("subject_id", f.subject_id) : newerQuery.is("subject_id", null);
   newerQuery = f.document_type ? newerQuery.eq("document_type", f.document_type) : newerQuery.is("document_type", null);
   const [{ count: newer }, { data: subject }] = await Promise.all([
-    newerQuery,
-    f.subject_id ? db.from("subjects").select("label").eq("id", f.subject_id).maybeSingle() : Promise.resolve({ data: null }),
+    newerQuery.throwOnError(),
+    f.subject_id ? db.from("subjects").select("label").eq("id", f.subject_id).maybeSingle().throwOnError() : Promise.resolve({ data: null }),
   ]);
   return { current: !f.deleted_at && !newer, expiresOn: f.expires_on, documentType: f.document_type, pet: subject?.label ?? "your pet" };
 }
@@ -181,9 +189,9 @@ async function processItem(
   const fileId = item.kind === "vaccine_reminder" ? ((item.context ?? {}) as { file_id?: string }).file_id : undefined;
   const guard = item.kind === "module_notice" ? ((item.context ?? {}) as { guard?: ModuleNoticeGuard }).guard : undefined;
   const [{ data: contact }, { data: lead }, { data: lastInbound }, broadcast, { data: booking }, record] = await Promise.all([
-    db.from("contacts").select("*").eq("id", item.contact_id).maybeSingle(),
+    db.from("contacts").select("*").eq("id", item.contact_id).maybeSingle().throwOnError(),
     item.lead_id
-      ? db.from("leads").select("stage, estimate_sent_at").eq("id", item.lead_id).maybeSingle()
+      ? db.from("leads").select("stage, estimate_sent_at").eq("id", item.lead_id).maybeSingle().throwOnError()
       : Promise.resolve({ data: null }),
     db
       .from("messages")
@@ -192,10 +200,10 @@ async function processItem(
       .eq("direction", "inbound")
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle(),
+      .maybeSingle().throwOnError(),
     loadBroadcast(db, item.broadcast_id),
     bookingId
-      ? db.from("bookings").select("*").eq("id", bookingId).eq("org_id", item.org_id).maybeSingle()
+      ? db.from("bookings").select("*").eq("id", bookingId).eq("org_id", item.org_id).maybeSingle().throwOnError()
       : Promise.resolve({ data: null }),
     fileId ? loadVaccineRecord(db, item.org_id, fileId) : Promise.resolve(null),
   ]);
@@ -230,14 +238,14 @@ async function processItem(
     await db
       .from("scheduled_messages")
       .update({ status: "pending", send_at: decision.until.toISOString() })
-      .eq("id", item.id);
+      .eq("id", item.id).throwOnError();
     return "deferred";
   }
   if (decision.action === "skip") {
     await db
       .from("scheduled_messages")
       .update({ status: "skipped", skip_reason: decision.reason, processed_at: new Date().toISOString() })
-      .eq("id", item.id);
+      .eq("id", item.id).throwOnError();
     return "skipped";
   }
 
@@ -268,7 +276,7 @@ async function processItem(
     body = (await getTemplateBody(db, b.org.id, item.template_key, language))?.body ?? null;
   }
   if (!body) {
-    await db.from("scheduled_messages").update({ status: "skipped", skip_reason: "no_template" }).eq("id", item.id);
+    await db.from("scheduled_messages").update({ status: "skipped", skip_reason: "no_template" }).eq("id", item.id).throwOnError();
     return "skipped";
   }
 
@@ -287,9 +295,9 @@ async function processItem(
     await db
       .from("scheduled_messages")
       .update({ status: "sent", message_id: result.messageId, processed_at: new Date().toISOString() })
-      .eq("id", item.id);
+      .eq("id", item.id).throwOnError();
     if (item.kind === "review_request") {
-      await db.from("contacts").update({ review_requested_at: now.toISOString() }).eq("id", contact!.id);
+      await db.from("contacts").update({ review_requested_at: now.toISOString() }).eq("id", contact!.id).throwOnError();
     }
     return "sent";
   }
@@ -302,7 +310,7 @@ async function processItem(
       message_id: result.messageId,
       processed_at: new Date().toISOString(),
     })
-    .eq("id", item.id);
+    .eq("id", item.id).throwOnError();
   return failed ? "failed" : "skipped";
 }
 
@@ -312,6 +320,6 @@ async function loadBroadcast(
   broadcastId: string | null,
 ): Promise<{ status: string; body_en: string; body_es: string | null } | null> {
   if (!broadcastId) return null;
-  const { data } = await db.from("broadcasts").select("status, body_en, body_es").eq("id", broadcastId).maybeSingle();
+  const { data } = await db.from("broadcasts").select("status, body_en, body_es").eq("id", broadcastId).maybeSingle().throwOnError();
   return data ?? null;
 }
