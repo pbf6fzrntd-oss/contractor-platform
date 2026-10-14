@@ -14,6 +14,14 @@ describe.skipIf(!url)("booking the last spot at the same time", () => {
   const orgId = randomUUID();
   let contactId = "";
 
+  // Derive dates from the database clock: rescheduling deliberately refuses
+  // past visits, so a calendar-dated fixture eventually stops testing the happy path.
+  async function futureSlot(daysAhead: number) {
+    const { rows } = await setup.query("select (current_date + $1::int)::text as day", [daysAhead]);
+    const day = rows[0].day as string;
+    return { starts_at: `${day}T13:00:00Z`, ends_at: `${day}T14:00:00Z`, service_date: day };
+  }
+
   beforeAll(async () => {
     await setup.connect();
     await setup.query("insert into public.organizations (id, name, business_type) values ($1, 'Race Test Movers', 'project')", [orgId]);
@@ -26,7 +34,7 @@ describe.skipIf(!url)("booking the last spot at the same time", () => {
   });
 
   it("lets only one of two simultaneous bookings take the last move of the day", async () => {
-    const booking = JSON.stringify({ org_id: orgId, contact_id: contactId, mode: "day_capacity", starts_at: "2026-10-09T12:00:00Z", ends_at: "2026-10-09T21:00:00Z", service_date: "2026-10-09" });
+    const booking = JSON.stringify({ org_id: orgId, contact_id: contactId, mode: "day_capacity", ...await futureSlot(14) });
     const clients = [new Client({ connectionString: url }), new Client({ connectionString: url })];
     await Promise.all(clients.map((c) => c.connect()));
     try {
@@ -53,13 +61,14 @@ describe.skipIf(!url)("booking the last spot at the same time", () => {
   });
 
   it("saves the new M23 fields (customer's YES deadline, approval reasons, moved-from)", async () => {
-    const first = JSON.stringify({ org_id: orgId, contact_id: contactId, mode: "fixed_appointment", status: "requested", starts_at: "2026-10-12T13:00:00Z", ends_at: "2026-10-12T14:00:00Z", service_date: "2026-10-12", verify_by: "2026-10-01T14:00:00Z", pending_reasons: ["New customer"] });
+    const verifyBy = (await setup.query("select now() + interval '2 hours' as deadline")).rows[0].deadline.toISOString();
+    const first = JSON.stringify({ org_id: orgId, contact_id: contactId, mode: "fixed_appointment", status: "requested", ...await futureSlot(17), verify_by: verifyBy, pending_reasons: ["New customer"] });
     const id1 = (await setup.query("select public.book_slot($1::jsonb, 'none') as id", [first])).rows[0].id;
-    const moved = JSON.stringify({ org_id: orgId, contact_id: contactId, mode: "fixed_appointment", starts_at: "2026-10-13T13:00:00Z", ends_at: "2026-10-13T14:00:00Z", service_date: "2026-10-13", rescheduled_from: id1 });
+    const moved = JSON.stringify({ org_id: orgId, contact_id: contactId, mode: "fixed_appointment", ...await futureSlot(18), rescheduled_from: id1 });
     const id2 = (await setup.query("select public.book_slot($1::jsonb, 'none') as id", [moved])).rows[0].id;
     const { rows } = await setup.query("select id, status, verify_by, pending_reasons, rescheduled_from, canceled_by from public.bookings where id = any($1) order by starts_at", [[id1, id2]]);
     expect(rows[0]).toMatchObject({ status: "canceled", pending_reasons: ["New customer"], rescheduled_from: null, canceled_by: "customer" });
-    expect(rows[0].verify_by.toISOString()).toBe("2026-10-01T14:00:00.000Z");
+    expect(rows[0].verify_by.toISOString()).toBe(verifyBy);
     expect(rows[1]).toMatchObject({ pending_reasons: [], rescheduled_from: id1, verify_by: null });
     // Only known "canceled by" values, and approvals can now expire.
     await expect(setup.query("update public.bookings set canceled_by = 'hacker' where id = $1", [id1])).rejects.toThrow();
